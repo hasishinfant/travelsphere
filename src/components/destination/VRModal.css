@@ -38,8 +38,8 @@
 .vr-modal-header {
   padding: 1.5rem 2rem;
   border-bottom: 1px solid var(--gray-200);
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  color: white;
+  background: var(--primary-color);
+  color: #fff;
   position: relative;
 }
 
@@ -72,7 +72,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: white;
+  color: #fff;
   font-size: 1.5rem;
   font-weight: 300;
   transition: all var(--transition-fast);

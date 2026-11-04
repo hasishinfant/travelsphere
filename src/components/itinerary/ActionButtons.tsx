@@ -1,38 +1,24 @@
 import React from 'react';
-import { MessageSquare, Heart, Bookmark } from 'lucide-react';
+import { MessageCircle, Bookmark, BookmarkCheck } from 'lucide-react';
 
 interface ActionButtonsProps {
   onChatWithAssistant: () => void;
   onSaveTrip: () => void;
   isSaving?: boolean;
+  isSaved?: boolean;
 }
 
-const ActionButtons: React.FC<ActionButtonsProps> = ({ 
-  onChatWithAssistant, 
-  onSaveTrip, 
-  isSaving = false 
-}) => {
-  return (
-    <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-      <button 
-        type="button"
-        onClick={onChatWithAssistant}
-        className="btn-pill-green"
-      >
-        <MessageSquare size={16} />
-        <span>Chat with Travel Assistant</span>
-      </button>
-      <button 
-        type="button"
-        onClick={onSaveTrip}
-        disabled={isSaving}
-        className="btn-pill-outline"
-      >
-        <Bookmark size={16} />
-        <span>{isSaving ? 'Saving Trip...' : 'Save Itinerary'}</span>
-      </button>
-    </div>
-  );
-};
+const ActionButtons: React.FC<ActionButtonsProps> = ({ onChatWithAssistant, onSaveTrip, isSaving = false, isSaved = false }) => (
+  <div className="itinerary-actions">
+    <button type="button" onClick={onChatWithAssistant} className="btn btn-primary">
+      <MessageCircle size={16} />
+      <span>Ask the assistant</span>
+    </button>
+    <button type="button" onClick={onSaveTrip} disabled={isSaving || isSaved} className="btn btn-secondary">
+      {isSaved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+      <span>{isSaving ? 'Saving…' : isSaved ? 'Saved' : 'Save itinerary'}</span>
+    </button>
+  </div>
+);
 
 export default ActionButtons;

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Icon from '@/components/shared/Icon';
 import './BookingModal.css';
 
 interface BookingModalProps {
@@ -77,7 +78,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ destination, onClose, onBoo
         
         <div className="booking-header">
           <h2>Book Your Stay</h2>
-          <p className="booking-destination">📍 {destination}</p>
+          <p className="booking-destination"><Icon name="location" size="sm" /> {destination}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="booking-form">

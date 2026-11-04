@@ -1,93 +1,173 @@
+/* ==========================================================================
+   TravelSphere design tokens
+   Light, minimal, one accent. Every component reads from these variables —
+   do not hard-code colours in component CSS.
+   ========================================================================== */
 :root {
-  /* Malvora Brand Palette */
-  --color-primary: #22c55e; /* Vibrant Spring Green */
-  --color-primary-dark: #16a34a;
-  --color-primary-light: #4ade80;
-  --color-primary-subtle: #f0fdf4;
-  --color-primary-glow: rgba(34, 197, 94, 0.35);
+  /* Canvas & surfaces */
+  --canvas: #f4f2ef;            /* warm page background */
+  --surface: #ffffff;           /* cards, sidebar, panels */
+  --surface-2: #f7f6f4;         /* subtle fills: inputs, tracks, hovers */
+  --surface-3: #efedea;         /* pressed / stronger fill */
+  --line: #ebe8e4;              /* hairline borders */
+  --line-strong: #dcd8d3;
 
-  --color-secondary: #0f172a; /* Deep Slate / Dark Forest */
-  --color-secondary-dark: #020617;
-  --color-secondary-light: #1e293b;
+  /* Ink */
+  --ink: #1b1d2a;               /* headings, primary text */
+  --ink-2: #4a4f63;             /* body text */
+  --muted: #8a90a2;             /* secondary text, labels */
+  --muted-2: #b4b8c4;           /* placeholders, disabled */
 
-  --color-accent: #22c55e;
-  --color-dark: #0f172a;
-  --color-dark-surface: #1e293b;
+  /* Accent (single brand colour) */
+  --accent: #3d7bf7;
+  --accent-hover: #2f6ae6;
+  --accent-soft: #edf3ff;       /* tinted backgrounds, selected states */
+  --accent-soft-2: #dde8fe;
+  --accent-ring: rgba(61, 123, 247, 0.18);
 
-  /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  --gradient-dark: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --gradient-hero: linear-gradient(to bottom, rgba(15, 23, 42, 0.65) 0%, rgba(15, 23, 42, 0.45) 50%, rgba(15, 23, 42, 0.8) 100%);
+  /* Supporting hues — used sparingly, never as large fills */
+  --live: #ff5a36;              /* voice / live / notification dot */
+  --live-soft: #fff0eb;
+  --pro: #7b5cfa;               /* PRO badge, AI sparkle */
+  --pro-soft: #f2eeff;
+  --success: #1f9d6b;
+  --success-soft: #e8f7f0;
+  --warning: #d98a0b;
+  --warning-soft: #fdf4e3;
+  --warning-ink: #8a5a06;
+  --danger: #e5484d;
+  --danger-soft: #fdeeee;
+  --danger-ink: #b42328;
 
-  /* Surface Colors */
-  --color-bg-primary: #f8fafc;
-  --color-bg-secondary: #ffffff;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f1f5f9;
+  /* Category swatches (sidebar groups, chips) */
+  --swatch-orange: #ff7a45;
+  --swatch-violet: #7b5cfa;
+  --swatch-blue: #3d7bf7;
+  --swatch-teal: #19a7a0;
 
-  /* Text Colors */
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #94a3b8;
-  --color-text-white: #ffffff;
-  --color-text-brand: #15803d;
+  /* Typography */
+  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --fs-xs: 0.75rem;     /* 12 */
+  --fs-sm: 0.8125rem;   /* 13 */
+  --fs-base: 0.9375rem; /* 15 */
+  --fs-md: 1.0625rem;   /* 17 */
+  --fs-lg: 1.25rem;     /* 20 */
+  --fs-xl: 1.625rem;    /* 26 */
+  --fs-2xl: 2.125rem;   /* 34 */
+  --fs-3xl: 2.625rem;   /* 42 */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
 
-  /* Form Elements */
-  --color-input-border: #e2e8f0;
-  --color-input-focus: #22c55e;
+  /* Spacing (4px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
 
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-3xl: 64px;
+  /* Radius */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 24px;
+  --r-2xl: 32px;
+  --r-pill: 999px;
 
-  /* Border Radius */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
-  --radius-2xl: 32px;
-  --radius-pill: 9999px;
-  --radius-full: 9999px;
+  /* Elevation — soft, wide, low-opacity */
+  --shadow-xs: 0 1px 2px rgba(27, 29, 42, 0.04);
+  --shadow-sm: 0 2px 8px rgba(27, 29, 42, 0.04), 0 1px 2px rgba(27, 29, 42, 0.03);
+  --shadow-md: 0 12px 32px -8px rgba(27, 29, 42, 0.08), 0 2px 6px rgba(27, 29, 42, 0.03);
+  --shadow-lg: 0 24px 60px -16px rgba(27, 29, 42, 0.14), 0 4px 12px rgba(27, 29, 42, 0.04);
+  --shadow-live: 0 10px 28px rgba(255, 90, 54, 0.35);
+  --focus-ring: 0 0 0 4px var(--accent-ring);
 
-  /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05);
-  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 12px 24px -4px rgba(15, 23, 42, 0.1), 0 4px 10px -2px rgba(15, 23, 42, 0.05);
-  --shadow-xl: 0 24px 48px -12px rgba(15, 23, 42, 0.18);
-  --shadow-floating: 0 12px 36px rgba(15, 23, 42, 0.12);
-  --shadow-glow: 0 8px 24px rgba(34, 197, 94, 0.3);
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 140ms;
+  --dur: 220ms;
 
   /* Layout */
-  --header-height: 80px;
-  --container-width: 1280px;
+  --sidebar-width: 300px;
+  --content-max: 1180px;
+  --topbar-height: 64px;
+  --tabbar-height: 68px;
 
-  /* Font */
-  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
-  /* Compatibility & Semantic Aliases for TravelSphere */
-  --primary-color: #22c55e;
-  --primary-hover: #16a34a;
-  --secondary-color: #0f172a;
-  --secondary-hover: #1e293b;
-  --accent-color: #22c55e;
-  --border-radius: 20px;
-  --transition-fast: 0.2s ease;
-  --error-color: #ef4444;
-
-  /* Gray Scale */
-  --gray-50: #f8fafc;
-  --gray-100: #f1f5f9;
-  --gray-200: #e2e8f0;
-  --gray-300: #cbd5e1;
-  --gray-400: #94a3b8;
-  --gray-500: #64748b;
-  --gray-600: #475569;
-  --gray-700: #334155;
-  --gray-800: #1e293b;
-  --gray-900: #0f172a;
+  /* ------------------------------------------------------------------------
+     Legacy aliases — older component CSS references these names.
+     They all resolve to the tokens above so nothing drifts off-palette.
+     ------------------------------------------------------------------------ */
+  --color-primary: var(--accent);
+  --color-primary-dark: var(--accent-hover);
+  --color-primary-light: var(--accent-soft-2);
+  --color-primary-subtle: var(--accent-soft);
+  --color-primary-glow: var(--accent-ring);
+  --color-secondary: var(--ink);
+  --color-secondary-dark: var(--ink);
+  --color-secondary-light: var(--ink-2);
+  --color-accent: var(--accent);
+  --color-dark: var(--ink);
+  --color-dark-surface: var(--surface-2);
+  --gradient-primary: var(--accent);
+  --gradient-dark: var(--surface-2);
+  --gradient-hero: transparent;
+  --color-bg-primary: var(--canvas);
+  --color-bg-secondary: var(--surface);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-2);
+  --color-text-primary: var(--ink);
+  --color-text-secondary: var(--ink-2);
+  --color-text-tertiary: var(--muted);
+  --color-text-white: #ffffff;
+  --color-text-brand: var(--accent);
+  --color-input-border: var(--line);
+  --color-input-focus: var(--accent);
+  --spacing-xs: var(--space-1);
+  --spacing-sm: var(--space-2);
+  --spacing-md: var(--space-4);
+  --spacing-lg: var(--space-6);
+  --spacing-xl: var(--space-8);
+  --spacing-2xl: var(--space-12);
+  --spacing-3xl: var(--space-16);
+  --radius-sm: var(--r-xs);
+  --radius-md: var(--r-sm);
+  --radius-lg: var(--r-md);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-2xl);
+  --radius-pill: var(--r-pill);
+  --radius-full: var(--r-pill);
+  --radius-card: var(--r-xl);
+  --shadow-floating: var(--shadow-lg);
+  --shadow-glow: var(--shadow-md);
+  --shadow-xl: var(--shadow-lg);
+  --header-height: var(--topbar-height);
+  --container-width: var(--content-max);
+  --primary-color: var(--accent);
+  --primary-hover: var(--accent-hover);
+  --secondary-color: var(--ink);
+  --secondary-hover: var(--ink-2);
+  --accent-color: var(--accent);
+  --border-radius: var(--r-lg);
+  --transition-fast: var(--dur-fast) var(--ease);
+  --error-color: var(--danger);
+  --text-primary: var(--ink);
+  --text-secondary: var(--muted);
+  --border-color: var(--line);
+  --background-color: var(--canvas);
+  --gray-50: #faf9f7;
+  --gray-100: var(--surface-2);
+  --gray-200: var(--line);
+  --gray-300: var(--line-strong);
+  --gray-400: var(--muted-2);
+  --gray-500: var(--muted);
+  --gray-600: var(--ink-2);
+  --gray-700: var(--ink-2);
+  --gray-800: var(--ink);
+  --gray-900: var(--ink);
 }

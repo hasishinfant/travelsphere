@@ -11,8 +11,19 @@ export const dateUtils = {
   },
 
   // Format date for form inputs
+  // Uses local calendar components — toISOString() would shift the day in non-UTC timezones
   formatDateForInput(date: Date): string {
-    return date.toISOString().split('T')[0];
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  },
+
+  // Parse "YYYY-MM-DD" from <input type="date"> as a local date (not UTC midnight)
+  parseInputDate(value: string): Date | null {
+    const [y, m, d] = value.split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
   },
 
   // Calculate number of days between dates

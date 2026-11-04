@@ -50,7 +50,7 @@ const EmergencyPage: React.FC = () => {
   if (requestId) {
     return (
       <div className="emergency-page-wrapper">
-        <div className="emergency-page-content">
+        <div className="emergency-page-content page">
           <ComplaintDetailView 
             requestId={requestId} 
             onBack={handleViewHistory} 
@@ -64,7 +64,7 @@ const EmergencyPage: React.FC = () => {
   if (tab === 'hotel') {
     return (
       <div className="emergency-page-wrapper">
-        <div className="emergency-page-content">
+        <div className="emergency-page-content page">
           <HotelComplaintView 
             onBack={handleBackToLanding}
             onSuccessTrack={handleViewRequestDetail}
@@ -77,7 +77,7 @@ const EmergencyPage: React.FC = () => {
   if (tab === 'medical') {
     return (
       <div className="emergency-page-wrapper">
-        <div className="emergency-page-content">
+        <div className="emergency-page-content page">
           <MedicalEmergencyView 
             onBack={handleBackToLanding}
             onSuccessTrack={handleViewRequestDetail}
@@ -90,7 +90,7 @@ const EmergencyPage: React.FC = () => {
   if (tab === 'passport') {
     return (
       <div className="emergency-page-wrapper">
-        <div className="emergency-page-content">
+        <div className="emergency-page-content page">
           <LostPassportView 
             onBack={handleBackToLanding}
             onSuccessTrack={handleViewRequestDetail}
@@ -103,7 +103,7 @@ const EmergencyPage: React.FC = () => {
   if (tab === 'local') {
     return (
       <div className="emergency-page-wrapper">
-        <div className="emergency-page-content">
+        <div className="emergency-page-content page">
           <LocalAssistanceView 
             onBack={handleBackToLanding}
             onSuccessTrack={handleViewRequestDetail}
@@ -116,7 +116,7 @@ const EmergencyPage: React.FC = () => {
   if (tab === 'tickets' || tab === 'history') {
     return (
       <div className="emergency-page-wrapper">
-        <div className="emergency-page-content">
+        <div className="emergency-page-content page">
           <ComplaintHistoryView 
             onBack={handleBackToLanding}
             onSelectRequest={handleViewRequestDetail}
@@ -130,7 +130,7 @@ const EmergencyPage: React.FC = () => {
   // 3. Default: Landing View
   return (
     <div className="emergency-page-wrapper">
-      <div className="emergency-page-content">
+      <div className="emergency-page-content page">
         <EmergencyLandingView 
           onSelectCategory={handleSelectCategory}
           onViewHistory={handleViewHistory}

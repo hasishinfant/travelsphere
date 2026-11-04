@@ -1,0 +1,196 @@
+/* ==========================================================================
+   Trip / place cards — shared anatomy
+   ========================================================================== */
+.tcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-md);
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  outline: none;
+}
+.tcard:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.tcard:focus-visible { box-shadow: var(--focus-ring), var(--shadow-md); }
+
+.tcard-photo { border-radius: var(--r-lg); }
+.tcard:hover .tcard-photo img { transform: scale(1.03); }
+
+.tcard-details {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px 0 18px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: var(--fw-medium);
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transform: translate(-50%, -40%);
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.tcard-details-icon { color: var(--pro); fill: var(--pro); }
+.tcard:hover .tcard-details,
+.tcard:focus-within .tcard-details,
+.tcard.is-selected .tcard-details { opacity: 1; transform: translate(-50%, -50%); }
+@media (hover: none) { .tcard-details { display: none; } }
+
+.tcard-body { padding: var(--space-5) var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.tcard-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.tcard-title {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-medium);
+  letter-spacing: -0.02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tcard-provider {
+  flex-shrink: 0;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.tcard-days { margin-left: auto; color: var(--muted); letter-spacing: 0; font-size: var(--fs-sm); }
+
+.tcard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--space-1) -12px -12px;
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  color: var(--muted);
+  font-size: var(--fs-base);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.tcard-date strong { color: var(--ink); font-weight: var(--fw-medium); }
+.tcard-travelers { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Selected — the reference used a dark footer; we keep it light with an accent tint */
+.tcard.is-selected { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
+.tcard.is-selected .tcard-foot { background: var(--accent-soft); border-top-color: transparent; color: var(--accent); }
+.tcard.is-selected .tcard-date strong { color: var(--accent); }
+
+/* Place card specifics */
+.pcard { cursor: default; }
+.pcard:hover { transform: translateY(-2px); }
+.pcard .tcard-body { gap: var(--space-2); flex: 1; }
+.pcard-country { color: var(--muted); font-size: var(--fs-sm); margin-top: -6px; }
+.pcard-desc {
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.pcard-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-1); }
+.pcard-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  border-top: 1px solid var(--line);
+}
+.pcard-price { color: var(--muted); font-size: var(--fs-sm); }
+.pcard-price strong { color: var(--ink); font-size: var(--fs-md); font-weight: var(--fw-medium); }
+.pcard-actions { display: flex; gap: var(--space-2); align-items: center; }
+
+/* Image fallback */
+.img-fallback {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  color: var(--muted-2);
+  background: var(--surface-2);
+}
+
+/* Map modal */
+.map-modal { max-width: 760px; }
+.map-modal-title { font-size: var(--fs-xl); }
+.map-modal-frame {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.map-modal-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.map-modal-foot { display: flex; justify-content: flex-end; margin-top: var(--space-5); }
+
+/* Card grids */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-6);
+}
+.scroller > .tcard { width: 320px; }
+
+@media (max-width: 720px) {
+  .scroller > .tcard { width: 82vw; max-width: 320px; }
+  .card-grid { grid-template-columns: 1fr; gap: var(--space-5); }
+  .tcard-title { font-size: var(--fs-lg); }
+}
+
+/* ==========================================================================
+   Safety meter — compact 8-factor box
+   ========================================================================== */
+.safety-meter {
+  --tone: var(--muted-2);
+  --tone-soft: var(--surface-2);
+  display: flex; flex-direction: column; gap: 6px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--tone-soft);
+  text-align: left;
+  font: inherit;
+  transition: box-shadow var(--dur-fast) var(--ease);
+}
+button.safety-meter:hover { box-shadow: inset 0 0 0 1px var(--tone); }
+.safety-meter.tone-low { --tone: var(--success); --tone-soft: var(--success-soft); }
+.safety-meter.tone-moderate { --tone: var(--warning); --tone-soft: var(--warning-soft); }
+.safety-meter.tone-high, .safety-meter.tone-critical { --tone: var(--danger); --tone-soft: var(--danger-soft); }
+
+.safety-meter-top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+.safety-meter-label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--ink); }
+.tone-low .safety-meter-label { color: var(--success); }
+.tone-moderate .safety-meter-label { color: var(--warning-ink); }
+.tone-high .safety-meter-label, .tone-critical .safety-meter-label { color: var(--danger-ink); }
+.safety-meter-conf { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; }
+
+.safety-meter-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+.safety-meter-bar span { height: 4px; border-radius: 2px; background: rgba(27, 29, 42, 0.08); }
+.safety-meter-bar span.is-on { background: var(--tone); }
+.tone-loading .safety-meter-bar span { animation: meter-pulse 1.2s ease-in-out infinite; }
+.tone-loading .safety-meter-bar span:nth-child(2) { animation-delay: 0.15s; }
+.tone-loading .safety-meter-bar span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes meter-pulse { 50% { background: rgba(27, 29, 42, 0.16); } }
+
+.safety-meter-sub { font-size: var(--fs-xs); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pcard .safety-meter { margin-top: var(--space-3); }
+
+.pcard-open { display: block; width: 100%; padding: 0; border-radius: var(--r-lg); cursor: pointer; }
+.pcard-open:disabled { cursor: default; }
+.pcard-title-link { font: inherit; color: inherit; letter-spacing: inherit; text-align: left; }
+.pcard-title-link:hover { color: var(--accent); }
+.pcard-360 {
+  position: absolute; top: 12px; right: 12px; z-index: 1;
+  height: 26px; padding: 0 10px;
+  display: inline-grid; place-items: center;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  font-size: var(--fs-xs); font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+}

@@ -1,11 +1,11 @@
 {
-  "name": "TravelSphere - AI Travel Companion",
+  "name": "TravelSphere",
   "short_name": "TravelSphere",
-  "description": "AI-powered travel companion for smart travel experiences",
+  "description": "Journey planning, travel safety information and incident reporting",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "background_color": "#f4f2ef",
+  "theme_color": "#f4f2ef",
   "orientation": "portrait-primary",
   "icons": [
     {

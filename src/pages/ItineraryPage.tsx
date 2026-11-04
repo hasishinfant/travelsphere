@@ -1,516 +1,382 @@
-// TravelSphere — My Trips & Itinerary Page
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  Compass, Calendar, Sparkles, MapPin, 
-  Clock, Heart, Bookmark, CheckCircle, ArrowRight 
+// My trips — trip strip, selected trip hero, day-by-day itinerary and deals
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  CalendarDays, Users, Wallet, MapPin, Bookmark, BookmarkCheck,
+  Plus, Star, Check, ArrowUpRight, BedDouble, XCircle, RotateCcw, Cloud, HardDrive,
 } from 'lucide-react';
+import PageHeader from '@/components/ui/PageHeader';
+import Segmented from '@/components/ui/Segmented';
+import Photo from '@/components/ui/Photo';
+import TripCard from '@/components/ui/TripCard';
 import ItineraryTimeline from '../components/itinerary/ItineraryTimeline';
-import ActionButtons from '../components/itinerary/ActionButtons';
-import LoadingSpinner from '../components/shared/LoadingSpinner';
 import BookingModal, { BookingData } from '../components/booking/BookingModal';
-import { activateTripMode, deactivateTripMode, isTripModeActive } from '../confidence-engine/services/assistantService';
 import { generateMockItinerary } from '../services/mockDataService';
+import { getDestination, DESTINATIONS, HOTEL_IMAGES } from '@/data/destinations';
+import {
+  getStoredItinerary, getTrips, getUser, isTripSaved, tripFromStored, fmtLong, nightsBetween,
+  updateStoredItinerary, cacheItinerary,
+} from '@/services/tripStore';
+import { getSession, ApiError } from '@/services/apiClient';
+import {
+  fetchJourney, fromServerJourney, saveJourney, setJourneyStatus, TRIPS_EVENT,
+} from '@/services/journeySync';
+import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import type { ItineraryDay } from '@/types/itinerary';
 import './ItineraryPage.css';
 
-interface CuratedTripSample {
-  id: string;
-  title: string;
-  destinationName: string;
-  durationDays: number;
-  image: string;
-  tag: string;
-  description: string;
-  budget: 'low' | 'medium' | 'luxury';
-  interests: string[];
-}
+const SAMPLE_IDS = ['kyoto', 'santorini', 'bali'] as const;
+const SAMPLE_LENGTH: Record<string, number> = { kyoto: 5, santorini: 4, bali: 6 };
 
-const SAMPLE_CURATED_TRIPS: CuratedTripSample[] = [
-  {
-    id: 'sample-tokyo',
-    title: 'Tokyo Cultural & Modern Neon Journey',
-    destinationName: 'Tokyo, Japan',
-    durationDays: 5,
-    image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80',
-    tag: 'Culture & Tech',
-    description: 'Ancient shrines, futuristic Shibuya crossings, and Tsukiji morning market delicacies.',
-    budget: 'medium',
-    interests: ['culture', 'food', 'technology']
-  },
-  {
-    id: 'sample-santorini',
-    title: 'Santorini Mediterranean Romance & Sunsets',
-    destinationName: 'Santorini, Greece',
-    durationDays: 4,
-    image: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80',
-    tag: 'Romance & Scenic',
-    description: 'Iconic whitewashed caldera cliffs, Oia sunset viewpoints, and authentic Greek tavernas.',
-    budget: 'luxury',
-    interests: ['romance', 'nature', 'food']
-  },
-  {
-    id: 'sample-bali',
-    title: 'Bali Tropical Wellness & Heritage Retreat',
-    destinationName: 'Bali, Indonesia',
-    durationDays: 6,
-    image: 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?w=800&q=80',
-    tag: 'Nature & Zen',
-    description: 'Emerald Ubud rice terraces, sacred water temples, and sunset beach relaxation in Uluwatu.',
-    budget: 'medium',
-    interests: ['nature', 'culture', 'relaxation']
-  }
-];
+type Tab = 'itinerary' | 'deals';
 
 const ItineraryPage: React.FC = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const navigate = useNavigate();
-  const [itinerary, setItinerary] = useState<ItineraryDay[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [tripMode, setTripMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'itinerary' | 'offers'>('itinerary');
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  const [selectedOffer, setSelectedOffer] = useState<string>('');
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [version, setVersion] = useState(0); // bump to re-read storage
+  const [tab, setTab] = useState<Tab>('itinerary');
+  const [bookingFor, setBookingFor] = useState<string | null>(null);
+  const [toast, setToast] = useState('');
 
+  // A specific trip id never falls back to a different trip
+  const raw = useMemo(() => (tripId ? getStoredItinerary(tripId) : getStoredItinerary()), [tripId, version]);
+  const [remote, setRemote] = useState<'idle' | 'loading' | 'missing'>('idle');
+  const [busy, setBusy] = useState(false);
+  const trip = raw ? tripFromStored(raw) : null;
+  const allTrips = useMemo(() => getTrips().filter(t => t.kind === 'itinerary'), [version]);
+  const user = getUser();
+
+  const itinerary: ItineraryDay[] | null = useMemo(() => {
+    if (!raw?.itinerary?.length) return null;
+    return raw.itinerary.map((d: any) => ({ ...d, date: new Date(d.date) }));
+  }, [raw]);
+
+  const synced = !!raw?.journeyId;
+  const saved = synced || isTripSaved(raw?.tripId);
+  const cancelled = raw?.status === 'cancelled';
+  const dest = trip?.destination;
+
+  // Re-read when trips change elsewhere (server sync, planner)
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTripMode(isTripModeActive());
+    const bump = () => setVersion(v => v + 1);
+    window.addEventListener(TRIPS_EVENT, bump);
+    return () => window.removeEventListener(TRIPS_EVENT, bump);
   }, []);
 
+  // A journey that lives on the server but isn't cached on this device
   useEffect(() => {
-    // Load itinerary from sessionStorage (set by TripPlannerForm)
-    const loadItinerary = () => {
+    if (!tripId || raw) { setRemote('idle'); return; }
+    if (!getSession()) { setRemote('missing'); return; }
+    let alive = true;
+    setRemote('loading');
+    fetchJourney(tripId)
+      .then(j => {
+        if (!alive) return;
+        cacheItinerary(fromServerJourney(j) as any);
+        setVersion(v => v + 1);
+        setRemote('idle');
+      })
+      .catch(() => alive && setRemote('missing'));
+    return () => { alive = false; };
+  }, [tripId, raw]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(''), 2600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const handleSaveTrip = async () => {
+    if (!raw || saved) return;
+    if (getSession()) {
+      setBusy(true);
       try {
-        // First try sessionStorage (from trip planner form)
-        const generatedItinerary = sessionStorage.getItem('generatedItinerary');
-        
-        if (generatedItinerary) {
-          const itineraryData = JSON.parse(generatedItinerary);
-          
-          if (itineraryData.itinerary && Array.isArray(itineraryData.itinerary)) {
-            const itineraryWithDates = itineraryData.itinerary.map((day: any) => ({
-              ...day,
-              date: typeof day.date === 'string' ? new Date(day.date) : day.date,
-            }));
-            setItinerary(itineraryWithDates);
-            localStorage.setItem('currentTrip', generatedItinerary);
-            setLoading(false);
-            return;
-          }
+        const id = await saveJourney(raw);
+        if (id) {
+          updateStoredItinerary(raw.tripId!, { journeyId: id });
+          setToast('Trip saved to your account');
+          navigate(`/itinerary/${id}`, { replace: true });
         }
-        
-        // Fallback to localStorage
-        const savedTrip = localStorage.getItem('currentTrip');
-        
-        if (savedTrip) {
-          const trip = JSON.parse(savedTrip);
-          
-          if (trip.itinerary && Array.isArray(trip.itinerary)) {
-            const itineraryWithDates = trip.itinerary.map((day: any) => ({
-              ...day,
-              date: typeof day.date === 'string' ? new Date(day.date) : day.date,
-            }));
-            setItinerary(itineraryWithDates);
-            setLoading(false);
-            return;
-          }
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading itinerary:', error);
-        setLoading(false);
+      } catch (err) {
+        setToast(err instanceof ApiError ? err.message : 'Could not save the trip');
+      } finally {
+        setBusy(false);
       }
-    };
-
-    loadItinerary();
-  }, [tripId]);
-
-  const handleChatWithAssistant = () => {
-    navigate(`/chat${tripId ? `/${tripId}` : ''}`);
-  };
-
-  const handleSaveTrip = () => {
-    try {
-      const savedTrip = localStorage.getItem('currentTrip') || sessionStorage.getItem('generatedItinerary');
-      if (savedTrip) {
-        const trip = JSON.parse(savedTrip);
-        const savedTrips = JSON.parse(localStorage.getItem('savedTrips') || '[]');
-        savedTrips.push({
-          ...trip,
-          savedAt: new Date().toISOString(),
-        });
-        localStorage.setItem('savedTrips', JSON.stringify(savedTrips));
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-      }
-    } catch (error) {
-      console.error('Error saving trip:', error);
+      return;
     }
+    const list = JSON.parse(localStorage.getItem('savedTrips') || '[]');
+    list.push({ ...raw, savedAt: new Date().toISOString() });
+    localStorage.setItem('savedTrips', JSON.stringify(list));
+    setVersion(v => v + 1);
+    setToast('Trip saved on this device');
   };
 
-  const handleToggleTripMode = () => {
-    if (tripMode) {
-      deactivateTripMode();
-      setTripMode(false);
-    } else {
-      activateTripMode();
-      setTripMode(true);
-    }
-  };
-
-  const handleBookOffer = (offerDestination: string) => {
-    setSelectedOffer(offerDestination);
-    setShowBookingModal(true);
-  };
-
-  const handleConfirmBooking = (bookingData: BookingData) => {
-    const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
-    bookings.push({
-      ...bookingData,
-      bookingId: `booking-${Date.now()}`,
-      bookedAt: new Date().toISOString(),
-    });
-    localStorage.setItem('bookings', JSON.stringify(bookings));
-    setShowBookingModal(false);
-  };
-
-  const handleLoadSample = (sample: CuratedTripSample) => {
-    setLoading(true);
+  const handleSetStatus = async (status: 'cancelled' | 'planned') => {
+    if (!raw) return;
+    if (status === 'cancelled' && !window.confirm(`Cancel your trip to ${trip?.title}? You can restore it later.`)) return;
+    setBusy(true);
     try {
-      const result = generateMockItinerary({
-        destination: sample.destinationName,
-        startDate: new Date(),
-        endDate: new Date(Date.now() + sample.durationDays * 24 * 60 * 60 * 1000),
-        budget: sample.budget,
-        interests: sample.interests as any
-      });
-
-      if (result.success && result.data) {
-        setItinerary(result.data.itinerary);
-        sessionStorage.setItem('generatedItinerary', JSON.stringify(result.data));
-        localStorage.setItem('currentTrip', JSON.stringify(result.data));
-      }
-    } catch (e) {
-      console.error('Failed to load sample itinerary:', e);
+      if (raw.journeyId && getSession()) await setJourneyStatus(raw.journeyId, status);
+      updateStoredItinerary(raw.journeyId || raw.tripId!, { status });
+      setVersion(v => v + 1);
+      setToast(status === 'cancelled' ? 'Trip cancelled' : 'Trip restored');
+    } catch (err) {
+      setToast(err instanceof ApiError ? err.message : 'Could not update the trip');
     } finally {
-      setLoading(false);
+      setBusy(false);
+    }
+  };
+
+  const handleLoadSample = (id: string) => {
+    const days = SAMPLE_LENGTH[id] || 4;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() + 21);
+    const end = new Date(start);
+    end.setDate(end.getDate() + days - 1); // inclusive: a 5-day sample spans 4 nights
+    const d = getDestination(id)!;
+    const result = generateMockItinerary({
+      destination: id,
+      startDate: start,
+      endDate: end,
+      budget: 'medium',
+      interests: d.category.filter(c => ['food', 'culture', 'nature', 'adventure', 'shopping'].includes(c)) as any,
+    });
+    if (result.success && result.data) {
+      const stored = { ...result.data, destination: id, startDate: start, endDate: end, budget: 'medium', travelers: 2 };
+      sessionStorage.setItem('generatedItinerary', JSON.stringify(stored));
+      localStorage.setItem('currentTrip', JSON.stringify(stored));
+      navigate(`/itinerary/${result.data.tripId}`);
+      setVersion(v => v + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  // Mock offers data
+  const handleConfirmBooking = (bookingData: BookingData) => {
+    const bookings = JSON.parse(localStorage.getItem('bookings') || '[]');
+    bookings.push({ ...bookingData, bookingId: `booking-${Date.now()}`, bookedAt: new Date().toISOString() });
+    localStorage.setItem('bookings', JSON.stringify(bookings));
+    setBookingFor(null);
+    setToast('Booking confirmed — you’ll find it on your dashboard');
+  };
+
+  const city = dest?.city || 'your destination';
   const offers = [
-    {
-      id: 1,
-      title: 'Luxury Boutique Stay Package',
-      destination: itinerary?.[0]?.places[0]?.name ? `${itinerary[0].places[0].name} Quarter` : 'City Center',
-      image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-      originalPrice: 450,
-      discountPrice: 299,
-      discount: '33% OFF',
-      rating: 4.8,
-      reviews: 1234,
-      features: ['Free Breakfast', 'Airport Transfer', 'Spa Access'],
-    },
-    {
-      id: 2,
-      title: 'VIP Guided Excursion Bundle',
-      destination: 'Local Landmarks & Highlights',
-      image: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80',
-      originalPrice: 380,
-      discountPrice: 249,
-      discount: '35% OFF',
-      rating: 4.9,
-      reviews: 856,
-      features: ['Skip-the-line Pass', 'Private Transport', 'Audio Guide'],
-    },
-    {
-      id: 3,
-      title: 'Scenic Panorama & Sunset Cruise',
-      destination: 'Coastal & Waterfront Zone',
-      image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80',
-      originalPrice: 520,
-      discountPrice: 349,
-      discount: '33% OFF',
-      rating: 4.7,
-      reviews: 2103,
-      features: ['Welcome Drinks', 'Chef Tasting Dinner', 'Live Music'],
-    },
-    {
-      id: 4,
-      title: 'City Explorer All-Access Pass',
-      destination: 'Downtown & Cultural District',
-      image: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
-      originalPrice: 280,
-      discountPrice: 199,
-      discount: '29% OFF',
-      rating: 4.6,
-      reviews: 1567,
-      features: ['10+ Museums', 'Unlimited Metro', 'Food Tasting Discounts'],
-    },
+    { id: 1, title: `Boutique stay in ${city}`, image: HOTEL_IMAGES[0], was: 450, now: 299, rating: 4.8, reviews: 1234, features: ['Breakfast included', 'Airport transfer', 'Spa access'] },
+    { id: 2, title: `${city} landmarks, guided`, image: dest?.imageUrl || HOTEL_IMAGES[1], caption: dest?.imageCaption, was: 180, now: 129, rating: 4.9, reviews: 856, features: ['Skip-the-line entry', 'Local guide', 'Small group'] },
+    { id: 3, title: 'Resort pool & spa day', image: HOTEL_IMAGES[3], was: 220, now: 149, rating: 4.7, reviews: 2103, features: ['Day bed', 'Lunch', 'Massage'] },
+    { id: 4, title: 'Design hotel, city centre', image: HOTEL_IMAGES[1], was: 280, now: 199, rating: 4.6, reviews: 1567, features: ['Free cancellation', 'Rooftop bar', 'Gym'] },
   ];
 
-  if (loading) {
+  if (remote === 'loading') {
     return (
-      <div className="itinerary-page-wrapper">
-        <div className="itinerary-page-content">
-          <LoadingSpinner size="lg" message="Loading your travel itinerary..." />
+      <div className="page">
+        <LoadingSpinner size="lg" message="Loading your trip…" />
+      </div>
+    );
+  }
+
+  if (tripId && remote === 'missing' && !raw) {
+    return (
+      <div className="page">
+        <PageHeader title="My trips" />
+        <div className="surface empty-state">
+          <div className="empty-state-icon"><MapPin size={26} strokeWidth={1.6} /></div>
+          <h3>Trip not found</h3>
+          <p>This trip doesn’t exist, was removed, or belongs to another account.</p>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/itinerary')} style={{ marginTop: 'var(--space-3)' }}>
+            Back to my trips
+          </button>
         </div>
       </div>
     );
   }
 
-  // Destination name from places or stored data
-  const totalPlaces = itinerary 
-    ? itinerary.reduce((acc, day) => acc + (day.places?.length || 0), 0)
-    : 0;
+  /* ---------------------------------------------------------------- empty */
+  if (!itinerary || !trip) {
+    return (
+      <div className="page">
+        <PageHeader
+          title="My trips"
+          subtitle="Your itineraries, bookings and saved plans live here."
+          actions={<button type="button" className="btn btn-primary" onClick={() => navigate('/plan-trip')}><Plus size={16} /> New trip</button>}
+        />
+        <div className="surface empty-state">
+          <div className="empty-state-icon"><MapPin size={26} strokeWidth={1.6} /></div>
+          <h3>No itinerary yet</h3>
+          <p>Plan a trip to get a day-by-day itinerary, or open one of these sample trips to see how it works.</p>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/plan-trip')} style={{ marginTop: 'var(--space-3)' }}>
+            <Plus size={16} /> Plan a trip
+          </button>
+        </div>
+
+        <section className="section">
+          <div className="section-head">
+            <h2 className="section-title">Sample itineraries</h2>
+          </div>
+          <div className="card-grid">
+            {SAMPLE_IDS.map(id => {
+              const d = DESTINATIONS.find(x => x.id === id)!;
+              return (
+                <article key={id} className="tcard pcard">
+                  <Photo src={d.imageUrl} alt={`${d.imageCaption}, ${d.city}`} width={360} ratio="4 / 3" caption={d.imageCaption} className="tcard-photo" />
+                  <div className="tcard-body">
+                    <div className="tcard-title-row">
+                      <h3 className="tcard-title">{d.city}</h3>
+                      <span className="tcard-provider">{SAMPLE_LENGTH[id]} days</span>
+                    </div>
+                    <p className="pcard-desc">{d.description}</p>
+                  </div>
+                  <footer className="pcard-foot">
+                    <span className="pcard-price">{d.highlights.slice(0, 2).join(' · ')}</span>
+                    <button type="button" className="btn btn-soft btn-sm" onClick={() => handleLoadSample(id)}>
+                      Open <ArrowUpRight size={16} />
+                    </button>
+                  </footer>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  /* --------------------------------------------------------------- active */
+  const nights = nightsBetween(trip.startDate, trip.endDate);
+  const cost = raw?.estimatedCost;
 
   return (
-    <div className="itinerary-page-wrapper">
-      <div className="itinerary-page-content">
-        {/* Page Header */}
-        <div className="itinerary-page-header">
-          <div className="itinerary-header-pill">
-            <Compass size={14} />
-            <span>Personal Travel Hub</span>
-          </div>
+    <div className="page trips">
+      <PageHeader
+        title="My trips"
+        subtitle={
+          <span className="sync-state">
+            {synced ? <Cloud size={15} /> : <HardDrive size={15} />}
+            {synced ? 'Saved to your account' : getSession() ? 'Not saved to your account yet' : 'Saved on this device only'}
+            {allTrips.length > 1 ? ` · ${allTrips.length} trips` : ''}
+          </span>
+        }
+        actions={
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/plan-trip')}><Plus size={16} /> New trip</button>
+        }
+      />
 
-          <div className="itinerary-header-top-row">
-            <div>
-              <h1 className="itinerary-main-heading">
-                My <span className="text-highlight">Trips & Itineraries</span>
-              </h1>
-              <p className="itinerary-header-subtext">
-                Explore your personalized day-by-day travel plan, active trip companion modes, and verified travel deals.
-              </p>
-            </div>
+      {allTrips.length > 1 && (
+        <div className="scroller trips-strip">
+          {allTrips.map(t => (
+            <TripCard
+              key={t.id}
+              trip={t}
+              origin={user?.homeAirport}
+              selected={t.id === raw?.tripId}
+              onSelect={() => navigate(`/itinerary/${t.id}`)}
+              onOpen={() => navigate(`/itinerary/${t.id}`)}
+            />
+          ))}
+        </div>
+      )}
 
-            {itinerary && itinerary.length > 0 && (
-              <button 
-                type="button"
-                className={`trip-mode-pill-btn ${tripMode ? 'active' : ''}`}
-                onClick={handleToggleTripMode}
-              >
-                <span className="mode-dot"></span>
-                <span>{tripMode ? 'Trip Mode Active' : 'Start Trip Mode'}</span>
+      {/* Hero */}
+      <section className="surface trip-hero fade-up" key={trip.id}>
+        <Photo
+          src={trip.image}
+          alt={trip.imageCaption ? `${trip.imageCaption}, ${trip.title}` : trip.title}
+          width={520}
+          ratio="4 / 3"
+          caption={trip.imageCaption}
+          priority
+          className="trip-hero-photo"
+        />
+        <div className="trip-hero-body">
+          <p className="eyebrow">
+            {dest?.country || 'Itinerary'}
+            {cancelled && <span className="tag tag-danger trip-status-tag">Cancelled</span>}
+          </p>
+          <h2 className="trip-hero-title">{trip.title}</h2>
+          {dest && <p className="trip-hero-desc">{dest.description}</p>}
+
+          <dl className="trip-hero-facts">
+            <div><dt><CalendarDays size={16} /> Dates</dt><dd>{fmtLong(trip.startDate)} – {fmtLong(trip.endDate)}</dd></div>
+            <div><dt><MapPin size={16} /> Length</dt><dd>{itinerary.length} days{nights ? ` · ${nights} nights` : ''}</dd></div>
+            <div><dt><Users size={16} /> Travellers</dt><dd>{trip.travelers}</dd></div>
+            {cost && <div><dt><Wallet size={16} /> Estimate</dt><dd>${Math.round(cost.min).toLocaleString()} – ${Math.round(cost.max).toLocaleString()}</dd></div>}
+          </dl>
+
+          <div className="trip-hero-actions">
+            <button type="button" className="btn btn-primary" onClick={() => navigate(`/book-hotels${dest ? `?location=${encodeURIComponent(dest.city)}` : ''}`)}>
+              <BedDouble size={16} /> Find hotels
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleSaveTrip} disabled={saved || busy}>
+              {saved ? <BookmarkCheck size={16} /> : <Bookmark size={16} />} {saved ? 'Saved' : 'Save trip'}
+            </button>
+            {cancelled ? (
+              <button type="button" className="btn btn-ghost" onClick={() => handleSetStatus('planned')} disabled={busy}>
+                <RotateCcw size={16} /> Restore trip
+              </button>
+            ) : (
+              <button type="button" className="btn btn-ghost trip-cancel" onClick={() => handleSetStatus('cancelled')} disabled={busy}>
+                <XCircle size={16} /> Cancel trip
               </button>
             )}
           </div>
         </div>
+      </section>
 
-        {/* 1. EMPTY STATE WITH CURATED SAMPLES */}
-        {(!itinerary || itinerary.length === 0) ? (
-          <div className="empty-itinerary-hub">
-            <div className="empty-state-card">
-              <div className="empty-state-icon-circle">
-                <Compass size={36} />
-              </div>
-              <h2>No Active Trip Itinerary Yet</h2>
-              <p>
-                You haven't generated or saved a trip itinerary yet. Create a customized journey tailored to your preferences, or preview one of our curated destination samples below.
-              </p>
-              <button 
-                type="button" 
-                className="btn-pill-green"
-                onClick={() => navigate('/plan-trip')}
-              >
-                <Sparkles size={16} />
-                <span>Plan a New Trip</span>
-              </button>
-            </div>
-
-            {/* Curated Sample Itineraries */}
-            <div className="curated-samples-section">
-              <div className="curated-samples-header">
-                <div>
-                  <h3>Explore Curated Itineraries</h3>
-                  <p>Click any journey to preview and load its interactive day-by-day schedule.</p>
-                </div>
-              </div>
-
-              <div className="sample-trips-grid">
-                {SAMPLE_CURATED_TRIPS.map((sample) => (
-                  <article key={sample.id} className="sample-trip-card">
-                    <div className="sample-trip-image-wrap">
-                      <img src={sample.image} alt={sample.title} loading="lazy" />
-                      <span className="sample-trip-badge">{sample.tag}</span>
-                    </div>
-
-                    <div className="sample-trip-body">
-                      <h4 className="sample-trip-title">{sample.title}</h4>
-                      <p className="sample-trip-desc">{sample.description}</p>
-
-                      <div className="sample-trip-footer">
-                        <span className="sample-duration">{sample.durationDays} Days Curated</span>
-                        <button
-                          type="button"
-                          className="btn-load-sample"
-                          onClick={() => handleLoadSample(sample)}
-                        >
-                          <span>Load Itinerary</span>
-                          <ArrowRight size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* 2. ACTIVE ITINERARY DISPLAY */
-          <div>
-            {/* Trip Overview Summary Card */}
-            <div className="itinerary-summary-card">
-              <div className="summary-details">
-                <div className="summary-destination-badge">
-                  <MapPin size={15} />
-                  <span>Personalized Travel Route</span>
-                </div>
-                <h2 className="summary-title">
-                  {itinerary.length}-Day Curated Journey Schedule
-                </h2>
-                <div className="summary-meta-pills">
-                  <span className="summary-meta-pill">
-                    <Calendar size={13} />
-                    <span>{itinerary.length} Travel Days</span>
-                  </span>
-                  <span className="summary-meta-pill">
-                    <Clock size={13} />
-                    <span>{totalPlaces} Curated Places</span>
-                  </span>
-                  <span className="summary-meta-pill">
-                    <Sparkles size={13} />
-                    <span>AI Route Optimized</span>
-                  </span>
-                </div>
-              </div>
-
-              <div className="summary-actions">
-                <button
-                  type="button"
-                  className="btn-pill-green"
-                  onClick={handleChatWithAssistant}
-                >
-                  <span>Chat with Assistant</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-pill-outline"
-                  onClick={handleSaveTrip}
-                >
-                  <Bookmark size={15} />
-                  <span>{saveSuccess ? 'Saved to Trips ✓' : 'Save Trip'}</span>
-                </button>
-                <button
-                  type="button"
-                  className="btn-pill-outline"
-                  onClick={() => navigate('/plan-trip')}
-                >
-                  <span>Plan Another</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Navigation Tabs (Malvora Pill Tabs) */}
-            <div className="itinerary-nav-row">
-              <div className="itinerary-tabs-group">
-                <button
-                  type="button"
-                  className={`itinerary-nav-tab ${activeTab === 'itinerary' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('itinerary')}
-                >
-                  <Calendar size={15} />
-                  <span>Day-by-Day Itinerary</span>
-                </button>
-                <button
-                  type="button"
-                  className={`itinerary-nav-tab ${activeTab === 'offers' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('offers')}
-                >
-                  <Sparkles size={15} />
-                  <span>Exclusive Deals & Offers</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Tab 1: Itinerary Timeline */}
-            {activeTab === 'itinerary' && (
-              <div>
-                <ItineraryTimeline itinerary={itinerary} />
-                <ActionButtons
-                  onChatWithAssistant={handleChatWithAssistant}
-                  onSaveTrip={handleSaveTrip}
-                />
-              </div>
-            )}
-
-            {/* Tab 2: Special Deals & Offers */}
-            {activeTab === 'offers' && (
-              <div className="offers-section">
-                <div className="offers-header">
-                  <h2>Curated Benefits & Deals</h2>
-                  <p>Exclusive hotel discounts and tour packages verified for your journey.</p>
-                </div>
-
-                <div className="offers-grid">
-                  {offers.map((offer) => (
-                    <div key={offer.id} className="offer-card">
-                      <div className="offer-image-container">
-                        <img src={offer.image} alt={offer.title} className="offer-image" loading="lazy" />
-                        <span className="offer-badge">{offer.discount}</span>
-                      </div>
-
-                      <div className="offer-content">
-                        <h3>{offer.title}</h3>
-                        <p className="offer-destination">📍 {offer.destination}</p>
-
-                        <div className="offer-rating">
-                          <span className="stars">★ {offer.rating}</span>
-                          <span className="reviews">({offer.reviews} verified reviews)</span>
-                        </div>
-
-                        <div className="offer-features">
-                          {offer.features.map((feature, index) => (
-                            <span key={index} className="feature-tag">
-                              ✓ {feature}
-                            </span>
-                          ))}
-                        </div>
-
-                        <div className="offer-pricing">
-                          <div className="price-info">
-                            <span className="original-price">${offer.originalPrice}</span>
-                            <span className="discount-price">${offer.discountPrice}</span>
-                          </div>
-                          <button
-                            type="button"
-                            className="btn-book"
-                            onClick={() => handleBookOffer(offer.destination)}
-                          >
-                            Book Now
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Booking Modal */}
-        {showBookingModal && (
-          <BookingModal
-            destination={selectedOffer}
-            onClose={() => setShowBookingModal(false)}
-            onBook={handleConfirmBooking}
-          />
-        )}
+      <div className="trips-tabs">
+        <Segmented<Tab>
+          ariaLabel="Trip sections"
+          value={tab}
+          onChange={setTab}
+          options={[{ value: 'itinerary', label: 'Itinerary' }, { value: 'deals', label: 'Deals' }]}
+        />
       </div>
+
+      {tab === 'itinerary' ? (
+        <div className="itinerary-layout">
+          <nav className="day-nav" aria-label="Jump to day">
+            {itinerary.map(d => (
+              <a key={d.dayNumber} href={`#day-${d.dayNumber}`} onClick={e => {
+                e.preventDefault();
+                document.getElementById(`day-${d.dayNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }}>
+                <span>Day {d.dayNumber}</span>
+                <span className="text-muted">{d.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>
+              </a>
+            ))}
+          </nav>
+          <ItineraryTimeline itinerary={itinerary} />
+        </div>
+      ) : (
+        <div className="card-grid">
+          {offers.map(o => (
+            <article key={o.id} className="tcard pcard">
+              <Photo src={o.image} alt={o.title} width={360} ratio="4 / 3" caption={(o as any).caption} className="tcard-photo">
+                <span className="deal-badge">−{Math.round((1 - o.now / o.was) * 100)}%</span>
+              </Photo>
+              <div className="tcard-body">
+                <h3 className="deal-title">{o.title}</h3>
+                <p className="deal-rating"><Star size={14} /> {o.rating} <span>({o.reviews.toLocaleString()} reviews)</span></p>
+                <ul className="deal-features">
+                  {o.features.map(f => <li key={f}><Check size={14} /> {f}</li>)}
+                </ul>
+              </div>
+              <footer className="pcard-foot">
+                <span className="pcard-price"><s>${o.was}</s> <strong>${o.now}</strong></span>
+                <button type="button" className="btn btn-soft btn-sm" onClick={() => setBookingFor(`${o.title}${dest ? `, ${dest.city}` : ''}`)}>
+                  Book
+                </button>
+              </footer>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {bookingFor && (
+        <BookingModal destination={bookingFor} onClose={() => setBookingFor(null)} onBook={handleConfirmBooking} />
+      )}
+
+      {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );
 };

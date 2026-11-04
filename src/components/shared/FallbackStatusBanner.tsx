@@ -1,5 +1,6 @@
 // Component to display fallback status to users
 import React, { useState, useEffect } from 'react';
+import Icon from '@/components/shared/Icon';
 import { fallbackService } from '@/services/fallbackService';
 
 interface FallbackStatusBannerProps {
@@ -73,18 +74,18 @@ const FallbackStatusBanner: React.FC<FallbackStatusBannerProps> = ({
 
   const getStatusIcon = () => {
     if (!status.shouldUseFallback) {
-      return '✅';
+      return <Icon name="success" size="sm" />;
     }
     
     switch (status.reason) {
       case 'offline':
-        return '📡';
+        return <Icon name="offline" size="sm" />;
       case 'api_down':
-        return '🔧';
+        return <Icon name="maintenance" size="sm" />;
       case 'timeout':
         return '⏱️';
       default:
-        return '⚠️';
+        return <Icon name="warning" size="sm" />;
     }
   };
 

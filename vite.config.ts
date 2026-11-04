@@ -13,6 +13,10 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     port: 3000,
+    // Forward API calls to the Express backend (server/) during development
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:4000', changeOrigin: false },
+    },
     open: true,
     // Enable HTTP/2 for better performance
     https: false,

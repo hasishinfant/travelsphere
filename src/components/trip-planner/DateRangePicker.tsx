@@ -1,4 +1,5 @@
 import React from 'react';
+import { PlaneTakeoff, PlaneLanding, Moon } from 'lucide-react';
 import { dateUtils } from '../../utils/dateUtils';
 import './DateRangePicker.css';
 
@@ -17,55 +18,41 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   onStartDateChange,
   onEndDateChange,
   startDateError,
-  endDateError
+  endDateError,
 }) => {
-  const today = new Date().toISOString().split('T')[0];
+  const todayDate = new Date();
+  const today = dateUtils.formatDateForInput(todayDate);
   const maxDate = new Date();
   maxDate.setFullYear(maxDate.getFullYear() + 2);
-  const maxDateString = maxDate.toISOString().split('T')[0];
+  const maxDateString = dateUtils.formatDateForInput(maxDate);
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value) {
-      const date = new Date(value);
-      onStartDateChange(date);
-      
-      // If end date is before new start date, clear it
-      if (endDate && date > endDate) {
-        onEndDateChange(null);
-      }
-    } else {
-      onStartDateChange(null);
-    }
+    const date = e.target.value ? dateUtils.parseInputDate(e.target.value) : null;
+    onStartDateChange(date);
+    if (date && endDate && date >= endDate) onEndDateChange(null);
   };
 
   const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value) {
-      onEndDateChange(new Date(value));
-    } else {
-      onEndDateChange(null);
-    }
+    onEndDateChange(e.target.value ? dateUtils.parseInputDate(e.target.value) : null);
   };
 
   const getMinEndDate = () => {
-    if (startDate) {
-      const minDate = new Date(startDate);
-      minDate.setDate(minDate.getDate() + 1);
-      return minDate.toISOString().split('T')[0];
-    }
-    return today;
+    if (!startDate) return today;
+    const minDate = new Date(startDate);
+    minDate.setDate(minDate.getDate() + 1);
+    return dateUtils.formatDateForInput(minDate);
   };
+
+  const nights = startDate && endDate
+    ? Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
   return (
     <div className="date-range-picker">
-      <label className="form-label">
-        Travel Dates *
-      </label>
       <div className="date-inputs">
         <div className="date-input-group">
           <label htmlFor="start-date" className="date-label">
-            Departure Date
+            <PlaneTakeoff size={16} /> Departure
           </label>
           <input
             id="start-date"
@@ -74,18 +61,15 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
             onChange={handleStartDateChange}
             min={today}
             max={maxDateString}
-            className={`date-input ${startDateError ? 'error' : ''}`}
+            className={`input date-input ${startDateError ? 'error' : ''}`}
+            aria-invalid={!!startDateError}
           />
           {startDateError && <div className="error-message">{startDateError}</div>}
         </div>
 
-        <div className="date-separator">
-          <span className="separator-icon">✈️</span>
-        </div>
-
         <div className="date-input-group">
           <label htmlFor="end-date" className="date-label">
-            Return Date
+            <PlaneLanding size={16} /> Return
           </label>
           <input
             id="end-date"
@@ -94,19 +78,18 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
             onChange={handleEndDateChange}
             min={getMinEndDate()}
             max={maxDateString}
-            className={`date-input ${endDateError ? 'error' : ''}`}
+            className={`input date-input ${endDateError ? 'error' : ''}`}
             disabled={!startDate}
+            aria-invalid={!!endDateError}
           />
           {endDateError && <div className="error-message">{endDateError}</div>}
         </div>
       </div>
 
-      {startDate && endDate && (
+      {nights > 0 && (
         <div className="trip-duration">
-          <span className="duration-icon">📅</span>
-          <span className="duration-text">
-            {Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))} days
-          </span>
+          <Moon size={14} />
+          <span className="duration-text">{nights} night{nights === 1 ? '' : 's'} · {nights + 1} days</span>
         </div>
       )}
     </div>

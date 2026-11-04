@@ -4,7 +4,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: inherit;
 }
 
 .header {
@@ -13,21 +13,21 @@
 
 .header h1 {
   font-size: 2rem;
-  color: #1a73e8;
+  color: var(--accent);
   margin-bottom: 1rem;
 }
 
 .progressBar {
   width: 100%;
   height: 8px;
-  background-color: #e0e0e0;
+  background-color: var(--line);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .progressFill {
   height: 100%;
-  background: linear-gradient(90deg, #1a73e8, #34a853);
+  background: var(--accent);
   transition: width 0.3s ease;
 }
 
@@ -40,7 +40,7 @@
 /* Booking Summary */
 .summary {
   background: #ffffff;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -51,16 +51,16 @@
 
 .summary h2 {
   font-size: 1.5rem;
-  color: #202124;
+  color: var(--ink);
   margin-bottom: 1.5rem;
-  border-bottom: 2px solid #1a73e8;
+  border-bottom: 2px solid var(--accent);
   padding-bottom: 0.5rem;
 }
 
 .summarySection {
   margin-bottom: 1.5rem;
   padding-bottom: 1.5rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--line);
 }
 
 .summarySection:last-of-type {
@@ -69,7 +69,7 @@
 
 .summarySection h3 {
   font-size: 1.1rem;
-  color: #1a73e8;
+  color: var(--accent);
   margin-bottom: 0.75rem;
 }
 
@@ -81,12 +81,12 @@
 }
 
 .summaryItem span:first-child {
-  color: #5f6368;
+  color: var(--ink-2);
   font-weight: 500;
 }
 
 .summaryItem span:last-child {
-  color: #202124;
+  color: var(--ink);
   text-align: right;
 }
 
@@ -96,20 +96,20 @@
   align-items: center;
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 2px solid #1a73e8;
+  border-top: 2px solid var(--accent);
   font-size: 1.1rem;
   font-weight: 600;
 }
 
 .totalAmount {
-  color: #1a73e8;
+  color: var(--accent);
   font-size: 1.5rem;
 }
 
 /* Details Form */
 .detailsForm {
   background: #ffffff;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -117,14 +117,14 @@
 
 .detailsForm h2 {
   font-size: 1.5rem;
-  color: #202124;
+  color: var(--ink);
   margin-bottom: 1.5rem;
 }
 
 .formSection {
   margin-bottom: 2rem;
   padding-bottom: 2rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--line);
 }
 
 .formSection:last-of-type {
@@ -135,22 +135,22 @@
 
 .formSection h3 {
   font-size: 1.2rem;
-  color: #1a73e8;
+  color: var(--accent);
   margin-bottom: 0.5rem;
 }
 
 .formHint {
-  color: #5f6368;
+  color: var(--ink-2);
   font-size: 0.9rem;
   margin-bottom: 1rem;
 }
 
 .formNote {
   padding: 1rem;
-  background: #f8f9fa;
-  border: 1px dashed #dadce0;
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
   border-radius: 8px;
-  color: #5f6368;
+  color: var(--ink-2);
   font-size: 0.9rem;
   text-align: center;
 }
@@ -162,7 +162,7 @@
 .formGroup label {
   display: block;
   font-weight: 500;
-  color: #202124;
+  color: var(--ink);
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
 }
@@ -171,7 +171,7 @@
 .formGroup select {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #dadce0;
+  border: 1px solid var(--line);
   border-radius: 8px;
   font-size: 1rem;
   transition: border-color 0.2s;
@@ -180,18 +180,18 @@
 .formGroup input:focus,
 .formGroup select:focus {
   outline: none;
-  border-color: #1a73e8;
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(61, 123, 247, 0.1);
 }
 
 /* Error Message */
 .errorMessage {
-  background: #fce8e6;
-  border: 1px solid #ea4335;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
   border-radius: 8px;
   padding: 1rem;
   margin: 1.5rem 0;
-  color: #c5221f;
+  color: var(--danger-ink);
   grid-column: 1 / -1;
 }
 
@@ -206,7 +206,7 @@
   gap: 1rem;
   margin-top: 2rem;
   padding-top: 2rem;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--line);
   grid-column: 1 / -1;
 }
 
@@ -225,23 +225,23 @@
 
 .cancelButton {
   background: #ffffff;
-  color: #5f6368;
-  border: 1px solid #dadce0;
+  color: var(--ink-2);
+  border: 1px solid var(--line);
 }
 
 .cancelButton:hover:not(:disabled) {
-  background: #f8f9fa;
-  border-color: #5f6368;
+  background: var(--surface-2);
+  border-color: var(--ink-2);
 }
 
 .confirmButton {
-  background: linear-gradient(135deg, #1a73e8, #34a853);
+  background: var(--accent);
   color: #ffffff;
 }
 
 .confirmButton:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+  box-shadow: 0 4px 12px rgba(61, 123, 247, 0.3);
 }
 
 .button:disabled,
@@ -261,12 +261,12 @@
 }
 
 .error h2 {
-  color: #ea4335;
+  color: var(--danger);
   margin-bottom: 1rem;
 }
 
 .error p {
-  color: #5f6368;
+  color: var(--ink-2);
   margin-bottom: 2rem;
 }
 

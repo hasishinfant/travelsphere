@@ -2,169 +2,67 @@
 import type { TripPlannerFormData } from '@/types/trip';
 import type { ItineraryResponse, ChatResponse, EmergencyResponse, EmergencyType, ApiResponse } from '@/types/api';
 
-// Enhanced destination mock data
-export const MOCK_DESTINATIONS = [
-  {
-    id: 'bengaluru',
-    name: 'Bengaluru, India',
-    description: 'Silicon Valley of India with vibrant tech culture, beautiful gardens, and rich heritage',
-    imageUrl: 'https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=800&q=80',
-    vrPreviewUrl: 'https://www.google.com/maps/embed?pb=!4v1234567890!6m8!1m7!1sCAoSLEFGMVFpcE5xVjBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzA!2m2!1d12.971599!2d77.594566!3f0!4f0!5f0.7820865974627469',
-    popularityScore: 88,
-    category: ['culture', 'technology', 'food', 'nature'],
-    highlights: ['Lalbagh Botanical Garden', 'Bangalore Palace', 'Cubbon Park', 'ISKCON Temple'],
-    bestTimeToVisit: 'October-February',
-    averageCost: { low: 30, medium: 60, luxury: 150 },
-  },
-  {
-    id: 'tokyo',
-    name: 'Tokyo, Japan',
-    description: 'Modern metropolis blending traditional culture with cutting-edge technology',
-    imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80',
-    vrPreviewUrl: 'https://www.google.com/maps/embed?pb=!4v1234567890!6m8!1m7!1sCAoSLEFGMVFpcE5xVjBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzA!2m2!1d35.658581!2d139.745438!3f0!4f0!5f0.7820865974627469',
-    popularityScore: 92,
-    category: ['culture', 'food', 'technology', 'urban'],
-    highlights: ['Shibuya Crossing', 'Senso-ji Temple', 'Tokyo Skytree', 'Tsukiji Fish Market'],
-    bestTimeToVisit: 'March-May, September-November',
-    averageCost: { low: 70, medium: 120, luxury: 250 },
-  },
-  {
-    id: 'bali',
-    name: 'Bali, Indonesia',
-    description: 'Tropical paradise with beautiful beaches, lush rice terraces, and rich cultural heritage',
-    imageUrl: 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?w=800&q=80',
-    vrPreviewUrl: 'https://www.google.com/maps/embed?pb=!4v1234567890!6m8!1m7!1sCAoSLEFGMVFpcE5xVjBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzA!2m2!1d-8.409518!2d115.188919!3f0!4f0!5f0.7820865974627469',
-    popularityScore: 88,
-    category: ['nature', 'relaxation', 'culture', 'beach'],
-    highlights: ['Ubud Rice Terraces', 'Tanah Lot Temple', 'Seminyak Beach', 'Mount Batur'],
-    bestTimeToVisit: 'April-October',
-    averageCost: { low: 40, medium: 80, luxury: 180 },
-  },
-  {
-    id: 'new-york',
-    name: 'New York City, USA',
-    description: 'The city that never sleeps, featuring iconic skylines, Broadway shows, and diverse neighborhoods',
-    imageUrl: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&q=80',
-    vrPreviewUrl: 'https://www.google.com/maps/embed?pb=!4v1234567890!6m8!1m7!1sCAoSLEFGMVFpcE5xVjBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzA!2m2!1d40.758896!2d-73.985130!3f0!4f0!5f0.7820865974627469',
-    popularityScore: 94,
-    category: ['urban', 'culture', 'entertainment', 'food'],
-    highlights: ['Statue of Liberty', 'Central Park', 'Times Square', 'Brooklyn Bridge'],
-    bestTimeToVisit: 'April-June, September-November',
-    averageCost: { low: 100, medium: 200, luxury: 400 },
-  },
-  {
-    id: 'santorini',
-    name: 'Santorini, Greece',
-    description: 'Stunning Greek island with white-washed buildings, blue domes, and breathtaking sunsets',
-    imageUrl: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80',
-    vrPreviewUrl: 'https://www.google.com/maps/embed?pb=!4v1234567890!6m8!1m7!1sCAoSLEFGMVFpcE5xVjBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzA!2m2!1d36.393156!2d25.461509!3f0!4f0!5f0.7820865974627469',
-    popularityScore: 90,
-    category: ['romance', 'relaxation', 'culture', 'beach'],
-    highlights: ['Oia Village', 'Red Beach', 'Akrotiri Archaeological Site', 'Fira Town'],
-    bestTimeToVisit: 'April-October',
-    averageCost: { low: 60, medium: 120, luxury: 280 },
-  },
-  {
-    id: 'iceland',
-    name: 'Reykjavik, Iceland',
-    description: 'Land of fire and ice with dramatic landscapes, geysers, and the Northern Lights',
-    imageUrl: 'https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=800&q=80',
-    vrPreviewUrl: 'https://www.google.com/maps/embed?pb=!4v1234567890!6m8!1m7!1sCAoSLEFGMVFpcE5xVjBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzBfYnRfVzA!2m2!1d64.146582!2d-21.942636!3f0!4f0!5f0.7820865974627469',
-    popularityScore: 85,
-    category: ['nature', 'adventure', 'unique'],
-    highlights: ['Blue Lagoon', 'Golden Circle', 'Northern Lights', 'Gullfoss Waterfall'],
-    bestTimeToVisit: 'June-August (summer), September-March (Northern Lights)',
-    averageCost: { low: 90, medium: 160, luxury: 320 },
-  },
-];
+import { DESTINATIONS, getDestination, mapEmbedUrl, type DestinationRecord, type BudgetTier } from '@/data/destinations';
 
-// Enhanced mock itinerary generation
+// Destination catalogue (derived from the single source of truth in src/data/destinations.ts)
+export const MOCK_DESTINATIONS = DESTINATIONS.map(d => ({
+  id: d.id,
+  name: d.name,
+  description: d.description,
+  imageUrl: d.imageUrl,
+  vrPreviewUrl: mapEmbedUrl(d),
+  popularityScore: d.popularityScore,
+  category: d.category,
+  highlights: d.highlights,
+  bestTimeToVisit: d.bestTimeToVisit,
+  averageCost: d.averageCost,
+}));
+
+// Itinerary generation
 export function generateMockItinerary(formData: TripPlannerFormData): ApiResponse<ItineraryResponse> {
-  const tripDuration = Math.ceil(
-    (formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24)
+  const tripDuration = Math.max(
+    1,
+    Math.ceil((formData.endDate.getTime() - formData.startDate.getTime()) / (1000 * 60 * 60 * 24))
   );
-
-  const destination = MOCK_DESTINATIONS.find(d => d.name.toLowerCase().includes(formData.destination.toLowerCase())) 
-    || MOCK_DESTINATIONS[0];
+  const destination = getDestination(formData.destination) || DESTINATIONS[0];
+  const budget = (formData.budget || 'medium') as BudgetTier;
+  // Inclusive of arrival and departure days: 14 → 18 Dec is 5 days / 4 nights
+  const days = Math.min(tripDuration + 1, 14);
 
   const mockItinerary: ItineraryResponse = {
     tripId: `trip-${Date.now()}`,
-    itinerary: Array.from({ length: Math.min(tripDuration, 7) }, (_, index) => {
+    itinerary: Array.from({ length: days }, (_, index) => {
       const currentDate = new Date(formData.startDate);
       currentDate.setDate(currentDate.getDate() + index);
-      
       return {
         dayNumber: index + 1,
         date: currentDate,
-        places: generateDayPlaces(destination, index, formData.interests),
-        foodRecommendations: generateFoodRecommendations(destination, formData.budget),
-        travelTips: generateTravelTips(destination, index, formData.budget, formData.interests),
+        places: generateDayPlaces(destination, index, formData.interests || []),
+        foodRecommendations: generateFoodRecommendations(destination, budget, index),
+        travelTips: generateTravelTips(destination, index, budget, formData.interests || []),
       };
     }),
     estimatedCost: {
-      min: destination.averageCost[formData.budget] * tripDuration * 0.8,
-      max: destination.averageCost[formData.budget] * tripDuration * 1.2,
+      min: Math.round(destination.averageCost[budget] * tripDuration * 0.8),
+      max: Math.round(destination.averageCost[budget] * tripDuration * 1.2),
       currency: 'USD',
     },
     generatedAt: new Date(),
   };
 
-  return {
-    success: true,
-    data: mockItinerary,
-    timestamp: new Date(),
-  };
+  return { success: true, data: mockItinerary, timestamp: new Date() };
 }
 
-// Generate places for a specific day
-function generateDayPlaces(destination: any, dayIndex: number, interests: string[]) {
-  const allPlaces = {
-    bengaluru: [
-      { name: 'Lalbagh Botanical Garden', category: 'nature', description: 'Historic botanical garden with diverse flora', time: '2 hours' },
-      { name: 'Bangalore Palace', category: 'culture', description: 'Tudor-style palace with beautiful architecture', time: '2 hours' },
-      { name: 'Cubbon Park', category: 'nature', description: 'Sprawling green space in the heart of the city', time: '1.5 hours' },
-      { name: 'ISKCON Temple', category: 'culture', description: 'Beautiful temple with spiritual ambiance', time: '1.5 hours' },
-      { name: 'Vidhana Soudha', category: 'culture', description: 'Impressive government building with neo-Dravidian architecture', time: '1 hour' },
-      { name: 'Commercial Street', category: 'shopping', description: 'Bustling shopping street with local goods', time: '2 hours' },
-    ],
-    paris: [
-      { name: 'Eiffel Tower', category: 'culture', description: 'Iconic iron lattice tower and symbol of Paris', time: '3 hours' },
-      { name: 'Louvre Museum', category: 'culture', description: 'World\'s largest art museum', time: '4 hours' },
-      { name: 'Notre-Dame Cathedral', category: 'culture', description: 'Gothic cathedral masterpiece', time: '2 hours' },
-      { name: 'Montmartre District', category: 'culture', description: 'Artistic neighborhood with Sacré-Cœur', time: '3 hours' },
-      { name: 'Seine River Cruise', category: 'relaxation', description: 'Scenic boat tour along the Seine', time: '1.5 hours' },
-      { name: 'Champs-Élysées', category: 'shopping', description: 'Famous avenue for shopping and cafés', time: '2 hours' },
-    ],
-    tokyo: [
-      { name: 'Shibuya Crossing', category: 'urban', description: 'World\'s busiest pedestrian crossing', time: '1 hour' },
-      { name: 'Senso-ji Temple', category: 'culture', description: 'Ancient Buddhist temple in Asakusa', time: '2 hours' },
-      { name: 'Tokyo Skytree', category: 'urban', description: 'Tallest structure in Japan with panoramic views', time: '2 hours' },
-      { name: 'Tsukiji Outer Market', category: 'food', description: 'Fresh seafood and street food paradise', time: '2 hours' },
-      { name: 'Harajuku District', category: 'culture', description: 'Youth culture and fashion hub', time: '2 hours' },
-      { name: 'Imperial Palace Gardens', category: 'nature', description: 'Peaceful gardens in the city center', time: '2 hours' },
-    ],
-    bali: [
-      { name: 'Ubud Rice Terraces', category: 'nature', description: 'Stunning terraced rice fields', time: '3 hours' },
-      { name: 'Tanah Lot Temple', category: 'culture', description: 'Sea temple on a rock formation', time: '2 hours' },
-      { name: 'Seminyak Beach', category: 'beach', description: 'Beautiful beach with sunset views', time: '4 hours' },
-      { name: 'Sacred Monkey Forest', category: 'nature', description: 'Nature reserve with playful monkeys', time: '1.5 hours' },
-      { name: 'Tegallalang Rice Terraces', category: 'nature', description: 'Instagram-famous rice terraces', time: '2 hours' },
-      { name: 'Ubud Art Market', category: 'shopping', description: 'Traditional crafts and souvenirs', time: '2 hours' },
-    ],
-  };
-
-  const destinationKey = destination.id as keyof typeof allPlaces;
-  const places = allPlaces[destinationKey] || allPlaces.paris;
-  
-  // Select places based on interests and day
-  const relevantPlaces = places.filter(place => 
-    interests.some(interest => place.category.includes(interest)) || 
-    place.category === 'culture' // Always include cultural sites
-  );
-
-  const selectedPlaces = relevantPlaces.slice(dayIndex * 2, (dayIndex * 2) + 2);
-  
-  return selectedPlaces.map(place => ({
+// Two places per day. Places matching the traveller's interests come first,
+// and the list wraps so long trips never produce empty days.
+function generateDayPlaces(destination: DestinationRecord, dayIndex: number, interests: string[]) {
+  const wanted = new Set(interests.map(i => i.toLowerCase()));
+  const ranked = [
+    ...destination.places.filter(p => wanted.has(p.category)),
+    ...destination.places.filter(p => !wanted.has(p.category)),
+  ];
+  const perDay = 2;
+  return Array.from({ length: perDay }, (_, k) => ranked[(dayIndex * perDay + k) % ranked.length]).map(place => ({
     name: place.name,
     description: place.description,
     estimatedTime: place.time,
@@ -172,135 +70,41 @@ function generateDayPlaces(destination: any, dayIndex: number, interests: string
   }));
 }
 
-// Generate food recommendations
-function generateFoodRecommendations(destination: any, budget: string) {
-  const foodOptions = {
-    bengaluru: {
-      luxury: [
-        { name: 'Karavalli', type: 'Coastal Indian', description: 'Award-winning coastal cuisine in elegant setting', priceRange: '$$$' },
-        { name: 'Rim Naam', type: 'Thai', description: 'Authentic Thai cuisine in beautiful ambiance', priceRange: '$$$' },
-      ],
-      medium: [
-        { name: 'MTR', type: 'South Indian', description: 'Legendary restaurant serving authentic Karnataka cuisine', priceRange: '$$' },
-        { name: 'Vidyarthi Bhavan', type: 'South Indian', description: 'Famous for crispy dosas since 1943', priceRange: '$$' },
-      ],
-      low: [
-        { name: 'CTR (Central Tiffin Room)', type: 'South Indian', description: 'Iconic spot for benne dosa', priceRange: '$' },
-        { name: 'Veena Stores', type: 'Snacks', description: 'Popular for khara bath and kesari bath', priceRange: '$' },
-      ],
-    },
-    paris: {
-      luxury: [
-        { name: 'Le Jules Verne', type: 'Fine Dining', description: 'Michelin-starred restaurant in the Eiffel Tower', priceRange: '$$$' },
-        { name: 'L\'Ami Jean', type: 'Bistro', description: 'Traditional French bistro with modern twist', priceRange: '$$' },
-      ],
-      medium: [
-        { name: 'Breizh Café', type: 'Crêperie', description: 'Modern take on traditional Breton crêpes', priceRange: '$$' },
-        { name: 'Du Pain et des Idées', type: 'Bakery', description: 'Artisanal bakery with exceptional pastries', priceRange: '$' },
-      ],
-      low: [
-        { name: 'L\'As du Fallafel', type: 'Street Food', description: 'Famous falafel in the Marais district', priceRange: '$' },
-        { name: 'Local Boulangerie', type: 'Bakery', description: 'Fresh croissants and coffee', priceRange: '$' },
-      ],
-    },
-    tokyo: {
-      luxury: [
-        { name: 'Sukiyabashi Jiro', type: 'Sushi', description: 'World-renowned sushi master\'s restaurant', priceRange: '$$$' },
-        { name: 'Narisawa', type: 'Fine Dining', description: 'Innovative Japanese cuisine', priceRange: '$$$' },
-      ],
-      medium: [
-        { name: 'Ramen Yokocho', type: 'Ramen', description: 'Traditional ramen alley experience', priceRange: '$$' },
-        { name: 'Izakaya Torikizoku', type: 'Izakaya', description: 'Casual Japanese pub with yakitori', priceRange: '$$' },
-      ],
-      low: [
-        { name: 'Conveyor Belt Sushi', type: 'Sushi', description: 'Affordable sushi train experience', priceRange: '$' },
-        { name: 'Street Food Stalls', type: 'Street Food', description: 'Takoyaki and other local snacks', priceRange: '$' },
-      ],
-    },
-    bali: {
-      luxury: [
-        { name: 'Mozaic Restaurant', type: 'Fine Dining', description: 'French-Indonesian fusion cuisine', priceRange: '$$$' },
-        { name: 'Sarong Restaurant', type: 'Asian Fusion', description: 'Upscale Asian dining experience', priceRange: '$$' },
-      ],
-      medium: [
-        { name: 'Warung Babi Guling', type: 'Local', description: 'Traditional Balinese roasted pork', priceRange: '$$' },
-        { name: 'Bebek Bengil', type: 'Local', description: 'Famous crispy duck restaurant', priceRange: '$$' },
-      ],
-      low: [
-        { name: 'Local Warungs', type: 'Street Food', description: 'Authentic Indonesian street food', priceRange: '$' },
-        { name: 'Night Market', type: 'Street Food', description: 'Variety of local dishes and snacks', priceRange: '$' },
-      ],
-    },
-  };
-
-  const destinationKey = destination.id as keyof typeof foodOptions;
-  const options = foodOptions[destinationKey] || foodOptions.paris;
-  
-  return options[budget as keyof typeof options] || options.medium;
+function generateFoodRecommendations(destination: DestinationRecord, budget: BudgetTier, dayIndex = 0) {
+  const tiers: BudgetTier[] = ['low', 'medium', 'luxury'];
+  const primary = destination.food[budget] || destination.food.medium;
+  // Rotate in one pick from a neighbouring tier on alternate days for variety
+  const alt = destination.food[tiers[(tiers.indexOf(budget) + 1) % 3]];
+  return dayIndex % 2 === 0 ? primary : [primary[1] || primary[0], alt[0]];
 }
 
-// Generate travel tips
-function generateTravelTips(destination: any, dayIndex: number, budget: string, interests: string[]) {
+function generateTravelTips(destination: DestinationRecord, dayIndex: number, budget: BudgetTier, interests: string[]) {
   const baseTips = [
-    'Start early to avoid crowds at popular attractions',
+    'Start early to beat the crowds at headline sights',
     'Wear comfortable walking shoes',
-    'Bring a portable charger for your phone',
-    'Stay hydrated throughout the day',
-    'Keep copies of important documents',
+    'Carry a portable charger and offline maps',
+    'Keep digital copies of your passport and bookings',
   ];
-
-  const destinationTips = {
-    paris: [
-      'Learn basic French phrases - locals appreciate the effort',
-      'Many museums are free on the first Sunday of each month',
-      'Validate your metro tickets to avoid fines',
-      'Tipping 10% is standard in restaurants',
-    ],
-    tokyo: [
-      'Download a translation app for easier communication',
-      'Bow slightly when greeting people',
-      'Remove shoes when entering homes or certain restaurants',
-      'Cash is still king - many places don\'t accept cards',
-    ],
-    bali: [
-      'Dress modestly when visiting temples',
-      'Bargaining is expected at markets',
-      'Be cautious with tap water - stick to bottled water',
-      'Respect local customs and ceremonies',
-    ],
+  const budgetTips: Record<BudgetTier, string> = {
+    low: 'Look for free walking tours and eat where locals queue',
+    medium: 'Book timed-entry tickets in advance for better prices',
+    luxury: 'Reserve high-end restaurants several weeks ahead',
   };
-
-  const destinationKey = destination.id as keyof typeof destinationTips;
-  const specificTips = destinationTips[destinationKey] || destinationTips.paris;
-
-  const budgetTips = {
-    low: ['Look for free walking tours', 'Eat at local markets for authentic, cheap meals', 'Use public transportation'],
-    medium: ['Book attractions in advance for better prices', 'Consider guided tours for deeper insights'],
-    luxury: ['Make reservations at high-end restaurants well in advance', 'Consider private tours for personalized experiences'],
+  const interestTips: Record<string, string> = {
+    food: 'Ask your host for their favourite neighbourhood spot',
+    culture: 'Visit museums right at opening for quieter galleries',
+    nature: 'Check the forecast before outdoor excursions',
+    adventure: 'Make sure your insurance covers adventure activities',
+    shopping: 'Keep receipts to claim tax refunds at the airport',
   };
-
-  const interestTips = {
-    food: ['Try local specialties and street food', 'Ask locals for restaurant recommendations'],
-    culture: ['Visit museums and historical sites early in the day', 'Respect local customs and dress codes'],
-    nature: ['Bring sunscreen and insect repellent', 'Check weather conditions before outdoor activities'],
-    adventure: ['Book adventure activities in advance', 'Ensure you have proper insurance coverage'],
-    shopping: ['Keep receipts for tax refunds', 'Learn basic bargaining phrases'],
-  };
-
   const tips = [
+    destination.tips[dayIndex % destination.tips.length],
     baseTips[dayIndex % baseTips.length],
-    specificTips[dayIndex % specificTips.length],
-    budgetTips[budget as keyof typeof budgetTips][0],
+    budgetTips[budget],
   ];
-
-  // Add interest-specific tips
-  interests.forEach(interest => {
-    if (interestTips[interest as keyof typeof interestTips]) {
-      tips.push(interestTips[interest as keyof typeof interestTips][0]);
-    }
-  });
-
-  return tips.slice(0, 3); // Return max 3 tips per day
+  const interestTip = interests.map(i => interestTips[i]).find(Boolean);
+  if (interestTip && dayIndex % 2 === 1) tips[2] = interestTip;
+  return tips;
 }
 
 // Enhanced mock chat responses

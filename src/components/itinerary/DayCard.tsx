@@ -1,138 +1,105 @@
 import React, { useState } from 'react';
-import { dateUtils } from '@/utils/dateUtils';
+import {
+  ChevronDown, Clock, Landmark, Trees, UtensilsCrossed, ShoppingBag, Waves, Building2,
+  Mountain, Flower2, Drama, Cpu, Palette, Heart, MapPin, Lightbulb, type LucideIcon,
+} from 'lucide-react';
 import type { ItineraryDay, Place, FoodRecommendation } from '@/types/itinerary';
 
 interface DayCardProps {
   day: ItineraryDay;
+  defaultOpen?: boolean;
 }
 
-const DayCard: React.FC<DayCardProps> = ({ day }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  culture: Landmark, nature: Trees, food: UtensilsCrossed, shopping: ShoppingBag, beach: Waves,
+  urban: Building2, adventure: Mountain, relaxation: Flower2, entertainment: Drama,
+  technology: Cpu, art: Palette, romance: Heart,
+};
 
-  const toggleExpanded = () => {
-    setIsExpanded(!isExpanded);
-  };
+const SLOTS = ['Morning', 'Afternoon', 'Evening'];
 
-  // Get emoji icon based on category
-  const getCategoryIcon = (category: string): string => {
-    const icons: Record<string, string> = {
-      culture: '🏛️',
-      nature: '🌳',
-      food: '🍜',
-      shopping: '🛍️',
-      beach: '🏖️',
-      urban: '🏙️',
-      adventure: '⛰️',
-      relaxation: '🧘',
-      entertainment: '🎭',
-      technology: '💻',
-      default: '📍'
-    };
-    return icons[category.toLowerCase()] || icons.default;
-  };
-
-  // Get gradient background based on category
-  const getCategoryGradient = (category: string): string => {
-    const gradients: Record<string, string> = {
-      culture: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      nature: 'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)',
-      food: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-      shopping: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-      beach: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-      urban: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-      adventure: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-      relaxation: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-      entertainment: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
-      technology: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-      default: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    };
-    return gradients[category.toLowerCase()] || gradients.default;
-  };
+const DayCard: React.FC<DayCardProps> = ({ day, defaultOpen = true }) => {
+  const [isExpanded, setIsExpanded] = useState(defaultOpen);
+  const date = new Date(day.date);
+  const dateLabel = Number.isNaN(date.getTime())
+    ? ''
+    : date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="day-card">
-      <div className="day-header" onClick={toggleExpanded}>
-        <div className="day-info">
-          <div className="day-number">Day {day.dayNumber}</div>
-          <div className="day-date">{dateUtils.formatDate(day.date)}</div>
-        </div>
-        <div className="expand-toggle">
-          <span className={`expand-icon ${isExpanded ? 'expanded' : ''}`}>
-            ▼
+    <article className={`day-card ${isExpanded ? 'is-open' : ''}`} id={`day-${day.dayNumber}`}>
+      <button
+        type="button"
+        className="day-header"
+        onClick={() => setIsExpanded(v => !v)}
+        aria-expanded={isExpanded}
+      >
+        <span className="day-badge">
+          <span className="day-badge-label">Day</span>
+          <span className="day-badge-num">{day.dayNumber}</span>
+        </span>
+        <span className="day-info">
+          <span className="day-date">{dateLabel}</span>
+          <span className="day-summary">
+            {day.places?.map(p => p.name).join(' · ') || 'Free day'}
           </span>
-        </div>
-      </div>
+        </span>
+        <ChevronDown size={20} className="day-chevron" />
+      </button>
 
       {isExpanded && (
         <div className="day-content">
-          {/* Places to Visit */}
-          {day.places && day.places.length > 0 && (
-            <div className="places-section">
-              <h3>Places to Visit</h3>
-              <div className="places-list">
-                {day.places.map((place: Place, placeIndex: number) => (
-                  <div key={placeIndex} className="place-item">
-                    <div 
-                      className="place-image-placeholder"
-                      style={{ background: getCategoryGradient(place.category) }}
-                    >
-                      <span className="place-icon">{getCategoryIcon(place.category)}</span>
-                    </div>
-                    <div className="place-info">
+          {day.places?.length > 0 && (
+            <ol className="day-timeline">
+              {day.places.map((place: Place, i: number) => {
+                const Glyph = CATEGORY_ICON[place.category?.toLowerCase()] || MapPin;
+                return (
+                  <li key={`${place.name}-${i}`} className="day-stop">
+                    <span className="day-stop-icon"><Glyph size={18} strokeWidth={1.75} /></span>
+                    <div className="day-stop-body">
+                      <p className="day-stop-slot">{SLOTS[i] || 'Later'}</p>
                       <h4>{place.name}</h4>
-                      <p>{place.description}</p>
-                      <div className="place-meta">
-                        <span className="estimated-time">⏱️ {place.estimatedTime}</span>
-                        <span className="place-category">{getCategoryIcon(place.category)} {place.category}</span>
+                      <p className="day-stop-desc">{place.description}</p>
+                      <div className="day-stop-meta">
+                        <span><Clock size={13} /> {place.estimatedTime}</span>
+                        <span className="tag">{place.category}</span>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  </li>
+                );
+              })}
+            </ol>
           )}
 
-          {/* Food Recommendations */}
-          {day.foodRecommendations && day.foodRecommendations.length > 0 && (
-            <div className="food-section">
-              <h3>Food Recommendations</h3>
-              <div className="food-list">
-                {day.foodRecommendations.map((food: FoodRecommendation, foodIndex: number) => (
-                  <div key={foodIndex} className="food-item">
-                    <div 
-                      className="food-image-placeholder"
-                      style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' }}
-                    >
-                      <span className="food-icon">🍽️</span>
-                    </div>
-                    <div className="food-info">
-                      <h4>{food.name}</h4>
-                      <p>{food.description}</p>
-                      <div className="food-details">
-                        <span className="food-type">🍴 {food.type}</span>
-                        <span className="price-range">💰 {food.priceRange}</span>
+          <div className="day-extras">
+            {day.foodRecommendations?.length > 0 && (
+              <section className="day-extra">
+                <h5><UtensilsCrossed size={15} /> Where to eat</h5>
+                <ul>
+                  {day.foodRecommendations.map((food: FoodRecommendation, i: number) => (
+                    <li key={`${food.name}-${i}`}>
+                      <div>
+                        <p className="day-food-name">{food.name}</p>
+                        <p className="day-food-desc">{food.type} · {food.description}</p>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                      <span className="day-food-price">{food.priceRange}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-          {/* Travel Tips */}
-          {day.travelTips && day.travelTips.length > 0 && (
-            <div className="tips-section">
-              <h3>Travel Tips</h3>
-              <ul className="tips-list">
-                {day.travelTips.map((tip: string, tipIndex: number) => (
-                  <li key={tipIndex}>{tip}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+            {day.travelTips?.length > 0 && (
+              <section className="day-extra">
+                <h5><Lightbulb size={15} /> Good to know</h5>
+                <ul className="day-tips">
+                  {day.travelTips.map((tip: string, i: number) => <li key={i}>{tip}</li>)}
+                </ul>
+              </section>
+            )}
+          </div>
         </div>
       )}
-    </div>
+    </article>
   );
 };
 

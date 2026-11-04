@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Icon from '@/components/shared/Icon';
 import DestinationCard from './DestinationCard';
 import VRModal from './VRModal';
 import type { Destination } from '@/types/destination';
@@ -36,7 +37,7 @@ const DestinationGrid: React.FC<DestinationGridProps> = ({
         <div className="loading-spinner">
           <div className="spinner">
             <div className="spinner-ring"></div>
-            <div className="spinner-icon">🌍</div>
+            <div className="spinner-icon"><Icon name="globe" size="lg" /></div>
           </div>
           <p className="loading-message">Discovering amazing destinations...</p>
         </div>
@@ -48,7 +49,7 @@ const DestinationGrid: React.FC<DestinationGridProps> = ({
     return (
       <div className="destination-grid-error">
         <div className="error-container">
-          <div className="error-icon">⚠️</div>
+          <div className="error-icon"><Icon name="warning" size="xl" /></div>
           <h3>Unable to Load Destinations</h3>
           <p>{error}</p>
           <button 
@@ -66,7 +67,7 @@ const DestinationGrid: React.FC<DestinationGridProps> = ({
     return (
       <div className="destination-grid-empty">
         <div className="empty-state">
-          <div className="empty-icon">🗺️</div>
+          <div className="empty-icon"><Icon name="map" size="xl" /></div>
           <h3>No Destinations Found</h3>
           <p>We're working on adding more amazing destinations for you to explore.</p>
         </div>

@@ -1,339 +1,82 @@
-/* ==========================================================================
-   TravelSphere — Itinerary Timeline Component Styles
-   ========================================================================== */
+.itinerary-timeline { display: grid; gap: var(--space-4); }
 
-.itinerary-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  position: relative;
-}
-
-/* Connecting green track */
-.itinerary-timeline::before {
-  content: '';
-  position: absolute;
-  left: 28px;
-  top: 3rem;
-  bottom: 2rem;
-  width: 2px;
-  background: #bbf7d0;
-  border-radius: 9999px;
-  z-index: 1;
-}
-
-/* Day Card */
 .day-card {
-  background: #ffffff;
-  border-radius: 24px;
-  border: 1.5px solid #edf5ea;
-  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line);
+  scroll-margin-top: var(--space-8);
   overflow: hidden;
-  transition: all 0.3s ease;
-  position: relative;
-  z-index: 2;
-  margin-left: 56px;
 }
+.day-card.is-open { box-shadow: var(--shadow-md); border-color: transparent; }
 
-.day-card:hover {
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
-  border-color: #86efac;
-}
-
-/* Marker dot on the connecting line */
-.day-card::before {
-  content: '';
-  position: absolute;
-  left: -37px;
-  top: 24px;
-  width: 18px;
-  height: 18px;
-  background: #22c55e;
-  border-radius: 50%;
-  border: 3px solid #ffffff;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.45);
-  z-index: 3;
-}
-
-/* Day Header */
 .day-header {
-  background: #0f172a;
-  color: #ffffff;
-  padding: 1.25rem 1.75rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  display: flex; align-items: center; gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4) var(--space-6) var(--space-4) var(--space-4);
+  text-align: left;
 }
-
-.day-header:hover {
-  background: #1e293b;
+.day-badge {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 56px; height: 56px; flex-shrink: 0;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  line-height: 1;
 }
+.day-badge-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+.day-badge-num { font-size: var(--fs-xl); font-weight: var(--fw-medium); margin-top: 2px; }
+.day-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.day-date { font-size: var(--fs-md); font-weight: var(--fw-medium); color: var(--ink); }
+.day-summary { color: var(--muted); font-size: var(--fs-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-chevron { color: var(--muted); transition: transform var(--dur) var(--ease); flex-shrink: 0; }
+.day-card.is-open .day-chevron { transform: rotate(180deg); }
 
-.day-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+.day-content { padding: 0 var(--space-6) var(--space-6); }
+
+.day-timeline { list-style: none; position: relative; padding: var(--space-2) 0 0 0; }
+.day-stop { position: relative; display: flex; gap: var(--space-4); padding-bottom: var(--space-6); }
+.day-stop:not(:last-child)::before {
+  content: '';
+  position: absolute; left: 21px; top: 48px; bottom: 6px;
+  border-left: 1.5px dashed var(--line-strong);
 }
-
-.day-number {
-  background: #22c55e;
-  color: #022c14;
-  font-size: 0.8125rem;
-  font-weight: 800;
-  padding: 4px 12px;
-  border-radius: 9999px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+.day-stop-icon {
+  display: grid; place-items: center;
+  width: 44px; height: 44px; flex-shrink: 0;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--ink-2);
 }
+.day-stop-body { flex: 1; min-width: 0; padding-top: 2px; }
+.day-stop-slot { font-size: var(--fs-xs); color: var(--accent); font-weight: var(--fw-medium); text-transform: uppercase; letter-spacing: 0.08em; }
+.day-stop-body h4 { font-size: var(--fs-md); font-weight: var(--fw-medium); margin-top: 2px; }
+.day-stop-desc { color: var(--ink-2); font-size: var(--fs-sm); margin-top: 2px; }
+.day-stop-meta { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-2); color: var(--muted); font-size: var(--fs-xs); }
+.day-stop-meta span:first-child { display: inline-flex; align-items: center; gap: 4px; }
+.day-stop-meta .tag { text-transform: capitalize; height: 22px; }
 
-.day-date {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #ffffff;
+.day-extras {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
 }
+.day-extra { padding: var(--space-4); border-radius: var(--r-md); background: var(--surface-2); }
+.day-extra h5 { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--ink); margin-bottom: var(--space-3); }
+.day-extra h5 svg { color: var(--accent); }
+.day-extra ul { list-style: none; display: grid; gap: var(--space-3); }
+.day-extra li { display: flex; justify-content: space-between; gap: var(--space-3); }
+.day-food-name { font-weight: var(--fw-medium); color: var(--ink); font-size: var(--fs-sm); }
+.day-food-desc { color: var(--muted); font-size: var(--fs-xs); }
+.day-food-price { color: var(--ink-2); font-size: var(--fs-sm); flex-shrink: 0; }
+.day-tips li { position: relative; padding-left: 14px; color: var(--ink-2); font-size: var(--fs-sm); display: block; }
+.day-tips li::before { content: ''; position: absolute; left: 0; top: 0.6em; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
 
-.expand-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
+.itinerary-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-8); }
 
-.expand-icon {
-  font-size: 0.875rem;
-  transition: transform 0.25s ease;
-  user-select: none;
-}
-
-.expand-icon.expanded {
-  transform: rotate(180deg);
-}
-
-/* Day Content */
-.day-content {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-/* Section Headings */
-.places-section h3,
-.food-section h3,
-.tips-section h3 {
-  color: #0f172a;
-  margin: 0 0 1rem 0;
-  font-size: 1.15rem;
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-/* Places List */
-.places-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.place-item {
-  background: #f8fafc;
-  border-radius: 18px;
-  padding: 1.25rem;
-  border: 1px solid #f1f5f9;
-  transition: all 0.2s ease;
-  display: flex;
-  gap: 1.25rem;
-  align-items: flex-start;
-}
-
-.place-item:hover {
-  background: #ffffff;
-  border-color: #86efac;
-  transform: translateX(3px);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
-}
-
-.place-image-placeholder {
-  flex-shrink: 0;
-  width: 72px;
-  height: 72px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.place-icon {
-  font-size: 1.8rem;
-}
-
-.place-info {
-  flex: 1;
-}
-
-.place-info h4 {
-  color: #0f172a;
-  margin: 0 0 0.35rem 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.place-info p {
-  color: #64748b;
-  margin: 0 0 0.75rem 0;
-  line-height: 1.45;
-  font-size: 0.875rem;
-}
-
-.place-meta {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.estimated-time {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #15803d;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.place-category {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #475569;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-/* Food List */
-.food-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-}
-
-.food-item {
-  background: #fafcf9;
-  border-radius: 18px;
-  padding: 1.25rem;
-  border: 1.5px solid #edf5ea;
-  transition: all 0.2s ease;
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-}
-
-.food-item:hover {
-  background: #ffffff;
-  border-color: #86efac;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
-}
-
-.food-image-placeholder {
-  flex-shrink: 0;
-  width: 54px;
-  height: 54px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.food-icon {
-  font-size: 1.4rem;
-}
-
-.food-info {
-  flex: 1;
-}
-
-.food-info h4 {
-  color: #0f172a;
-  margin: 0 0 0.25rem 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-
-.food-info p {
-  color: #64748b;
-  margin: 0 0 0.5rem 0;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-}
-
-.food-details {
-  display: flex;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-}
-
-.food-type,
-.price-range {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #475569;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  padding: 2px 8px;
-  border-radius: 9999px;
-}
-
-/* Travel Tips */
-.tips-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.tips-list li {
-  background: #f0fdf4;
-  border-left: 3px solid #22c55e;
-  padding: 0.75rem 1rem;
-  border-radius: 0 12px 12px 0;
-  font-size: 0.875rem;
-  color: #15803d;
-  line-height: 1.45;
-}
-
-/* Mobile Responsive */
-@media (max-width: 768px) {
-  .itinerary-timeline::before {
-    display: none;
-  }
-
-  .day-card {
-    margin-left: 0;
-  }
-
-  .day-card::before {
-    display: none;
-  }
-
-  .day-content {
-    padding: 1.25rem;
-  }
-
-  .food-list {
-    grid-template-columns: 1fr;
-  }
+@media (max-width: 720px) {
+  .day-header { padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3); }
+  .day-badge { width: 48px; height: 48px; }
+  .day-content { padding: 0 var(--space-4) var(--space-4); }
+  .day-extras { grid-template-columns: 1fr; }
 }

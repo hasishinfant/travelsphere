@@ -32,10 +32,10 @@ export const ConfidenceBreakdownModal: React.FC<ConfidenceBreakdownModalProps> =
   }, []);
   
   const badgeColors = {
-    Low: '#ef4444',
-    Moderate: '#f59e0b',
-    High: '#10b981',
-    Excellent: '#3b82f6',
+    Low: 'var(--danger)',
+    Moderate: 'var(--warning)',
+    High: 'var(--success)',
+    Excellent: 'var(--accent)',
   };
   
   return (
@@ -105,7 +105,7 @@ export const ConfidenceBreakdownModal: React.FC<ConfidenceBreakdownModalProps> =
                               className="score-bar"
                               style={{ 
                                 width: `${factor.score}%`,
-                                backgroundColor: factor.score >= 70 ? '#10b981' : factor.score >= 50 ? '#f59e0b' : '#ef4444'
+                                backgroundColor: factor.score >= 70 ? 'var(--success)' : factor.score >= 50 ? 'var(--warning)' : 'var(--danger)'
                               }}
                             />
                           </div>

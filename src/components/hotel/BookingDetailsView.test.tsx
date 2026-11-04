@@ -323,10 +323,10 @@ describe('BookingDetailsView', () => {
     render(<BookingDetailsView confirmationNumber="CONF-12345" />);
     
     await waitFor(() => {
-      expect(screen.getByText('📄 Download Voucher')).toBeInTheDocument();
+      expect(screen.getByText('Download voucher')).toBeInTheDocument();
     });
 
-    const voucherLink = screen.getByText('📄 Download Voucher') as HTMLAnchorElement;
+    const voucherLink = screen.getByText('Download voucher') as HTMLAnchorElement;
     expect(voucherLink.href).toBe('https://example.com/voucher.pdf');
   });
 
@@ -346,7 +346,7 @@ describe('BookingDetailsView', () => {
       expect(screen.getByText('Grand Plaza Hotel')).toBeInTheDocument();
     });
 
-    expect(screen.queryByText('📄 Download Voucher')).not.toBeInTheDocument();
+    expect(screen.queryByText('Download voucher')).not.toBeInTheDocument();
   });
 
   it('calls onClose when close button is clicked', async () => {

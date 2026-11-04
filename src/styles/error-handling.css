@@ -47,17 +47,17 @@
 }
 
 .retry-button {
-  background: var(--primary-color, #2563eb);
-  color: white;
+  background: var(--primary-color, var(--accent));
+  color: #fff;
 }
 
 .retry-button:hover {
-  background: var(--primary-dark, #1d4ed8);
+  background: var(--primary-dark, var(--accent));
 }
 
 .dismiss-button {
   background: transparent;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary, var(--muted));
   padding: 6px 8px;
 }
 
@@ -67,33 +67,33 @@
 
 /* Error Categories */
 .error-network {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  color: #92400e;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning);
+  color: var(--warning-ink);
 }
 
 .error-server {
-  background: #fee2e2;
-  border: 1px solid #ef4444;
-  color: #dc2626;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  color: var(--danger);
 }
 
 .error-timeout {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  color: #92400e;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning);
+  color: var(--warning-ink);
 }
 
 .error-validation {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  color: #92400e;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning);
+  color: var(--warning-ink);
 }
 
 .error-general {
-  background: #f3f4f6;
-  border: 1px solid #9ca3af;
-  color: #374151;
+  background: var(--surface-2);
+  border: 1px solid var(--muted-2);
+  color: var(--ink-2);
 }
 
 /* Loading Spinner Component */
@@ -140,18 +140,18 @@
   width: 100%;
   height: 100%;
   border: 3px solid transparent;
-  border-top: 3px solid var(--primary-color, #2563eb);
+  border-top: 3px solid var(--primary-color, var(--accent));
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
 .spinner-ring:nth-child(2) {
-  border-top-color: var(--secondary-color, #06b6d4);
+  border-top-color: var(--secondary-color, var(--accent));
   animation-delay: -0.33s;
 }
 
 .spinner-ring:nth-child(3) {
-  border-top-color: var(--accent-color, #f59e0b);
+  border-top-color: var(--accent-color, var(--warning));
   animation-delay: -0.66s;
 }
 
@@ -161,14 +161,14 @@
 }
 
 .loading-message {
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary, var(--muted));
   font-size: 14px;
   margin: 0;
 }
 
 /* Error state for loading spinner */
 .loading-container.error-state {
-  color: var(--error-color, #dc2626);
+  color: var(--error-color, var(--danger));
 }
 
 .loading-container.error-state .error-icon {
@@ -179,12 +179,12 @@
 .loading-container.error-state .error-message {
   font-size: 14px;
   margin-bottom: 16px;
-  color: var(--text-primary, #111827);
+  color: var(--text-primary, var(--ink));
 }
 
 .loading-container.error-state .retry-button {
-  background: var(--error-color, #dc2626);
-  color: white;
+  background: var(--error-color, var(--danger));
+  color: #fff;
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
@@ -194,7 +194,7 @@
 }
 
 .loading-container.error-state .retry-button:hover {
-  background: var(--error-dark, #b91c1c);
+  background: var(--error-dark, var(--danger-ink));
 }
 
 /* Network Status Component */
@@ -211,15 +211,15 @@
 }
 
 .network-status.offline {
-  background: #fef3c7;
-  border-bottom: 1px solid #f59e0b;
-  color: #92400e;
+  background: var(--warning-soft);
+  border-bottom: 1px solid var(--warning);
+  color: var(--warning-ink);
 }
 
 .network-status.online {
-  background: #d1fae5;
-  border-bottom: 1px solid #10b981;
-  color: #065f46;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent-hover);
 }
 
 .network-indicator {
@@ -247,7 +247,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: var(--background-color, #f9fafb);
+  background: var(--background-color, var(--surface-2));
 }
 
 .error-container {
@@ -265,13 +265,13 @@
 }
 
 .error-container h1 {
-  color: var(--text-primary, #111827);
+  color: var(--text-primary, var(--ink));
   margin-bottom: 12px;
   font-size: 24px;
 }
 
 .error-container p {
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary, var(--muted));
   margin-bottom: 24px;
   line-height: 1.5;
 }
@@ -284,8 +284,8 @@
 }
 
 .error-button.primary {
-  background: var(--primary-color, #2563eb);
-  color: white;
+  background: var(--primary-color, var(--accent));
+  color: #fff;
   padding: 12px 24px;
   border: none;
   border-radius: 8px;
@@ -296,14 +296,14 @@
 }
 
 .error-button.primary:hover {
-  background: var(--primary-dark, #1d4ed8);
+  background: var(--primary-dark, var(--accent));
 }
 
 .error-button.secondary {
   background: transparent;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary, var(--muted));
   padding: 12px 24px;
-  border: 1px solid var(--border-color, #d1d5db);
+  border: 1px solid var(--border-color, var(--line));
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -312,8 +312,8 @@
 }
 
 .error-button.secondary:hover {
-  background: var(--background-hover, #f3f4f6);
-  border-color: var(--border-hover, #9ca3af);
+  background: var(--background-hover, var(--surface-2));
+  border-color: var(--border-hover, var(--muted-2));
 }
 
 .error-details {
@@ -324,17 +324,17 @@
 .error-details summary {
   cursor: pointer;
   font-weight: 500;
-  color: var(--text-secondary, #6b7280);
+  color: var(--text-secondary, var(--muted));
   margin-bottom: 8px;
 }
 
 .error-stack {
-  background: #f3f4f6;
+  background: var(--surface-2);
   padding: 12px;
   border-radius: 4px;
-  font-family: monospace;
+  font-family: inherit;
   font-size: 12px;
-  color: #374151;
+  color: var(--ink-2);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
@@ -342,16 +342,16 @@
 
 /* Form error styles */
 .error-message.submit-error {
-  background: #fee2e2;
-  border: 1px solid #ef4444;
-  color: #dc2626;
+  background: var(--danger-soft);
+  border: 1px solid var(--danger);
+  color: var(--danger);
   margin-top: 16px;
   padding: 12px;
   border-radius: 6px;
 }
 
 .submit-error .error-icon {
-  color: #dc2626;
+  color: var(--danger);
 }
 
 /* Fallback Status Banner */
@@ -428,33 +428,33 @@
 
 /* Status variants */
 .fallback-status.operational {
-  background: #d1fae5;
-  border-bottom: 1px solid #10b981;
-  color: #065f46;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--accent);
+  color: var(--accent-hover);
 }
 
 .fallback-status.offline {
-  background: #fef3c7;
-  border-bottom: 1px solid #f59e0b;
-  color: #92400e;
+  background: var(--warning-soft);
+  border-bottom: 1px solid var(--warning);
+  color: var(--warning-ink);
 }
 
 .fallback-status.api-down {
-  background: #fee2e2;
-  border-bottom: 1px solid #ef4444;
-  color: #dc2626;
+  background: var(--danger-soft);
+  border-bottom: 1px solid var(--danger);
+  color: var(--danger);
 }
 
 .fallback-status.timeout {
-  background: #fef3c7;
-  border-bottom: 1px solid #f59e0b;
-  color: #92400e;
+  background: var(--warning-soft);
+  border-bottom: 1px solid var(--warning);
+  color: var(--warning-ink);
 }
 
 .fallback-status.error {
-  background: #f3f4f6;
-  border-bottom: 1px solid #9ca3af;
-  color: #374151;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--muted-2);
+  color: var(--ink-2);
 }
 
 /* Responsive adjustments */

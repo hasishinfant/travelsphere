@@ -4,7 +4,7 @@
   max-width: 1000px;
   margin: 0 auto;
   padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: inherit;
 }
 
 .header {
@@ -16,25 +16,25 @@
   width: 80px;
   height: 80px;
   margin: 0 auto 1rem;
-  background: linear-gradient(135deg, #34a853, #1a73e8);
+  background: var(--accent);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 3rem;
-  color: white;
+  color: #fff;
   box-shadow: 0 4px 12px rgba(52, 168, 83, 0.3);
 }
 
 .header h1 {
   font-size: 2.5rem;
-  color: #202124;
+  color: var(--ink);
   margin-bottom: 0.5rem;
 }
 
 .subtitle {
   font-size: 1.1rem;
-  color: #5f6368;
+  color: var(--ink-2);
 }
 
 .content {
@@ -45,11 +45,11 @@
 
 /* Summary Card */
 .summaryCard {
-  background: linear-gradient(135deg, #1a73e8, #34a853);
-  color: white;
+  background: var(--accent);
+  color: #fff;
   border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 4px 16px rgba(26, 115, 232, 0.3);
+  box-shadow: 0 4px 16px rgba(61, 123, 247, 0.3);
 }
 
 .summaryCard h2 {
@@ -91,7 +91,7 @@
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 8px;
-  color: white;
+  color: #fff;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -114,9 +114,9 @@
 
 .timeline h2 {
   font-size: 1.5rem;
-  color: #202124;
+  color: var(--ink);
   margin-bottom: 2rem;
-  border-bottom: 2px solid #1a73e8;
+  border-bottom: 2px solid var(--accent);
   padding-bottom: 0.5rem;
 }
 
@@ -125,7 +125,7 @@
   gap: 1.5rem;
   margin-bottom: 2rem;
   padding-bottom: 2rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--line);
 }
 
 .timelineItem:last-child {
@@ -138,7 +138,7 @@
   flex-shrink: 0;
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #e8f0fe, #d2e3fc);
+  background: var(--accent-soft);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -152,7 +152,7 @@
 
 .timelineContent h3 {
   font-size: 1.3rem;
-  color: #1a73e8;
+  color: var(--accent);
   margin-bottom: 1rem;
 }
 
@@ -170,16 +170,16 @@
 }
 
 .label {
-  color: #5f6368;
+  color: var(--ink-2);
   font-weight: 500;
 }
 
 .value {
-  color: #202124;
+  color: var(--ink);
 }
 
 .voucherLink {
-  color: #1a73e8;
+  color: var(--accent);
   text-decoration: none;
   font-weight: 500;
 }
@@ -190,15 +190,15 @@
 
 /* Info Card */
 .infoCard {
-  background: #fff3cd;
-  border: 1px solid #ffc107;
+  background: var(--warning-soft);
+  border: 1px solid var(--warning);
   border-radius: 12px;
   padding: 1.5rem;
 }
 
 .infoCard h3 {
   font-size: 1.2rem;
-  color: #856404;
+  color: var(--warning-ink);
   margin-bottom: 1rem;
 }
 
@@ -212,7 +212,7 @@
   padding: 0.5rem 0;
   padding-left: 1.5rem;
   position: relative;
-  color: #856404;
+  color: var(--warning-ink);
   line-height: 1.6;
 }
 

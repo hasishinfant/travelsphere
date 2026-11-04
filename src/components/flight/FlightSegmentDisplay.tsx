@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import Icon from '@/components/shared/Icon';
 import type { FlightSegment } from '../../services/flightSearchService';
 import { formatLayoverDuration } from '../../utils/layoverUtils';
 import './FlightSegmentDisplay.css';
@@ -109,7 +110,7 @@ export const FlightSegmentDisplay: React.FC<FlightSegmentDisplayProps> = ({
                 </div>
                 {showLayoverWarnings && getLayoverWarning(segment.layoverDuration) && (
                   <div className="layover-warning">
-                    ⚠️ {getLayoverWarning(segment.layoverDuration)}
+                    <Icon name="warning" size="xs" /> {getLayoverWarning(segment.layoverDuration)}
                   </div>
                 )}
               </div>

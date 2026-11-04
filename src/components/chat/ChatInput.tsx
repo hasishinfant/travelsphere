@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Icon } from '@/components/shared';
+import { Send } from 'lucide-react';
 import './ChatInput.css';
 
 interface ChatInputProps {
@@ -33,36 +33,24 @@ const ChatInput: React.FC<ChatInputProps> = ({
   return (
     <form onSubmit={onSubmit} className="chat-input-form">
       <div className="chat-input-container">
-        <div className="chat-input-wrapper">
-          <Icon name="chat" size="sm" className="chat-input-icon" />
-          <input
-            type="text"
-            value={value}
-            onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
-            placeholder={placeholder}
-            disabled={disabled}
-            maxLength={maxLength}
-            className="chat-input-field"
-          />
-        </div>
-        <Button
-          type="submit"
-          disabled={!value.trim() || disabled}
-          variant="primary"
-          icon="send"
-          className="chat-send-button"
-          size="md"
-        >
-          Send
-        </Button>
+        <input
+          type="text"
+          value={value}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyPress}
+          placeholder={placeholder}
+          disabled={disabled}
+          maxLength={maxLength}
+          className="chat-input-field"
+          aria-label="Message"
+        />
+        {maxLength && value.length > maxLength * 0.8 && (
+          <span className="character-count">{value.length}/{maxLength}</span>
+        )}
+        <button type="submit" className="chat-send-button" disabled={!value.trim() || disabled} aria-label="Send message">
+          <Send size={18} />
+        </button>
       </div>
-      {maxLength && (
-        <div className="character-count">
-          <Icon name="info" size="xs" />
-          {value.length}/{maxLength}
-        </div>
-      )}
     </form>
   );
 };

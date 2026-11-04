@@ -1,5 +1,6 @@
 // Reusable error message component
 import React from 'react';
+import Icon from '@/components/shared/Icon';
 import { ErrorCategory } from '@/utils/errorUtils';
 
 interface ErrorMessageProps {
@@ -22,15 +23,15 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
   const getErrorIcon = () => {
     switch (category) {
       case ErrorCategory.NETWORK:
-        return '📡';
+        return <Icon name="offline" size="lg" />;
       case ErrorCategory.SERVER:
-        return '🔧';
+        return <Icon name="maintenance" size="lg" />;
       case ErrorCategory.TIMEOUT:
         return '⏱️';
       case ErrorCategory.VALIDATION:
-        return '⚠️';
+        return <Icon name="warning" size="lg" />;
       default:
-        return '❌';
+        return <Icon name="error" size="lg" />;
     }
   };
 

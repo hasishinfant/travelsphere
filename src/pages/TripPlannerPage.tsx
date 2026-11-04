@@ -1,36 +1,15 @@
-import React, { useEffect } from 'react';
-import { Sparkles, Compass } from 'lucide-react';
+import React from 'react';
 import TripPlannerForm from '../components/trip-planner/TripPlannerForm';
-import '../components/trip-planner/TripPlannerForm.css';
+import PageHeader from '@/components/ui/PageHeader';
 
-const TripPlannerPage: React.FC = () => {
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
-
-  return (
-    <div className="planner-page-wrapper">
-      <div className="planner-page-content">
-        {/* Unified TravelSphere Page Header */}
-        <div className="planner-page-header">
-          <div className="planner-header-pill">
-            <Sparkles size={14} />
-            <span>AI Trip Architect</span>
-          </div>
-          <h1 className="planner-main-heading">
-            Plan Your <span className="text-highlight">Dream Journey</span>
-          </h1>
-          <p className="planner-header-subtext">
-            Tell us where you want to go and what you love. Our intelligent trip engine crafts a bespoke, 
-            day-by-day travel plan with real-time route optimization.
-          </p>
-        </div>
-
-        {/* Interactive Trip Planner Form Card */}
-        <TripPlannerForm />
-      </div>
-    </div>
-  );
-};
+const TripPlannerPage: React.FC = () => (
+  <div className="page">
+    <PageHeader
+      title="Plan a trip"
+      subtitle="Tell us where and when. We’ll build a day-by-day itinerary around what you love."
+    />
+    <TripPlannerForm />
+  </div>
+);
 
 export default TripPlannerPage;

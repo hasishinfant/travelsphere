@@ -1,5 +1,6 @@
 // Enhanced lazy loading image component with performance optimizations
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import Icon from '@/components/shared/Icon';
 import { usePerformanceMonitor } from '@/hooks/usePerformance';
 
 interface LazyImageProps {
@@ -164,7 +165,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
       {/* Error state */}
       {hasError && (
         <div className="lazy-image-error">
-          <span>⚠️</span>
+          <Icon name="warning" size="sm" />
           <span>Failed to load image</span>
         </div>
       )}

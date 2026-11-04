@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import Icon from '@/components/shared/Icon';
 import bookingManagementService from '../../services/bookingManagementService';
 import type { BookingSummaryResult } from '../../services/bookingManagementService';
 import './BookingList.css';
@@ -107,7 +108,7 @@ const BookingList: React.FC<BookingListProps> = ({
     return (
       <div className="booking-list">
         <div className="error-state">
-          <div className="error-icon">⚠️</div>
+          <div className="error-icon"><Icon name="warning" size="xl" /></div>
           <h3>Unable to Load Bookings</h3>
           <p>{error}</p>
           <button onClick={handleRefresh} className="btn-retry">
@@ -124,7 +125,7 @@ const BookingList: React.FC<BookingListProps> = ({
       <div className="booking-list-header">
         <h2>My Hotel Bookings</h2>
         <button onClick={handleRefresh} className="btn-refresh" aria-label="Refresh bookings">
-          🔄
+          <Icon name="refresh" size="sm" />
         </button>
       </div>
 
@@ -171,7 +172,7 @@ const BookingList: React.FC<BookingListProps> = ({
 
               <div className="booking-details">
                 <div className="detail-item">
-                  <span className="detail-icon">📅</span>
+                  <span className="detail-icon"><Icon name="calendar" size="xs" /></span>
                   <div className="detail-content">
                     <span className="detail-label">Check-in</span>
                     <span className="detail-value">
@@ -181,7 +182,7 @@ const BookingList: React.FC<BookingListProps> = ({
                 </div>
 
                 <div className="detail-item">
-                  <span className="detail-icon">📅</span>
+                  <span className="detail-icon"><Icon name="calendar" size="xs" /></span>
                   <div className="detail-content">
                     <span className="detail-label">Check-out</span>
                     <span className="detail-value">
@@ -191,7 +192,7 @@ const BookingList: React.FC<BookingListProps> = ({
                 </div>
 
                 <div className="detail-item">
-                  <span className="detail-icon">💰</span>
+                  <span className="detail-icon"><Icon name="wallet" size="xs" /></span>
                   <div className="detail-content">
                     <span className="detail-label">Total</span>
                     <span className="detail-value">
@@ -222,7 +223,7 @@ const BookingList: React.FC<BookingListProps> = ({
         </div>
       ) : (
         <div className="empty-state">
-          <div className="empty-icon">🏨</div>
+          <div className="empty-icon"><Icon name="hotel" size="xl" /></div>
           <h3>No Bookings Found</h3>
           <p>You don't have any hotel bookings in the selected date range.</p>
           <p className="empty-hint">Try adjusting the date range or make a new booking.</p>

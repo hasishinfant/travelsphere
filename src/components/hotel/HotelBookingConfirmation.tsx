@@ -9,6 +9,7 @@
  */
 
 import React, { useState } from 'react';
+import Icon from '@/components/shared/Icon';
 import { HotelBookingConfirmation as BookingConfirmation } from '../../services/hotelBookingService';
 import './HotelBookingConfirmation.css';
 
@@ -215,7 +216,7 @@ export const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> =
             className="btn-email"
             disabled={sendingEmail || emailSent}
           >
-            <span className="btn-icon">✉</span>
+            <span className="btn-icon"><Icon name="mail" size="sm" /></span>
             {sendingEmail ? 'Sending...' : emailSent ? 'Email Sent!' : 'Email Voucher'}
           </button>
         </div>
@@ -223,7 +224,7 @@ export const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> =
 
       {/* Itinerary Integration */}
       <div className="itinerary-integration">
-        <div className="integration-icon">📅</div>
+        <div className="integration-icon"><Icon name="calendar" size="lg" /></div>
         <div className="integration-content">
           <h4>Added to Your Itinerary</h4>
           <p>

@@ -1,5 +1,6 @@
 // Comprehensive loading component with multiple states and animations
 import React, { useEffect, useState } from 'react';
+import Icon from '@/components/shared/Icon';
 import LoadingSpinner from './LoadingSpinner';
 
 interface LoadingStage {
@@ -101,7 +102,7 @@ const ComprehensiveLoader: React.FC<ComprehensiveLoaderProps> = ({
     return (
       <div className={`${containerClasses} error-state`}>
         <div className="error-content">
-          <div className="error-icon">⚠️</div>
+          <div className="error-icon"><Icon name="warning" size="xl" /></div>
           <h3>Something went wrong</h3>
           <p className="error-message">{error}</p>
           {onRetry && (
@@ -132,7 +133,7 @@ const ComprehensiveLoader: React.FC<ComprehensiveLoaderProps> = ({
           {/* Travel-themed icon overlay */}
           {theme === 'travel' && (
             <div className="travel-icon-overlay">
-              <span className="travel-icon">✈️</span>
+              <span className="travel-icon"><Icon name="plane" size="lg" /></span>
             </div>
           )}
         </div>
@@ -191,9 +192,9 @@ const ComprehensiveLoader: React.FC<ComprehensiveLoaderProps> = ({
       {/* Background animation */}
       {theme === 'travel' && (
         <div className="background-animation">
-          <div className="floating-icon">🌍</div>
-          <div className="floating-icon">🗺️</div>
-          <div className="floating-icon">🧳</div>
+          <div className="floating-icon"><Icon name="globe" size="lg" /></div>
+          <div className="floating-icon"><Icon name="map" size="lg" /></div>
+          <div className="floating-icon"><Icon name="luggage" size="lg" /></div>
         </div>
       )}
     </div>
@@ -206,7 +207,7 @@ export default ComprehensiveLoader;
 export const LOADING_STAGES = {
   ITINERARY_GENERATION: [
     { name: 'validation', message: 'Validating your preferences...', duration: 800 },
-    { name: 'connection', message: 'Connecting to AI travel planner...', duration: 600 },
+    { name: 'connection', message: 'Connecting to the itinerary service...', duration: 600 },
     { name: 'analysis', message: 'Analyzing destinations and activities...', duration: 1000 },
     { name: 'generation', message: 'Creating your personalized itinerary...', duration: 1200 },
     { name: 'finalization', message: 'Finalizing recommendations...', duration: 500 },

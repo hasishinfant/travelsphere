@@ -51,21 +51,21 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 2rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--line);
 }
 
 .confidence-modal .modal-header h2 {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 .close-button {
   background: none;
   border: none;
   font-size: 2rem;
-  color: #6b7280;
+  color: var(--muted);
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -78,8 +78,8 @@
 }
 
 .close-button:hover {
-  background-color: #f3f4f6;
-  color: #1f2937;
+  background-color: var(--surface-2);
+  color: var(--ink);
 }
 
 .modal-body {
@@ -91,7 +91,7 @@
   text-align: center;
   margin-bottom: 2rem;
   padding-bottom: 2rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--line);
 }
 
 .score-circle {
@@ -104,13 +104,13 @@
   align-items: center;
   justify-content: center;
   margin: 0 auto 1rem;
-  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  background: var(--surface-2);
 }
 
 .score-value {
   font-size: 3rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--ink);
   line-height: 1;
 }
 
@@ -124,7 +124,7 @@
 
 .score-explanation {
   font-size: 1rem;
-  color: #4b5563;
+  color: var(--ink-2);
   line-height: 1.6;
   max-width: 600px;
   margin: 0 auto;
@@ -138,7 +138,7 @@
 .factor-breakdown h3 {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink);
   margin-bottom: 1rem;
 }
 
@@ -153,27 +153,27 @@
 }
 
 .breakdown-table thead {
-  background-color: #f9fafb;
+  background-color: var(--surface-2);
 }
 
 .breakdown-table th {
   padding: 0.75rem 1rem;
   text-align: left;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--muted);
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--line);
 }
 
 .breakdown-table tbody tr {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--line);
   transition: background-color 0.15s;
 }
 
 .breakdown-table tbody tr:hover {
-  background-color: #f9fafb;
+  background-color: var(--surface-2);
 }
 
 .breakdown-table td {
@@ -190,12 +190,12 @@
 
 .factor-name {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 .factor-explanation {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--muted);
   line-height: 1.4;
 }
 
@@ -209,7 +209,7 @@
 .score-bar-container {
   flex: 1;
   height: 8px;
-  background-color: #e5e7eb;
+  background-color: var(--line);
   border-radius: 4px;
   overflow: hidden;
   min-width: 80px;
@@ -223,7 +223,7 @@
 
 .score-number {
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink);
   min-width: 32px;
   text-align: right;
 }
@@ -231,32 +231,32 @@
 /* Factor Weight */
 .factor-weight {
   font-weight: 600;
-  color: #6b7280;
+  color: var(--muted);
   text-align: center;
 }
 
 /* Factor Contribution */
 .factor-contribution {
   font-weight: 700;
-  color: #1f2937;
+  color: var(--ink);
   text-align: center;
 }
 
 /* Modal Footer */
 .modal-footer {
   padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--line);
 }
 
 .info-text {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--muted);
   line-height: 1.6;
   margin: 0;
 }
 
 .info-text strong {
-  color: #1f2937;
+  color: var(--ink);
   font-weight: 600;
 }
 

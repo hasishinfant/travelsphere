@@ -8,6 +8,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/tests/setup.ts'],
+    // The API server has its own suite (server/vitest.config.ts) that needs a database
+    exclude: ['**/node_modules/**', '**/dist/**', 'server/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

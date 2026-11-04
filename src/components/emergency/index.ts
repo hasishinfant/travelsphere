@@ -2,6 +2,7 @@
 export { default as EmergencyDashboard } from './EmergencyDashboard';
 export { default as EmergencyButton } from './EmergencyButton';
 export { default as ConfirmationModal } from './ConfirmationModal';
+export { SOSButton } from './SOSButton';
 export { EmergencyLandingView } from './EmergencyLandingView';
 export { HotelComplaintView } from './HotelComplaintView';
 export { MedicalEmergencyView } from './MedicalEmergencyView';

@@ -1,3 +1,4 @@
+import { DESTINATIONS, mapEmbedUrl } from '@/data/destinations';
 // Application constants
 import type { Interest, BudgetLevel } from '@/types/trip';
 import type { EmergencyType } from '@/types/api';
@@ -117,62 +118,15 @@ export const STORAGE_KEYS = {
 } as const;
 
 // Default destinations for demo
-export const SAMPLE_DESTINATIONS = [
-  {
-    id: 'paris',
-    name: 'Paris, France',
-    description: 'The City of Light with iconic landmarks, world-class museums, and romantic atmosphere',
-    imageUrl: 'https://images.unsplash.com/photo-1502602898536-47ad22581b52?w=800',
-    vrPreviewUrl: 'https://example.com/vr/paris',
-    popularityScore: 95,
-    category: ['culture', 'romance', 'food', 'art'],
-  },
-  {
-    id: 'tokyo',
-    name: 'Tokyo, Japan',
-    description: 'Modern metropolis blending traditional culture with cutting-edge technology',
-    imageUrl: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800',
-    vrPreviewUrl: 'https://example.com/vr/tokyo',
-    popularityScore: 92,
-    category: ['culture', 'food', 'technology', 'urban'],
-  },
-  {
-    id: 'bali',
-    name: 'Bali, Indonesia',
-    description: 'Tropical paradise with beautiful beaches, lush rice terraces, and rich cultural heritage',
-    imageUrl: 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?w=800',
-    vrPreviewUrl: 'https://example.com/vr/bali',
-    popularityScore: 88,
-    category: ['nature', 'relaxation', 'culture', 'beach'],
-  },
-  {
-    id: 'new-york',
-    name: 'New York City, USA',
-    description: 'The city that never sleeps, featuring iconic skylines, Broadway shows, and diverse neighborhoods',
-    imageUrl: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800',
-    vrPreviewUrl: 'https://example.com/vr/new-york',
-    popularityScore: 94,
-    category: ['urban', 'culture', 'entertainment', 'food'],
-  },
-  {
-    id: 'santorini',
-    name: 'Santorini, Greece',
-    description: 'Stunning Greek island with white-washed buildings, blue domes, and breathtaking sunsets',
-    imageUrl: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800',
-    vrPreviewUrl: 'https://example.com/vr/santorini',
-    popularityScore: 90,
-    category: ['romance', 'relaxation', 'culture', 'beach'],
-  },
-  {
-    id: 'iceland',
-    name: 'Reykjavik, Iceland',
-    description: 'Land of fire and ice with dramatic landscapes, geysers, and the Northern Lights',
-    imageUrl: 'https://images.unsplash.com/photo-1539066834-3c0b2b2b3c3c?w=800',
-    vrPreviewUrl: 'https://example.com/vr/iceland',
-    popularityScore: 85,
-    category: ['nature', 'adventure', 'unique'],
-  },
-];
+export const SAMPLE_DESTINATIONS = DESTINATIONS.map(d => ({
+  id: d.id,
+  name: d.name,
+  description: d.description,
+  imageUrl: d.imageUrl,
+  vrPreviewUrl: mapEmbedUrl(d),
+  popularityScore: d.popularityScore,
+  category: d.category,
+}));
 
 // Quick chat suggestions
 export const QUICK_CHAT_SUGGESTIONS = [

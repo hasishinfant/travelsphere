@@ -13,16 +13,16 @@
   text-align: center;
   margin-bottom: 2rem;
   padding: 2rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: var(--accent);
   border-radius: 12px;
-  color: white;
+  color: #fff;
 }
 
 .success-icon {
   width: 80px;
   height: 80px;
   background: white;
-  color: #10b981;
+  color: var(--accent);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -63,17 +63,17 @@
 }
 
 .confirmation-number-card .label {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.875rem;
   font-weight: 500;
   margin-bottom: 0.5rem;
 }
 
 .confirmation-number-card .number {
-  color: #1f2937;
+  color: var(--ink);
   font-size: 1.25rem;
   font-weight: 700;
-  font-family: monospace;
+  font-family: inherit;
 }
 
 /* Confirmation Sections */
@@ -86,36 +86,36 @@
 }
 
 .confirmation-section h3 {
-  color: #1f2937;
+  color: var(--ink);
   font-size: 1.25rem;
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--line);
 }
 
 /* Hotel Info Card */
 .hotel-info-card {
   padding: 1rem;
-  background: #f9fafb;
+  background: var(--surface-2);
   border-radius: 8px;
 }
 
 .hotel-name {
-  color: #1f2937;
+  color: var(--ink);
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
 
 .hotel-rating {
-  color: #f59e0b;
+  color: var(--warning);
   font-size: 1rem;
   margin-bottom: 0.5rem;
 }
 
 .hotel-address,
 .hotel-location {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
 }
@@ -131,12 +131,12 @@
   display: flex;
   flex-direction: column;
   padding: 1rem;
-  background: #f9fafb;
+  background: var(--surface-2);
   border-radius: 8px;
 }
 
 .detail-label {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.75rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -144,7 +144,7 @@
 }
 
 .detail-value {
-  color: #1f2937;
+  color: var(--ink);
   font-size: 1rem;
   font-weight: 600;
 }
@@ -152,7 +152,7 @@
 /* Guest Room Card */
 .guest-room-card {
   padding: 1rem;
-  background: #f9fafb;
+  background: var(--surface-2);
   border-radius: 8px;
   margin-bottom: 1rem;
 }
@@ -162,7 +162,7 @@
 }
 
 .guest-room-card h4 {
-  color: #374151;
+  color: var(--ink-2);
   font-size: 1rem;
   margin-bottom: 0.75rem;
 }
@@ -176,7 +176,7 @@
 .guest-item {
   display: flex;
   gap: 0.5rem;
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.875rem;
 }
 
@@ -186,13 +186,13 @@
 }
 
 .guest-name {
-  color: #1f2937;
+  color: var(--ink);
 }
 
 /* Payment Summary */
 .payment-summary-card {
   padding: 1rem;
-  background: #f9fafb;
+  background: var(--surface-2);
   border-radius: 8px;
 }
 
@@ -201,7 +201,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--line);
 }
 
 .payment-row:last-child {
@@ -209,13 +209,13 @@
 }
 
 .payment-label {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.875rem;
   font-weight: 500;
 }
 
 .payment-value {
-  color: #1f2937;
+  color: var(--ink);
   font-size: 1rem;
   font-weight: 600;
 }
@@ -228,8 +228,8 @@
 }
 
 .status-badge.confirmed {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--accent-soft);
+  color: var(--accent-hover);
 }
 
 /* Voucher Actions */
@@ -242,13 +242,13 @@
 }
 
 .voucher-actions h3 {
-  color: #1f2937;
+  color: var(--ink);
   font-size: 1.25rem;
   margin-bottom: 0.5rem;
 }
 
 .voucher-description {
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.875rem;
   margin-bottom: 1rem;
 }
@@ -276,22 +276,22 @@
 }
 
 .btn-download {
-  background: #3b82f6;
-  color: white;
+  background: var(--accent);
+  color: #fff;
 }
 
 .btn-download:hover {
-  background: #2563eb;
+  background: var(--accent);
 }
 
 .btn-email {
   background: white;
-  color: #3b82f6;
-  border: 2px solid #3b82f6;
+  color: var(--accent);
+  border: 2px solid var(--accent);
 }
 
 .btn-email:hover:not(:disabled) {
-  background: #eff6ff;
+  background: var(--accent-soft);
 }
 
 .btn-email:disabled {
@@ -305,7 +305,7 @@
 
 /* Itinerary Integration */
 .itinerary-integration {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  background: var(--accent-soft);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
@@ -324,21 +324,21 @@
 }
 
 .integration-content h4 {
-  color: #1e40af;
+  color: var(--accent-hover);
   font-size: 1.125rem;
   margin-bottom: 0.5rem;
 }
 
 .integration-content p {
-  color: #1e3a8a;
+  color: var(--accent-hover);
   font-size: 0.875rem;
   line-height: 1.5;
 }
 
 .btn-view-itinerary {
   padding: 0.75rem 1.5rem;
-  background: #3b82f6;
-  color: white;
+  background: var(--accent);
+  color: #fff;
   border: none;
   border-radius: 8px;
   font-weight: 500;
@@ -349,7 +349,7 @@
 }
 
 .btn-view-itinerary:hover {
-  background: #2563eb;
+  background: var(--accent);
 }
 
 /* Next Steps */
@@ -362,7 +362,7 @@
 }
 
 .next-steps h3 {
-  color: #1f2937;
+  color: var(--ink);
   font-size: 1.25rem;
   margin-bottom: 1rem;
 }
@@ -377,7 +377,7 @@
   padding: 0.75rem 0;
   padding-left: 2rem;
   position: relative;
-  color: #6b7280;
+  color: var(--muted);
   font-size: 0.875rem;
   line-height: 1.5;
 }
@@ -386,7 +386,7 @@
   content: '✓';
   position: absolute;
   left: 0;
-  color: #10b981;
+  color: var(--accent);
   font-weight: bold;
   font-size: 1rem;
 }
@@ -401,8 +401,8 @@
 .btn-new-booking {
   padding: 0.75rem 2rem;
   background: white;
-  color: #3b82f6;
-  border: 2px solid #3b82f6;
+  color: var(--accent);
+  border: 2px solid var(--accent);
   border-radius: 8px;
   font-weight: 500;
   font-size: 1rem;
@@ -412,7 +412,7 @@
 }
 
 .btn-new-booking:hover {
-  background: #eff6ff;
+  background: var(--accent-soft);
 }
 
 /* Responsive Design */

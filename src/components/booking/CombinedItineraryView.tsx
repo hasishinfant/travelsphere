@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import Icon from '@/components/shared/Icon';
 import type { CombinedBookingConfirmation } from '../../services/combinedBookingService';
 import styles from './CombinedItineraryView.module.css';
 
@@ -58,10 +59,10 @@ export const CombinedItineraryView: React.FC<CombinedItineraryViewProps> = ({
 
           <div className={styles.actions}>
             <button onClick={onDownload} className={styles.actionButton}>
-              📥 Download Itinerary
+              <Icon name="download" size="sm" /> Download itinerary
             </button>
             <button onClick={onEmail} className={styles.actionButton}>
-              📧 Email Itinerary
+              <Icon name="mail" size="sm" /> Email itinerary
             </button>
           </div>
         </div>
@@ -73,7 +74,7 @@ export const CombinedItineraryView: React.FC<CombinedItineraryViewProps> = ({
           {/* Flight Details */}
           {flightBooking && (
             <div className={styles.timelineItem}>
-              <div className={styles.timelineIcon}>✈️</div>
+              <div className={styles.timelineIcon}><Icon name="plane" size="md" /></div>
               <div className={styles.timelineContent}>
                 <h3>Flight</h3>
                 
@@ -139,7 +140,7 @@ export const CombinedItineraryView: React.FC<CombinedItineraryViewProps> = ({
           {/* Hotel Details */}
           {hotelBooking && (
             <div className={styles.timelineItem}>
-              <div className={styles.timelineIcon}>🏨</div>
+              <div className={styles.timelineIcon}><Icon name="hotel" size="md" /></div>
               <div className={styles.timelineContent}>
                 <h3>Hotel</h3>
                 
@@ -167,7 +168,7 @@ export const CombinedItineraryView: React.FC<CombinedItineraryViewProps> = ({
                   <div className={styles.detailRow}>
                     <span className={styles.label}>Star Rating:</span>
                     {/* @ts-expect-error - API uses PascalCase, code uses camelCase */}
-                    <span className={styles.value}>{'⭐'.repeat(hotelBooking.hotel.starRating)}</span>
+                    <span className={styles.value}>{'★'.repeat(hotelBooking.hotel.starRating)}</span>
                   </div>
                   <div className={styles.detailRow}>
                     <span className={styles.label}>Check-in:</span>

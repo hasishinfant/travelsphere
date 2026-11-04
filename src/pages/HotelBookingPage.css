@@ -1,68 +1,19 @@
-.hotel-booking-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 1rem;
+.hotel-search-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--space-8);
+  align-items: start;
 }
+.hotel-search-layout .hotel-search-form { max-width: none; }
+.hotel-search-side { position: sticky; top: var(--space-8); }
+.hotel-side-card { padding: 12px; }
+.hotel-perks { list-style: none; display: grid; gap: var(--space-4); padding: var(--space-5) var(--space-3) var(--space-3); }
+.hotel-perks li { display: flex; gap: var(--space-3); align-items: flex-start; }
+.hotel-perks svg { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+.hotel-perks p { color: var(--ink); font-weight: var(--fw-medium); }
+.hotel-perks span { color: var(--muted); font-size: var(--fs-sm); }
 
-.hotel-booking-page .page-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.hotel-booking-page .page-header h1 {
-  font-size: 2rem;
-  color: #1a73e8;
-  margin-bottom: 0.5rem;
-}
-
-.hotel-booking-page .page-header p {
-  font-size: 1rem;
-  color: #5f6368;
-}
-
-/* Mobile responsive */
-@media (max-width: 768px) {
-  .hotel-booking-page {
-    padding: 1rem 0.5rem;
-  }
-
-  .hotel-booking-page .page-header h1 {
-    font-size: 1.5rem;
-  }
-
-  .hotel-booking-page .page-header p {
-    font-size: 0.875rem;
-  }
-}
-
-/* Small mobile */
-@media (max-width: 320px) {
-  .hotel-booking-page {
-    padding: 0.75rem 0.25rem;
-  }
-
-  .hotel-booking-page .page-header h1 {
-    font-size: 1.25rem;
-  }
-}
-
-.hotel-booking-page .back-button {
-  background-color: #f5f7fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  color: #1a73e8;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  min-height: 44px; /* Touch-friendly */
-}
-
-.hotel-booking-page .back-button:hover {
-  background-color: #e8f0fe;
-  border-color: #1a73e8;
-}
-
-.hotel-booking-page .back-button:active {
-  transform: scale(0.98);
+@media (max-width: 1100px) {
+  .hotel-search-layout { grid-template-columns: 1fr; }
+  .hotel-search-side { display: none; }
 }

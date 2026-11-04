@@ -11,6 +11,7 @@
  */
 
 import { getTboHotelApiClient } from './api/tboHotelApiClient';
+import { hotelGallery } from '@/data/destinations';
 import type {
   HotelDetailsRequest,
   HotelDetailsResponse,
@@ -285,12 +286,7 @@ export class HotelDetailsService {
         checkOutTime: '12:00',
         cancellationPolicy: 'Free cancellation up to 24 hours before check-in. Cancellations made within 24 hours of check-in will incur a one-night charge.',
       },
-      images: [
-        `https://via.placeholder.com/800x600?text=Hotel+Exterior`,
-        `https://via.placeholder.com/800x600?text=Hotel+Room`,
-        `https://via.placeholder.com/800x600?text=Hotel+Pool`,
-        `https://via.placeholder.com/800x600?text=Hotel+Restaurant`,
-      ],
+      images: hotelGallery(codeNum),
       address: `${100 + codeNum} Main Street`,
       pinCode: `${10000 + codeNum}`,
       cityName: 'Mock City',

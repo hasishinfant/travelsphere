@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Sparkles, RotateCcw, AlertCircle, Compass } from 'lucide-react';
+import { RotateCcw, AlertCircle, Minus, Plus, CalendarDays, Wallet, Users, MapPin } from 'lucide-react';
+import Photo from '../ui/Photo';
+import { getDestination } from '@/data/destinations';
+import { saveJourney } from '@/services/journeySync';
 import DestinationDropdown from './DestinationDropdown';
 import BudgetSelector from './BudgetSelector';
 import DateRangePicker from './DateRangePicker';
@@ -32,7 +35,7 @@ interface FormState {
 
 const LOADING_STAGES = [
   'Validating your preferences...',
-  'Connecting to our AI travel planner...',
+  'Connecting to the itinerary service...',
   'Analyzing destinations and activities...',
   'Creating your personalized itinerary...',
   'Finalizing recommendations...'
@@ -41,6 +44,7 @@ const LOADING_STAGES = [
 const TripPlannerForm: React.FC = () => {
   const navigate = useNavigate();
   const [errors, setErrors] = useState<FormErrors>({});
+  const [travelers, setTravelers] = useState(2);
   const { measureAsync } = useAsyncPerformance();
   
   const {
@@ -181,12 +185,31 @@ const TripPlannerForm: React.FC = () => {
       if (response.success && response.data) {
         // Store both form data and generated itinerary for the next page
         sessionStorage.setItem('tripPlannerData', JSON.stringify(completeFormData));
-        sessionStorage.setItem('generatedItinerary', JSON.stringify(response.data));
+        // Keep the planner context with the itinerary so trip cards can show destination, dates and travellers
+        const stored = {
+          ...response.data,
+          destination: completeFormData.destination,
+          startDate: completeFormData.startDate,
+          endDate: completeFormData.endDate,
+          budget: completeFormData.budget,
+          interests: completeFormData.interests,
+          travelers,
+        };
+        // Persist to the account when signed in; the local copy is kept either way (offline cache)
+        let journeyId: string | null = null;
+        try {
+          journeyId = await saveJourney(stored);
+        } catch (err) {
+          console.warn('Journey not saved to server; kept on this device', err);
+        }
+        const local = journeyId ? { ...stored, journeyId } : stored;
+        sessionStorage.setItem('generatedItinerary', JSON.stringify(local));
+        localStorage.setItem('currentTrip', JSON.stringify(local));
         
         finishLoading();
         
         // Navigate to itinerary page with the trip ID
-        navigate(`/itinerary/${response.data.tripId}`);
+        navigate(`/itinerary/${journeyId || response.data.tripId}`);
       } else {
         throw new Error('Failed to generate itinerary');
       }
@@ -208,6 +231,7 @@ const TripPlannerForm: React.FC = () => {
       endDate: null,
       interests: []
     });
+    setTravelers(2);
     setErrors({});
   };
 
@@ -215,6 +239,22 @@ const TripPlannerForm: React.FC = () => {
     setLoadingError(null);
     handleSubmit(new Event('submit') as any);
   };
+
+  const dest = getDestination(formData.destination);
+  const nights = formData.startDate && formData.endDate
+    ? Math.max(0, Math.round((formData.endDate.getTime() - formData.startDate.getTime()) / 86400000))
+    : 0;
+  const estimate = dest && formData.budget && nights
+    ? dest.averageCost[formData.budget as BudgetLevel] * nights * travelers
+    : null;
+  const fmt = (d: Date | null) => (d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—');
+
+  const steps = [
+    { n: 1, done: !!formData.destination },
+    { n: 2, done: !!(formData.startDate && formData.endDate) },
+    { n: 3, done: !!formData.budget },
+    { n: 4, done: formData.interests.length > 0 },
+  ];
 
   return (
     <div className="trip-planner-form">
@@ -232,91 +272,135 @@ const TripPlannerForm: React.FC = () => {
           theme="travel"
         />
       )}
-      
-      {errors.submit && (
-        <div className="planner-submit-error">
-          <AlertCircle size={18} />
-          <span>{errors.submit}</span>
+
+      <form onSubmit={handleSubmit} className="planner-layout" noValidate>
+        <div className="surface planner-card form-container">
+          {errors.submit && (
+            <div className="notice notice-danger" role="alert">
+              <AlertCircle size={18} />
+              <span>{errors.submit}</span>
+            </div>
+          )}
+
+          <section className="planner-step" aria-labelledby="step-1">
+            <h2 className="planner-step-title" id="step-1">
+              <span className={`planner-step-num ${steps[0].done ? 'is-done' : ''}`}>1</span> Destination
+            </h2>
+            <DestinationDropdown
+              value={formData.destination}
+              onChange={(value) => setFormData(prev => ({ ...prev, destination: value }))}
+              error={errors.destination}
+            />
+            <div className="quick-destinations-row">
+              <span className="quick-label">Popular</span>
+              {['paris', 'kyoto', 'bali', 'santorini', 'new-york', 'iceland'].map(destId => {
+                const d = SAMPLE_DESTINATIONS.find(x => x.id === destId);
+                if (!d) return null;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className={`chip ${formData.destination === d.id ? 'is-active' : ''}`}
+                    onClick={() => setFormData(prev => ({ ...prev, destination: d.id }))}
+                  >
+                    {d.name.split(',')[0]}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="planner-step" aria-labelledby="step-2">
+            <h2 className="planner-step-title" id="step-2">
+              <span className={`planner-step-num ${steps[1].done ? 'is-done' : ''}`}>2</span> Dates &amp; travellers
+            </h2>
+            <DateRangePicker
+              startDate={formData.startDate}
+              endDate={formData.endDate}
+              onStartDateChange={(date) => setFormData(prev => ({ ...prev, startDate: date }))}
+              onEndDateChange={(date) => setFormData(prev => ({ ...prev, endDate: date }))}
+              startDateError={errors.startDate}
+              endDateError={errors.endDate}
+            />
+            <div className="travellers-row">
+              <span className="travellers-label"><Users size={16} /> Travellers</span>
+              <div className="stepper" role="group" aria-label="Number of travellers">
+                <button type="button" className="icon-btn is-outlined" onClick={() => setTravelers(t => Math.max(1, t - 1))} disabled={travelers <= 1} aria-label="Fewer travellers"><Minus size={16} /></button>
+                <span className="stepper-value" aria-live="polite">{travelers}</span>
+                <button type="button" className="icon-btn is-outlined" onClick={() => setTravelers(t => Math.min(9, t + 1))} disabled={travelers >= 9} aria-label="More travellers"><Plus size={16} /></button>
+              </div>
+            </div>
+          </section>
+
+          <section className="planner-step" aria-labelledby="step-3">
+            <h2 className="planner-step-title" id="step-3">
+              <span className={`planner-step-num ${steps[2].done ? 'is-done' : ''}`}>3</span> Budget
+            </h2>
+            <BudgetSelector
+              value={formData.budget}
+              onChange={(value) => setFormData(prev => ({ ...prev, budget: value }))}
+              error={errors.budget}
+            />
+          </section>
+
+          <section className="planner-step" aria-labelledby="step-4">
+            <h2 className="planner-step-title" id="step-4">
+              <span className={`planner-step-num ${steps[3].done ? 'is-done' : ''}`}>4</span> Interests
+              <span className="planner-step-hint">Pick any</span>
+            </h2>
+            <InterestSelector
+              value={formData.interests}
+              onChange={(interests) => setFormData(prev => ({ ...prev, interests }))}
+              error={errors.interests}
+            />
+          </section>
         </div>
-      )}
 
-      <form onSubmit={handleSubmit} className="form-container">
-        <div>
-          <DestinationDropdown
-            value={formData.destination}
-            onChange={(value) => setFormData(prev => ({ ...prev, destination: value }))}
-            error={errors.destination}
-          />
-          {/* Quick-Pick Popular Destinations */}
-          <div className="quick-destinations-row">
-            <span className="quick-label">Trending:</span>
-            {['santorini', 'tokyo', 'bali', 'paris', 'new-york'].map(destId => {
-              const dest = SAMPLE_DESTINATIONS.find(d => d.id === destId);
-              if (!dest) return null;
-              const isSelected = formData.destination === dest.id;
-              return (
-                <button
-                  key={dest.id}
-                  type="button"
-                  className={`quick-dest-chip ${isSelected ? 'active' : ''}`}
-                  onClick={() => setFormData(prev => ({ ...prev, destination: dest.id }))}
-                >
-                  {dest.name.split(',')[0]}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <BudgetSelector
-          value={formData.budget}
-          onChange={(value) => setFormData(prev => ({ ...prev, budget: value }))}
-          error={errors.budget}
-        />
-
-        <DateRangePicker
-          startDate={formData.startDate}
-          endDate={formData.endDate}
-          onStartDateChange={(date) => setFormData(prev => ({ ...prev, startDate: date }))}
-          onEndDateChange={(date) => setFormData(prev => ({ ...prev, endDate: date }))}
-          startDateError={errors.startDate}
-          endDateError={errors.endDate}
-        />
-
-        <InterestSelector
-          value={formData.interests}
-          onChange={(interests) => setFormData(prev => ({ ...prev, interests }))}
-          error={errors.interests}
-        />
-
-        <div className="form-actions">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="btn-pill-reset"
-            disabled={isLoading}
-          >
-            <RotateCcw size={16} />
-            <span>Reset Form</span>
-          </button>
-          <button
-            type="submit"
-            className="btn-pill-submit"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <span className="loading-spinner-small"></span>
-                <span>Generating Itinerary...</span>
-              </>
+        <aside className="planner-summary" aria-label="Trip summary">
+          <div className="surface planner-summary-card">
+            {dest ? (
+              <Photo
+                key={dest.id}
+                src={dest.imageUrl}
+                alt={dest.imageCaption ? `${dest.imageCaption}, ${dest.city}` : dest.name}
+                width={340}
+                ratio="4 / 3"
+                caption={dest.imageCaption}
+                priority
+              />
             ) : (
-              <>
-                <Sparkles size={16} />
-                <span>Create My Itinerary</span>
-              </>
+              <div className="planner-summary-empty">
+                <MapPin size={22} strokeWidth={1.6} />
+                <span>Choose a destination to preview it here</span>
+              </div>
             )}
-          </button>
-        </div>
+            <div className="planner-summary-body">
+              <p className="eyebrow">Your trip</p>
+              <h3 className="planner-summary-title">{dest ? dest.city : 'Somewhere new'}</h3>
+              {dest && <p className="text-muted">{dest.country}</p>}
+
+              <dl className="planner-summary-list">
+                <div><dt><CalendarDays size={16} /> Dates</dt><dd>{formData.startDate ? `${fmt(formData.startDate)} – ${fmt(formData.endDate)}` : '—'}</dd></div>
+                <div><dt><Users size={16} /> Travellers</dt><dd>{travelers}</dd></div>
+                <div><dt><Wallet size={16} /> Estimate</dt><dd>{estimate ? `≈ $${estimate.toLocaleString()}` : '—'}</dd></div>
+              </dl>
+              {estimate !== null && (
+                <p className="planner-summary-note">Daily spend × {nights} nights × {travelers} travellers, excluding flights.</p>
+              )}
+
+              <div className="planner-progress" aria-label={`${steps.filter(st => st.done).length} of 4 steps complete`}>
+                {steps.map(st => <span key={st.n} className={st.done ? 'is-done' : ''} />)}
+              </div>
+
+              <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={isLoading}>
+                {isLoading ? <><span className="spinner" /> Building itinerary…</> : <>Create my itinerary</>}
+              </button>
+              <button type="button" onClick={handleReset} className="btn btn-ghost btn-block" disabled={isLoading}>
+                <RotateCcw size={16} /> Reset
+              </button>
+            </div>
+          </div>
+        </aside>
       </form>
     </div>
   );

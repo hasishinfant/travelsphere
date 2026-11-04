@@ -107,7 +107,7 @@ describe('HotelSearchResults', () => {
     expect(screen.getByText('Test Hotel')).toBeInTheDocument();
     expect(screen.getByText(/123 Test St, Test City/)).toBeInTheDocument();
     expect(screen.getByText('Deluxe Room')).toBeInTheDocument();
-    expect(screen.getByText('🍽️ Breakfast Included')).toBeInTheDocument();
+    expect(screen.getByText('Breakfast Included', { selector: '.meal-type' })).toBeInTheDocument();
     expect(screen.getByText('105.00')).toBeInTheDocument();
   });
 

@@ -1,5 +1,6 @@
 // Confirmation modal component
 import React from 'react';
+import { CheckCircle2 } from 'lucide-react';
 
 export interface ConfirmationModalProps {
   isVisible: boolean;
@@ -24,7 +25,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   return (
     <div className="confirmation-modal">
       <div className="confirmation-content">
-        <div className="confirmation-icon">✅</div>
+        <div className="confirmation-icon"><CheckCircle2 size={40} strokeWidth={1.5} /></div>
         <h2>Request Submitted</h2>
         <p>{message}</p>
         

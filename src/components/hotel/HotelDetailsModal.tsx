@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import Icon from '@/components/shared/Icon';
 import { getHotelDetailsService } from '../../services/hotelDetailsService';
 import type { HotelResult } from '../../services/hotelSearchService';
 import type { HotelDetail } from '../../types/tboHotelApi';
@@ -134,15 +135,15 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
               <h2>{hotel.hotelName}</h2>
               <div className="star-rating">
                 {Array.from({ length: hotel.starRating }, (_, i) => (
-                  <span key={i} className="star">⭐</span>
+                  <span key={i} className="star">★</span>
                 ))}
               </div>
             </div>
             <p className="hotel-address">
-              📍 {hotelDetails?.Address || hotel.address}, {hotel.cityName}, {hotel.countryName}
+              <Icon name="location" size="xs" /> {hotelDetails?.Address || hotel.address}, {hotel.cityName}, {hotel.countryName}
             </p>
             {hotelDetails?.PhoneNumber && (
-              <p className="hotel-contact">📞 {hotelDetails.PhoneNumber}</p>
+              <p className="hotel-contact"><Icon name="phone" size="xs" /> {hotelDetails.PhoneNumber}</p>
             )}
           </div>
 
@@ -157,7 +158,7 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
           {/* Error State */}
           {error && (
             <div className="error-section">
-              <span className="error-icon">⚠️</span>
+              <span className="error-icon"><Icon name="warning" size="sm" /></span>
               <p>{error}</p>
             </div>
           )}
@@ -219,14 +220,14 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
                   <h3>Hotel Policies</h3>
                   <div className="policy-grid">
                     <div className="policy-item">
-                      <span className="policy-icon">🕐</span>
+                      <span className="policy-icon"><Icon name="clock" size="sm" /></span>
                       <div className="policy-content">
                         <strong>Check-in Time:</strong>
                         <p>{hotelDetails.HotelPolicy.CheckInTime}</p>
                       </div>
                     </div>
                     <div className="policy-item">
-                      <span className="policy-icon">🕐</span>
+                      <span className="policy-icon"><Icon name="clock" size="sm" /></span>
                       <div className="policy-content">
                         <strong>Check-out Time:</strong>
                         <p>{hotelDetails.HotelPolicy.CheckOutTime}</p>
@@ -234,7 +235,7 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
                     </div>
                     {hotelDetails.HotelPolicy.CancellationPolicy && (
                       <div className="policy-item full-width">
-                        <span className="policy-icon">📋</span>
+                        <span className="policy-icon"><Icon name="clipboard" size="sm" /></span>
                         <div className="policy-content">
                           <strong>Cancellation Policy:</strong>
                           <p>{hotelDetails.HotelPolicy.CancellationPolicy}</p>
@@ -252,7 +253,7 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
                   <div className="attractions-list">
                     {hotelDetails.Attractions.map((attraction, index) => (
                       <div key={index} className="attraction-item">
-                        <span className="attraction-icon">📍</span>
+                        <span className="attraction-icon"><Icon name="location" size="sm" /></span>
                         <div>
                           <strong>{attraction.Key}</strong>
                           <p>{attraction.Value}</p>

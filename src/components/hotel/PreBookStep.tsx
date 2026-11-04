@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import Icon from '@/components/shared/Icon';
 import { preBookService, PreBookResult } from '../../services/preBookService';
 import { HotelBookingSession } from '../../services/hotelBookingService';
 import './PreBookStep.css';
@@ -106,7 +107,7 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
     return (
       <div className="prebook-step">
         <div className="prebook-unavailable">
-          <div className="unavailable-icon">⚠️</div>
+          <div className="unavailable-icon"><Icon name="warning" size="xl" /></div>
           <h3>Room No Longer Available</h3>
           <p>
             Unfortunately, this room is no longer available for your selected dates.
@@ -127,7 +128,7 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
     return (
       <div className="prebook-step">
         <div className="prebook-error">
-          <div className="error-icon">❌</div>
+          <div className="error-icon"><Icon name="error" size="xl" /></div>
           <h3>Verification Failed</h3>
           <p>{error}</p>
           <div className="error-actions">

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { Message } from '../../types/api';
 import MessageBubble from './MessageBubble';
+import { MessageCircle } from 'lucide-react';
 import './ChatContainer.css';
 
 interface ChatContainerProps {
@@ -63,7 +64,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ messages, isLoading = fal
       <div className="messages-wrapper">
         {Object.keys(messageGroups).length === 0 ? (
           <div className="empty-chat">
-            <div className="empty-chat-icon">💬</div>
+            <div className="empty-chat-icon"><MessageCircle size={24} strokeWidth={1.6} /></div>
             <h3>Start a conversation</h3>
             <p>Ask me anything about your travel plans!</p>
           </div>
@@ -89,7 +90,7 @@ const ChatContainer: React.FC<ChatContainerProps> = ({ messages, isLoading = fal
               <div className="typing-dot"></div>
               <div className="typing-dot"></div>
             </div>
-            <span className="loading-text">Assistant is typing...</span>
+            <span className="loading-text">Assistant is typing…</span>
           </div>
         )}
         

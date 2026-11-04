@@ -30,15 +30,12 @@ const QuickSuggestions: React.FC<QuickSuggestionsProps> = ({
 
   return (
     <div className="quick-suggestions">
-      <div className="suggestions-header">
-        <Icon name="assistant" size="sm" />
-        <span className="suggestions-title">Quick questions:</span>
-      </div>
       <div className="suggestions-grid">
         {suggestions.map((suggestion, index) => (
           <button
             key={index}
-            className="suggestion-button"
+            className="chip suggestion-button"
+            type="button"
             onClick={() => onSuggestionClick(suggestion)}
             disabled={disabled}
           >

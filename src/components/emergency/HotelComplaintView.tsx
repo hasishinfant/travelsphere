@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Icon from '@/components/shared/Icon';
 import { 
   Hotel, ArrowLeft, CheckCircle2, AlertTriangle, Search, 
   Calendar, MapPin, Building, ShieldCheck, Upload, Trash2, 
@@ -643,7 +644,7 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
               <div className="attachments-list">
                 {attachments.map((file, idx) => (
                   <div key={idx} className="attachment-chip">
-                    <span>📎 {file}</span>
+                    <span><Icon name="attach" size="xs" /> {file}</span>
                     <button 
                       type="button" 
                       className="btn-remove-attachment"

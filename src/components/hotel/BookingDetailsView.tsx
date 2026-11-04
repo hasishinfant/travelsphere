@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import Icon from '@/components/shared/Icon';
 import bookingManagementService from '../../services/bookingManagementService';
 import type { BookingDetailsResult } from '../../services/bookingManagementService';
 import './BookingDetailsView.css';
@@ -124,7 +125,7 @@ const BookingDetailsView: React.FC<BookingDetailsViewProps> = ({
     return (
       <div className="booking-details-view">
         <div className="error-state">
-          <div className="error-icon">⚠️</div>
+          <div className="error-icon"><Icon name="warning" size="xl" /></div>
           <h3>Unable to Load Booking</h3>
           <p>{error || 'Booking not found'}</p>
           <button onClick={onClose} className="btn-close">
@@ -172,7 +173,7 @@ const BookingDetailsView: React.FC<BookingDetailsViewProps> = ({
       <div className="section">
         <h3 className="section-title">Hotel Information</h3>
         <div className="hotel-info-card">
-          <div className="hotel-icon">🏨</div>
+          <div className="hotel-icon"><Icon name="hotel" size="lg" /></div>
           <div className="hotel-details">
             <h4>{booking.hotelName}</h4>
           </div>
@@ -184,14 +185,14 @@ const BookingDetailsView: React.FC<BookingDetailsViewProps> = ({
         <h3 className="section-title">Stay Details</h3>
         <div className="stay-details-grid">
           <div className="stay-detail-card">
-            <div className="detail-icon">📅</div>
+            <div className="detail-icon"><Icon name="calendar" size="sm" /></div>
             <div className="detail-info">
               <span className="detail-label">Check-in</span>
               <span className="detail-value">{formatDate(booking.checkInDate)}</span>
             </div>
           </div>
           <div className="stay-detail-card">
-            <div className="detail-icon">📅</div>
+            <div className="detail-icon"><Icon name="calendar" size="sm" /></div>
             <div className="detail-info">
               <span className="detail-label">Check-out</span>
               <span className="detail-value">{formatDate(booking.checkOutDate)}</span>
@@ -211,7 +212,7 @@ const BookingDetailsView: React.FC<BookingDetailsViewProps> = ({
                 {room.customerNames.map((guest, guestIndex) => (
                   <div key={guestIndex} className="guest-card">
                     <div className="guest-icon">
-                      {guest.type === 'Adult' ? '👤' : '👶'}
+                      <Icon name={guest.type === 'Adult' ? 'user' : 'child'} size="sm" />
                     </div>
                     <div className="guest-info">
                       <span className="guest-name">
@@ -249,7 +250,7 @@ const BookingDetailsView: React.FC<BookingDetailsViewProps> = ({
             Please review the terms carefully before proceeding with cancellation.
           </p>
           <p className="policy-warning">
-            ⚠️ Cancellation fees and refund amounts will be calculated at the time of cancellation.
+            <Icon name="info" size="xs" /> Cancellation fees and refund amounts will be calculated at the time of cancellation.
           </p>
         </div>
       </div>
@@ -263,7 +264,7 @@ const BookingDetailsView: React.FC<BookingDetailsViewProps> = ({
             rel="noopener noreferrer"
             className="btn-action btn-download"
           >
-            📄 Download Voucher
+            Download voucher
           </a>
         )}
         {canCancelBooking() && (
@@ -290,7 +291,7 @@ const BookingDetailsView: React.FC<BookingDetailsViewProps> = ({
 
             {cancelError && (
               <div className="cancel-error">
-                <span className="error-icon">⚠️</span>
+                <span className="error-icon"><Icon name="warning" size="sm" /></span>
                 {cancelError}
               </div>
             )}

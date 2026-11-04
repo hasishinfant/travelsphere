@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import Icon from '@/components/shared/Icon';
 import { getHotelSearchService } from '../../services/hotelSearchService';
 import type { HotelResult, HotelSearchResult } from '../../services/hotelSearchService';
 import type { HotelSearchFilters } from '../../types/tboHotelApi';
@@ -73,7 +74,7 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
       {/* Mock Mode Indicator */}
       {searchResult.isMockData && (
         <div className="mock-mode-banner">
-          <span className="mock-icon">ℹ️</span>
+          <span className="mock-icon"><Icon name="info" size="sm" /></span>
           <div className="mock-text">
             <strong>Demo Mode:</strong> Showing sample hotel data. Real API is unavailable.
           </div>
@@ -174,7 +175,7 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
         </div>
       ) : (
         <div className="no-results">
-          <div className="no-results-icon">🏨</div>
+          <div className="no-results-icon"><Icon name="hotel" size="xl" /></div>
           <h3>No Hotels Found</h3>
           <p>Try adjusting your filters or search criteria</p>
           {hasActiveFilters && (
@@ -199,7 +200,7 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onSelect }) => {
     <div className="hotel-card">
       {/* Hotel Image */}
       <div className="hotel-image">
-        <img src={hotel.hotelPicture} alt={hotel.hotelName} />
+        <img src={hotel.hotelPicture} alt={hotel.hotelName} loading="lazy" decoding="async" />
         {hotel.refundable && (
           <span className="refundable-badge">Free Cancellation</span>
         )}
@@ -211,18 +212,18 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onSelect }) => {
           <h3 className="hotel-name">{hotel.hotelName}</h3>
           <div className="star-rating">
             {Array.from({ length: hotel.starRating }, (_, i) => (
-              <span key={i} className="star">⭐</span>
+              <span key={i} className="star">★</span>
             ))}
           </div>
         </div>
 
         <p className="hotel-location">
-          📍 {hotel.address}, {hotel.cityName}
+          <Icon name="location" size="xs" /> {hotel.address}, {hotel.cityName}
         </p>
 
         <div className="hotel-details">
           <span className="room-type">{hotel.roomType}</span>
-          <span className="meal-type">🍽️ {hotel.mealType}</span>
+          <span className="meal-type"><Icon name="food" size="xs" /> {hotel.mealType}</span>
         </div>
 
         {/* Amenities */}

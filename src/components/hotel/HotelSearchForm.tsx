@@ -11,6 +11,20 @@
  */
 
 import React, { useState } from 'react';
+import { AlertCircle, Search, Plus, X } from 'lucide-react';
+import { getDestination } from '@/data/destinations';
+
+// TBO city codes for destinations in the app (used to prefill from ?location=)
+const CITY_CODES: Record<string, string> = {
+  paris: 'PAR', london: 'LON', rome: 'ROM', santorini: 'JTR', tokyo: 'TYO', kyoto: 'UKY',
+  bali: 'DPS', 'new-york': 'NYC', iceland: 'REK', bengaluru: 'BLR',
+};
+const initialCityCode = () => {
+  if (typeof window === 'undefined') return '';
+  const loc = new URLSearchParams(window.location.search).get('location');
+  const d = getDestination(loc);
+  return d ? CITY_CODES[d.id] || '' : (loc || '').slice(0, 3).toUpperCase();
+};
 import { getHotelSearchService } from '../../services/hotelSearchService';
 import type { HotelSearchCriteria, PaxRoomInput, HotelSearchResult } from '../../services/hotelSearchService';
 import './HotelSearchForm.css';
@@ -45,7 +59,7 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
   const [errors, setErrors] = useState<FormErrors>({});
   
   // Form state
-  const [cityCode, setCityCode] = useState('');
+  const [cityCode, setCityCode] = useState(initialCityCode);
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guestNationality, setGuestNationality] = useState('US');
@@ -223,19 +237,19 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
 
   // Get today's date for min check-in
   const getTodayDate = (): string => {
-    return new Date().toISOString().split('T')[0];
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
   return (
     <div className="hotel-search-form">
       <div className="form-header">
-        <h2>Search Hotels</h2>
-        <p>Find the perfect accommodation for your stay</p>
+        <h2>Search hotels</h2>
       </div>
 
       {errors.submit && (
         <div className="error-message submit-error">
-          <span className="error-icon">⚠️</span>
+          <AlertCircle size={18} className="error-icon" />
           {errors.submit}
         </div>
       )}
@@ -331,7 +345,7 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
         {/* Rooms Configuration */}
         <div className="rooms-section">
           <div className="rooms-header">
-            <h3>Rooms & Guests</h3>
+            <h3>Rooms &amp; Guests</h3>
             {rooms.length < 9 && (
               <button
                 type="button"
@@ -339,7 +353,7 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
                 className="btn-add-room"
                 disabled={isLoading}
               >
-                + Add Room
+                <Plus size={16} /> Add room
               </button>
             )}
           </div>
@@ -359,7 +373,7 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
                     className="btn-remove-room"
                     disabled={isLoading}
                   >
-                    Remove
+                    <X size={14} /> Remove
                   </button>
                 )}
               </div>
@@ -427,14 +441,14 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
           <button
             type="button"
             onClick={handleReset}
-            className="btn secondary"
+            className="btn btn-secondary"
             disabled={isLoading}
           >
             Reset
           </button>
           <button
             type="submit"
-            className="btn primary"
+            className="btn btn-primary"
             disabled={isLoading}
           >
             {isLoading ? (
@@ -444,7 +458,7 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
               </>
             ) : (
               <>
-                <span>🏨</span>
+                <Search size={18} />
                 Search Hotels
               </>
             )}

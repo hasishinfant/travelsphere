@@ -13,6 +13,7 @@
 
 import { getTboHotelApiClient } from './api/tboHotelApiClient';
 import { mockFallbackHandler } from './mockFallbackHandler';
+import { hotelPhotoFor, hotelGallery } from '@/data/destinations';
 import type {
   HotelSearchRequest,
   HotelSearchResponse,
@@ -542,12 +543,8 @@ export class HotelSearchService {
         roomType: roomTypes[Math.floor(Math.random() * roomTypes.length)],
         availableRooms: 1 + Math.floor(Math.random() * 5),
         amenities: amenities[Math.floor(Math.random() * amenities.length)],
-        hotelPicture: `https://via.placeholder.com/400x300?text=${encodeURIComponent(hotelNames[i % hotelNames.length])}`,
-        hotelImages: [
-          `https://via.placeholder.com/800x600?text=Image1`,
-          `https://via.placeholder.com/800x600?text=Image2`,
-          `https://via.placeholder.com/800x600?text=Image3`,
-        ],
+        hotelPicture: hotelPhotoFor(hotelNames[i % hotelNames.length], i),
+        hotelImages: hotelGallery(i),
       });
     }
 

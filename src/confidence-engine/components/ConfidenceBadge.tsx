@@ -20,10 +20,10 @@ export const ConfidenceBadge: React.FC<ConfidenceBadgeProps> = ({
   className = '',
 }) => {
   const badgeColors = {
-    Low: '#ef4444',
-    Moderate: '#f59e0b',
-    High: '#10b981',
-    Excellent: '#3b82f6',
+    Low: 'var(--danger)',
+    Moderate: 'var(--warning)',
+    High: 'var(--success)',
+    Excellent: 'var(--accent)',
   };
   
   const color = badgeColors[badge];

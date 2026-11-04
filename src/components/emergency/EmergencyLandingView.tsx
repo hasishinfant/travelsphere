@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
+import { Headphones,
   HeartPulse, FileText, Hotel, Compass, AlertCircle, Phone, 
   ShieldAlert, Clock, ArrowRight, CheckCircle2, ChevronRight,
-  ExternalLink, MessageSquare, Sparkles
+  ExternalLink, Siren
 } from 'lucide-react';
 import { complaintService, EmergencyComplaintRecord } from '@/services/complaintService';
+import { SOSButton } from './SOSButton';
 
 interface EmergencyLandingViewProps {
   onSelectCategory: (category: 'medical' | 'passport' | 'hotel' | 'local') => void;
@@ -41,7 +42,7 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
       badgeClass: 'badge-medical',
       description: 'Medical assistance, healthcare guidance, and relevant local resources.',
       actionText: 'Request Medical Help',
-      accentColor: '#ef4444',
+      accentColor: 'var(--danger)',
     },
     {
       id: 'passport' as const,
@@ -51,7 +52,7 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
       badgeClass: 'badge-passport',
       description: 'Guidance for lost or stolen travel documents and relevant consular assistance.',
       actionText: 'Report Lost Documents',
-      accentColor: '#3b82f6',
+      accentColor: 'var(--accent)',
     },
     {
       id: 'hotel' as const,
@@ -61,7 +62,7 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
       badgeClass: 'badge-hotel-featured',
       description: 'Report booking disputes, room cleanliness issues, billing discrepancies, or check-in problems.',
       actionText: 'File Hotel Complaint',
-      accentColor: '#22c55e',
+      accentColor: 'var(--success)',
       isFeatured: true,
     },
     {
@@ -72,7 +73,7 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
       badgeClass: 'badge-local',
       description: 'Request travel-related assistance with transport, local navigation, and other relevant issues.',
       actionText: 'Request Local Help',
-      accentColor: '#8b5cf6',
+      accentColor: 'var(--pro)',
     },
   ];
 
@@ -80,16 +81,14 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
     <div className="emergency-landing-wrapper">
       {/* Page Header */}
       <div className="emergency-page-header">
-        <div className="emergency-header-pill">
-          <ShieldAlert size={16} />
-          <span>24/7 TravelSphere Emergency Network</span>
-        </div>
-        <h1 className="emergency-main-heading">
-          Emergency Support & <span className="text-highlight">Complaints</span>
-        </h1>
-        <p className="emergency-header-subtext">
-          Get help with urgent medical situations, lost travel documents, hotel disputes, and travel disruptions.
-        </p>
+        <header className="page-header fade-up">
+          <div>
+            <h1 className="page-title">Emergency support</h1>
+            <p className="page-subtitle">
+              Help with medical situations, lost documents, hotel disputes and travel disruptions — around the clock.
+            </p>
+          </div>
+        </header>
 
         {/* Compact, accessible critical notice */}
         <div className="emergency-critical-notice" role="alert">
@@ -101,13 +100,27 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
               <strong>Life-Threatening Emergency Notice:</strong> For immediate medical, fire, or police emergencies, please dial your local emergency services directly.
             </p>
             <div className="emergency-numbers-chips">
-              <span className="number-chip">🇺🇸 🇨🇦 US/Canada: <strong>911</strong></span>
-              <span className="number-chip">🇪🇺 UK/Europe: <strong>112 / 999</strong></span>
-              <span className="number-chip">🌏 Asia: <strong>112 / 100</strong></span>
-              <span className="number-chip hotline">📞 SOS Travel Desk: <strong>+1-800-555-SAFE</strong></span>
+              <a className="number-chip" href="tel:911"><Phone size={13} /> US/Canada <strong>911</strong></a>
+              <a className="number-chip" href="tel:112"><Phone size={13} /> UK/Europe <strong>112 / 999</strong></a>
+              <a className="number-chip" href="tel:112"><Phone size={13} /> Asia <strong>112 / 100</strong></a>
+              <span className="number-chip hotline"><Headphones size={13} /> SOS Travel Desk <strong>+1-800-555-SAFE</strong></span>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* SOS Quick-Alert Banner */}
+      <div className="sos-banner-section">
+        <div className="sos-banner-left">
+          <div className="sos-banner-icon">
+            <Siren size={22} strokeWidth={2.2} />
+          </div>
+          <div className="sos-banner-text">
+            <h3>Need Help Right Now?</h3>
+            <p>Tap SOS to send an instant emergency alert with your location to any phone number.</p>
+          </div>
+        </div>
+        <SOSButton />
       </div>
 
       {/* Top Navigation Row / Switcher */}
@@ -159,7 +172,7 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
               <div className="card-top-row">
                 <div 
                   className="category-icon-wrapper"
-                  style={{ backgroundColor: `${cat.accentColor}18`, color: cat.accentColor }}
+                  style={{ backgroundColor: `color-mix(in srgb, ${cat.accentColor} 10%, transparent)`, color: cat.accentColor }}
                 >
                   <IconComponent size={24} strokeWidth={2.2} />
                 </div>

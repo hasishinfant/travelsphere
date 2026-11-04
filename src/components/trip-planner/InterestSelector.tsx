@@ -10,63 +10,30 @@ interface InterestSelectorProps {
   error?: string;
 }
 
-const InterestSelector: React.FC<InterestSelectorProps> = ({
-  value,
-  onChange,
-  error
-}) => {
-  const handleInterestToggle = (interest: Interest) => {
-    if (value.includes(interest)) {
-      // Remove interest
-      onChange(value.filter(i => i !== interest));
-    } else {
-      // Add interest
-      onChange([...value, interest]);
-    }
-  };
+const InterestSelector: React.FC<InterestSelectorProps> = ({ value, onChange, error }) => {
+  const toggle = (interest: Interest) =>
+    onChange(value.includes(interest) ? value.filter(i => i !== interest) : [...value, interest]);
 
   return (
     <div className="interest-selector">
-      <label className="form-label">
-        <Icon name="heart" size="sm" />
-        Travel Interests *
-        <span className="interest-hint">Select all that apply</span>
-      </label>
-      <div className="interest-grid">
-        {TRAVEL_INTERESTS.map((interest) => (
-          <label
-            key={interest.value}
-            className={`interest-option ${value.includes(interest.value) ? 'selected' : ''}`}
-          >
-            <input
-              type="checkbox"
-              checked={value.includes(interest.value)}
-              onChange={() => handleInterestToggle(interest.value)}
-              className="interest-checkbox"
-            />
-            <div className="interest-content">
-              <Icon 
-                name={interest.iconName} 
-                size="lg" 
-                className="interest-icon"
+      <div className="interest-grid" role="group" aria-label="Travel interests">
+        {TRAVEL_INTERESTS.map((interest) => {
+          const selected = value.includes(interest.value);
+          return (
+            <label key={interest.value} className={`interest-option ${selected ? 'selected' : ''}`}>
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => toggle(interest.value)}
+                className="interest-checkbox"
               />
+              <Icon name={interest.iconName} size="sm" className="interest-icon" />
               <span className="interest-label">{interest.label}</span>
-            </div>
-          </label>
-        ))}
+            </label>
+          );
+        })}
       </div>
-      {value.length > 0 && (
-        <div className="selected-count">
-          <Icon name="check" size="sm" />
-          {value.length} interest{value.length !== 1 ? 's' : ''} selected
-        </div>
-      )}
-      {error && (
-        <div className="error-message">
-          <Icon name="error" size="sm" />
-          {error}
-        </div>
-      )}
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 };

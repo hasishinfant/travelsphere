@@ -1,59 +1,16 @@
-// Itinerary generation service with Codex integration
+// Itinerary generation service (local destination catalogue; no browser-side AI calls)
 import type { TripPlannerFormData } from '@/types/trip';
 import type { ItineraryResponse, ApiResponse } from '@/types/api';
 import type { FlightBooking, HotelBooking, ItineraryDay } from '@/types/itinerary';
 import { generateMockItinerary } from './mockDataService';
-import { generateItineraryWithCodex, isCodexAvailable } from './codexService';
 
 const ITINERARY_STORAGE_KEY = 'travelsphere_itinerary';
 
 export const itineraryService = {
-  // Generate itinerary - uses Codex if available, otherwise mock data
+  // Generate an itinerary from the local destination catalogue (src/data/destinations.ts).
+  // No third-party AI calls are made from the browser.
   async generateItinerary(formData: TripPlannerFormData): Promise<ApiResponse<ItineraryResponse>> {
-    // Check if Codex is available
-    if (isCodexAvailable()) {
-      try {
-        console.info('Generating itinerary with Codex AI');
-        
-        const codexResponse = await generateItineraryWithCodex(
-          formData.destination,
-          formData.startDate,
-          formData.endDate,
-          formData.budget,
-          formData.interests
-        );
-        
-        // Parse the Codex response
-        const parsedData = JSON.parse(codexResponse);
-        
-        // Transform to our format
-        const itineraryResponse: ItineraryResponse = {
-          tripId: `trip-${Date.now()}`,
-          itinerary: parsedData.days.map((day: any) => ({
-            dayNumber: day.dayNumber,
-            date: new Date(day.date),
-            places: day.places,
-            foodRecommendations: day.foodRecommendations,
-            travelTips: day.travelTips,
-          })),
-          estimatedCost: parsedData.estimatedCost,
-          generatedAt: new Date(),
-        };
-        
-        return {
-          success: true,
-          data: itineraryResponse,
-          timestamp: new Date(),
-        };
-      } catch (error) {
-        console.warn('Codex generation failed, falling back to mock data:', error);
-        return this.getMockItinerary(formData);
-      }
-    } else {
-      // Codex not configured, use mock data
-      console.info('Generating itinerary with mock data (Codex not configured)');
-      return this.getMockItinerary(formData);
-    }
+    return this.getMockItinerary(formData);
   },
 
   // Mock fallback data
