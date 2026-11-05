@@ -352,11 +352,19 @@ class CombinedBookingService {
     if (session.hotelSession?.preBookResult) {
       total += session.hotelSession.preBookResult.currentPrice;
     } else if (session.hotelSession?.hotel) {
-      // @ts-expect-error - API uses PascalCase, code uses camelCase
-      total += session.hotelSession.hotel.price;
+      const h = session.hotelSession.hotel as any;
+      const hotelPrice =
+        typeof h.price === 'number'
+          ? h.price
+          : (h.price?.OfferedPrice ??
+             h.Price?.OfferedPrice ??
+             h.price?.roomPrice ??
+             h.Price?.RoomPrice ??
+             0);
+      total += hotelPrice;
     }
 
-    return total;
+    return Number(total);
   }
 
   // ============================================================================

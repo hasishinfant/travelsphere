@@ -3,11 +3,15 @@ import { render, screen } from '@testing-library/react';
 import MessageBubble from './MessageBubble';
 import type { Message } from '../../types/api';
 
+import { vi } from 'vitest';
+
+import { formatters } from '../../utils/formatters';
+
 // Mock the formatters utility
-jest.mock('../../utils/formatters', () => ({
+vi.mock('../../utils/formatters', () => ({
   formatters: {
-    formatTime: jest.fn((date: Date) => '2m ago')
-  }
+    formatTime: vi.fn(() => '2m ago'),
+  },
 }));
 
 describe('MessageBubble', () => {
@@ -60,8 +64,6 @@ describe('MessageBubble', () => {
   });
 
   it('calls formatTime with correct timestamp', () => {
-    const { formatters } = require('../../utils/formatters');
-    
     render(<MessageBubble message={mockUserMessage} />);
     
     expect(formatters.formatTime).toHaveBeenCalledWith(mockUserMessage.timestamp);

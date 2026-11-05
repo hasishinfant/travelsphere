@@ -26,7 +26,11 @@ const DayCard: React.FC<DayCardProps> = ({ day, defaultOpen = true }) => {
     : date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <article className={`day-card ${isExpanded ? 'is-open' : ''}`} id={`day-${day.dayNumber}`}>
+    <article
+      className={`day-card ${isExpanded ? 'is-open' : ''}`}
+      id={`day-${day.dayNumber}`}
+      data-testid={`day-card-${day.dayNumber}`}
+    >
       <button
         type="button"
         className="day-header"

@@ -3,16 +3,18 @@ import { render, screen } from '@testing-library/react';
 import ChatContainer from './ChatContainer';
 import type { Message } from '../../types/api';
 
+import { vi } from 'vitest';
+
 // Mock the MessageBubble component
-jest.mock('./MessageBubble', () => {
-  return function MockMessageBubble({ message }: { message: Message }) {
+vi.mock('./MessageBubble', () => ({
+  default: function MockMessageBubble({ message }: { message: Message }) {
     return (
       <div data-testid={`message-${message.id}`} className={`mock-message ${message.sender}`}>
         {message.content}
       </div>
     );
-  };
-});
+  },
+}));
 
 describe('ChatContainer', () => {
   const mockMessages: Message[] = [
@@ -54,20 +56,20 @@ describe('ChatContainer', () => {
     
     expect(screen.getByText('Start a conversation')).toBeInTheDocument();
     expect(screen.getByText('Ask me anything about your travel plans!')).toBeInTheDocument();
-    expect(screen.getByText('💬')).toBeInTheDocument();
+    expect(document.querySelector('.empty-chat-icon')).toBeInTheDocument();
   });
 
   it('shows loading indicator when isLoading is true', () => {
     render(<ChatContainer messages={mockMessages} isLoading={true} />);
     
-    expect(screen.getByText('Assistant is typing...')).toBeInTheDocument();
+    expect(screen.getByText('Assistant is typing…')).toBeInTheDocument();
     expect(document.querySelector('.typing-indicator')).toBeInTheDocument();
   });
 
   it('does not show loading indicator when isLoading is false', () => {
     render(<ChatContainer messages={mockMessages} isLoading={false} />);
     
-    expect(screen.queryByText('Assistant is typing...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Assistant is typing…')).not.toBeInTheDocument();
   });
 
   it('groups messages by date', () => {

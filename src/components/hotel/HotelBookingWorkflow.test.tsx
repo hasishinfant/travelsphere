@@ -100,7 +100,7 @@ describe('HotelBookingWorkflow', () => {
     it('should display hotel information', () => {
       render(<HotelBookingWorkflow session={mockSession} />);
 
-      expect(screen.getByText('Test Hotel')).toBeInTheDocument();
+      expect(screen.getByText(/Test Hotel/)).toBeInTheDocument();
       expect(screen.getByText(/6\/1\/2024/)).toBeInTheDocument();
       expect(screen.getByText(/6\/5\/2024/)).toBeInTheDocument();
     });

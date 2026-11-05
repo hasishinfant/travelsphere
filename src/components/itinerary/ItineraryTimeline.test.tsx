@@ -4,14 +4,18 @@ import '@testing-library/jest-dom';
 import ItineraryTimeline from './ItineraryTimeline';
 import type { ItineraryDay } from '@/types/itinerary';
 
+import { vi } from 'vitest';
+
 // Mock the DayCard component since we're testing the timeline structure
-jest.mock('./DayCard', () => {
-  return function MockDayCard({ day }: { day: ItineraryDay }) {
-    return (
-      <div data-testid={`day-card-${day.dayNumber}`}>
-        Day {day.dayNumber} - {day.date.toDateString()}
-      </div>
-    );
+vi.mock('./DayCard', () => {
+  return {
+    default: function MockDayCard({ day }: { day: ItineraryDay }) {
+      return (
+        <div data-testid={`day-card-${day.dayNumber}`}>
+          Day {day.dayNumber} - {new Date(day.date).toDateString()}
+        </div>
+      );
+    },
   };
 });
 
@@ -55,10 +59,8 @@ describe('ItineraryTimeline', () => {
   ];
 
   it('renders timeline container with correct class', () => {
-    render(<ItineraryTimeline itinerary={mockItinerary} />);
-    
-    const timeline = screen.getByRole('generic');
-    expect(timeline).toHaveClass('itinerary-timeline');
+    const { container } = render(<ItineraryTimeline itinerary={mockItinerary} />);
+    expect(container.firstChild).toHaveClass('itinerary-timeline');
   });
 
   it('renders all day cards in the itinerary', () => {
@@ -78,11 +80,9 @@ describe('ItineraryTimeline', () => {
   });
 
   it('handles empty itinerary gracefully', () => {
-    render(<ItineraryTimeline itinerary={[]} />);
-    
-    const timeline = screen.getByRole('generic');
-    expect(timeline).toHaveClass('itinerary-timeline');
-    expect(timeline).toBeEmptyDOMElement();
+    const { container } = render(<ItineraryTimeline itinerary={[]} />);
+    expect(container.firstChild).toHaveClass('itinerary-timeline');
+    expect(container.firstChild).toBeEmptyDOMElement();
   });
 
   it('passes correct day data to each DayCard', () => {

@@ -43,6 +43,28 @@ export const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const handleEmailChange = (val: string) => {
+    setEmail(val);
+    if (errors.email) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next.email;
+        return next;
+      });
+    }
+  };
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(val);
+    if (errors.phone) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next.phone;
+        return next;
+      });
+    }
+  };
+
   const handleGuestChange = (
     roomIndex: number,
     guestIndex: number,
@@ -133,7 +155,7 @@ export const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
         <p>Please provide information for all guests</p>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {/* Guest Information by Room */}
         {guestDetails.map((room, roomIndex) => (
           <div key={roomIndex} className="room-section">
@@ -146,10 +168,14 @@ export const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
             </p>
 
             <div className="guests-grid">
-              {room.customerNames.map((guest, guestIndex) => (
+              {room.customerNames.map((guest, guestIndex) => {
+                const guestNumber = guest.type === 'Adult'
+                  ? guestIndex + 1
+                  : guestIndex - (session.searchCriteria.paxRooms[roomIndex]?.adults ?? 0) + 1;
+                return (
                 <div key={guestIndex} className="guest-card">
                   <h4>
-                    {guest.type === 'Adult' ? 'Adult' : 'Child'} {guestIndex + 1}
+                    {guest.type} {guestNumber}
                   </h4>
 
                   <div className="form-row">
@@ -218,7 +244,8 @@ export const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           </div>
         ))}
@@ -239,7 +266,7 @@ export const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleEmailChange(e.target.value)}
                 className={errors.email ? 'error' : ''}
                 placeholder="your.email@example.com"
               />
@@ -256,7 +283,7 @@ export const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
                 type="tel"
                 id="phone"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => handlePhoneChange(e.target.value)}
                 className={errors.phone ? 'error' : ''}
                 placeholder="+1 (555) 123-4567"
               />

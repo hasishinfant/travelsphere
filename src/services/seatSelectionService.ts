@@ -66,7 +66,9 @@ export interface SeatReservationResult {
 // ============================================================================
 
 export class SeatSelectionService {
-  private apiClient = getTekTravelsApiClient();
+  private get apiClient() {
+    return getTekTravelsApiClient();
+  }
 
   /**
    * Get seat map for a flight

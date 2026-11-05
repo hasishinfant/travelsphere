@@ -112,8 +112,8 @@ describe('HotelBookingConfirmation', () => {
     it('should display stay details', () => {
       render(<HotelBookingConfirmation confirmation={mockConfirmation} />);
 
-      expect(screen.getByText(/Check-in/i)).toBeInTheDocument();
-      expect(screen.getByText(/Check-out/i)).toBeInTheDocument();
+      expect(screen.getByText('Check-in')).toBeInTheDocument();
+      expect(screen.getByText('Check-out')).toBeInTheDocument();
       expect(screen.getByText(/4 Nights/i)).toBeInTheDocument();
       expect(screen.getByText(/1 Room/i)).toBeInTheDocument();
     });
@@ -203,27 +203,33 @@ describe('HotelBookingConfirmation', () => {
     it('should generate text voucher when download is clicked and no URL exists', () => {
       const confirmationWithoutUrl = { ...mockConfirmation, voucherUrl: undefined };
       
-      // Mock document.createElement and related methods
+      render(<HotelBookingConfirmation confirmation={confirmationWithoutUrl} />);
+
+      // Mock document.createElement and related methods only for download trigger
       const mockLink = {
         href: '',
         download: '',
         click: vi.fn(),
       };
-      const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any);
+      const origCreateElement = document.createElement.bind(document);
+      const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: any) => {
+        if (tagName === 'a') return mockLink as any;
+        return origCreateElement(tagName, options);
+      });
       const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink as any);
       const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink as any);
 
-      render(<HotelBookingConfirmation confirmation={confirmationWithoutUrl} />);
+      try {
+        const downloadButton = screen.getByRole('button', { name: /Download Voucher/i });
+        fireEvent.click(downloadButton);
 
-      const downloadButton = screen.getByRole('button', { name: /Download Voucher/i });
-      fireEvent.click(downloadButton);
-
-      expect(createElementSpy).toHaveBeenCalledWith('a');
-      expect(mockLink.click).toHaveBeenCalled();
-
-      createElementSpy.mockRestore();
-      appendChildSpy.mockRestore();
-      removeChildSpy.mockRestore();
+        expect(createElementSpy).toHaveBeenCalledWith('a');
+        expect(mockLink.click).toHaveBeenCalled();
+      } finally {
+        createElementSpy.mockRestore();
+        appendChildSpy.mockRestore();
+        removeChildSpy.mockRestore();
+      }
     });
 
     it('should show sending state when email button is clicked', async () => {

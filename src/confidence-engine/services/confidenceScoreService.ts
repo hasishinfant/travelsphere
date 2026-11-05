@@ -78,11 +78,23 @@ export function mapScoreToBadge(score: number): ConfidenceBadge {
  * Generates a human-readable explanation for a confidence score
  */
 export function generateScoreExplanation(
-  _score: number,
-  badge: ConfidenceBadge,
-  breakdown: FactorBreakdown[]
+  scoreOrBadge: number | ConfidenceBadge,
+  badgeOrBreakdown?: ConfidenceBadge | FactorBreakdown[],
+  maybeBreakdown?: FactorBreakdown[]
 ): string {
-  const topFactors = breakdown
+  let badge: ConfidenceBadge;
+  let breakdown: FactorBreakdown[];
+
+  if (typeof scoreOrBadge === 'string') {
+    badge = scoreOrBadge as ConfidenceBadge;
+    breakdown = Array.isArray(badgeOrBreakdown) ? badgeOrBreakdown : [];
+  } else {
+    badge = (typeof badgeOrBreakdown === 'string' ? badgeOrBreakdown : 'Moderate') as ConfidenceBadge;
+    breakdown = Array.isArray(maybeBreakdown) ? maybeBreakdown : [];
+  }
+
+  const topFactors = (breakdown || [])
+    .slice()
     .sort((a, b) => b.contribution - a.contribution)
     .slice(0, 3)
     .map(f => f.factorName);

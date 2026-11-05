@@ -458,41 +458,48 @@ class BookingService {
       // Import itinerary service dynamically to avoid circular dependencies
       const { itineraryService } = await import('./itineraryService');
       
+      const flight: any = confirmation.flight || {};
+      const firstSegment = flight.Segments?.[0]?.[0];
+      const segmentCount = flight.Segments?.[0]?.length || 0;
+      const lastSegment = segmentCount > 0 ? flight.Segments[0][segmentCount - 1] : firstSegment;
+
+      const departureAirport = flight.origin?.airport || firstSegment?.Origin?.AirportCode || firstSegment?.Origin?.AirportName || '';
+      const departureCity = flight.origin?.city || firstSegment?.Origin?.CityName || '';
+      const departureTime = flight.departureTime 
+        ? new Date(flight.departureTime) 
+        : (firstSegment?.Origin?.DepTime ? new Date(firstSegment.Origin.DepTime) : new Date());
+
+      const arrivalAirport = flight.destination?.airport || lastSegment?.Destination?.AirportCode || lastSegment?.Destination?.AirportName || '';
+      const arrivalCity = flight.destination?.city || lastSegment?.Destination?.CityName || '';
+      const arrivalTime = flight.arrivalTime 
+        ? new Date(flight.arrivalTime) 
+        : (lastSegment?.Destination?.ArrTime ? new Date(lastSegment.Destination.ArrTime) : new Date());
+
       // Transform confirmation to FlightBooking format for itinerary
       const flightBooking = {
         bookingReference: confirmation.bookingReference,
         pnr: confirmation.pnr,
-        // @ts-expect-error - API uses PascalCase (AirlineName), code uses camelCase
-        airline: confirmation.flight.airline,
-        // @ts-expect-error - API uses PascalCase (FlightNumber), code uses camelCase
-        flightNumber: confirmation.flight.flightNumber,
+        airline: flight.AirlineName || flight.airline || firstSegment?.Airline?.AirlineName || '',
+        flightNumber: flight.FlightNumber || flight.flightNumber || firstSegment?.Airline?.FlightNumber || '',
         departure: {
-          // @ts-expect-error - API uses nested Airport object with AirportCode
-          airport: confirmation.flight.origin.airport,
-          // @ts-expect-error - API uses nested Airport object with CityName
-          city: confirmation.flight.origin.city,
-          // @ts-expect-error - API uses nested Airport object with DepTime
-          time: confirmation.flight.departureTime,
+          airport: departureAirport,
+          city: departureCity,
+          time: departureTime,
         },
         arrival: {
-          // @ts-expect-error - API uses nested Airport object with AirportCode
-          airport: confirmation.flight.destination.airport,
-          // @ts-expect-error - API uses nested Airport object with CityName
-          city: confirmation.flight.destination.city,
-          // @ts-expect-error - API uses nested Airport object with ArrTime
-          time: confirmation.flight.arrivalTime,
+          airport: arrivalAirport,
+          city: arrivalCity,
+          time: arrivalTime,
         },
-        passengers: confirmation.passengers.map(p => `${p.title} ${p.firstName} ${p.lastName}`),
-        // @ts-expect-error - Custom property added to BookingConfirmation
-        totalFare: confirmation.totalFare,
+        passengers: (confirmation.passengers || []).map(p => `${p.title} ${p.firstName} ${p.lastName}`),
+        totalFare: confirmation.totalPrice ?? (confirmation as any).totalFare ?? 0,
         currency: confirmation.currency,
-        // @ts-expect-error - Custom property added to BookingConfirmation
-        status: confirmation.status,
-        bookedAt: confirmation.bookedAt,
+        status: (confirmation as any).status || 'CONFIRMED',
+        bookedAt: confirmation.bookedAt || new Date(),
       };
       
       // Add to itinerary service
-      itineraryService.addFlightBooking(flightBooking);
+      itineraryService.addFlightBooking(flightBooking as any);
       
       console.log('Flight booking integrated with itinerary:', confirmation.bookingReference);
     } catch (error) {

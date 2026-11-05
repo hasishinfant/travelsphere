@@ -47,7 +47,9 @@ export const HotelBookingWorkflow: React.FC<HotelBookingWorkflowProps> = ({
     const restoredSession = hotelBookingService.getCurrentSession();
     if (restoredSession) {
       setSession(restoredSession);
-      const status = restoredSession.status;
+      const status = initialSession?.status && initialSession.status !== 'details'
+        ? initialSession.status
+        : restoredSession.status;
       if (status === 'search') {
         setCurrentStep('details');
       } else {

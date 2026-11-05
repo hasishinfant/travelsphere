@@ -29,9 +29,47 @@ import type { FlightResult } from '../../types/tekTravelsApi';
 const hotelSearchService = getHotelSearchService();
 
 // Mock the API clients
+const mockTboClient = {
+  searchHotels: vi.fn(),
+  preBook: vi.fn(),
+  createBooking: vi.fn(),
+  getBookingDetails: vi.fn(),
+  cancelBooking: vi.fn(),
+};
+
+const mockTekClient = {
+  createBooking: vi.fn(),
+};
+
 vi.mock('../api/tboHotelApiClient', () => ({
-  getTboHotelApiClient: () => ({
-    searchHotels: vi.fn().mockResolvedValue({
+  getTboHotelApiClient: () => mockTboClient,
+}));
+
+vi.mock('../api/tekTravelsApiClient', () => ({
+  getTekTravelsApiClient: () => mockTekClient,
+}));
+
+describe('Hotel Booking End-to-End Tests', () => {
+  let mockSearchCriteria: HotelSearchCriteria;
+
+  beforeEach(() => {
+    mockTboClient.searchHotels.mockResolvedValue({
+      Hotels: [{
+        BookingCode: 'BOOK123',
+        HotelCode: 'HTL001',
+        HotelName: 'Grand Plaza Hotel',
+        StarRating: 5,
+        HotelAddress: '123 Main Street',
+        HotelContactNo: '+1234567890',
+        Price: { PublishedPrice: 1500, RoomPrice: 1500, OfferedPrice: 1500, CurrencyCode: 'USD' },
+        IsRefundable: true,
+        Refundable: true,
+        RoomTypeName: 'Deluxe Suite',
+        RoomType: 'Deluxe Suite',
+        Inclusion: ['Breakfast'],
+        MealType: 'Breakfast',
+        HotelPicture: 'image1.jpg',
+      }],
       HotelSearchResult: {
         HotelResults: [{
           BookingCode: 'BOOK123',
@@ -40,22 +78,28 @@ vi.mock('../api/tboHotelApiClient', () => ({
           StarRating: 5,
           HotelAddress: '123 Main Street',
           HotelContactNo: '+1234567890',
-          Price: { PublishedPrice: 1500, CurrencyCode: 'USD' },
+          Price: { PublishedPrice: 1500, RoomPrice: 1500, OfferedPrice: 1500, CurrencyCode: 'USD' },
           IsRefundable: true,
+          Refundable: true,
           RoomTypeName: 'Deluxe Suite',
+          RoomType: 'Deluxe Suite',
           Inclusion: ['Breakfast'],
+          MealType: 'Breakfast',
           HotelPicture: 'image1.jpg',
         }],
       },
-    }),
-    preBook: vi.fn().mockResolvedValue({
+      Status: 1,
+    });
+
+    mockTboClient.preBook.mockResolvedValue({
       BookingCode: 'PREBOOK123',
       HotelRoomsDetails: [{
         Price: { PublishedPrice: 1500, CurrencyCode: 'USD' },
       }],
       Status: 'Success',
-    }),
-    createBooking: vi.fn().mockResolvedValue({
+    });
+
+    mockTboClient.createBooking.mockResolvedValue({
       ConfirmationNo: 'CONF-12345',
       BookingRefNo: 'REF-12345',
       Status: 'Confirmed',
@@ -67,8 +111,9 @@ vi.mock('../api/tboHotelApiClient', () => ({
         CurrencyCode: 'USD',
       },
       VoucherUrl: 'https://example.com/voucher/12345',
-    }),
-    getBookingDetails: vi.fn().mockResolvedValue({
+    });
+
+    mockTboClient.getBookingDetails.mockResolvedValue({
       ConfirmationNo: 'CONF-12345',
       BookingRefNo: 'REF-12345',
       Status: 'Confirmed',
@@ -79,18 +124,15 @@ vi.mock('../api/tboHotelApiClient', () => ({
         TotalFare: 1500,
         CurrencyCode: 'USD',
       },
-    }),
-    cancelBooking: vi.fn().mockResolvedValue({
+    });
+
+    mockTboClient.cancelBooking.mockResolvedValue({
       Status: 'Success',
       CancellationCharge: 0,
       RefundAmount: 1500,
-    }),
-  }),
-}));
+    });
 
-vi.mock('../api/tekTravelsApiClient', () => ({
-  getTekTravelsApiClient: () => ({
-    createBooking: vi.fn().mockResolvedValue({
+    mockTekClient.createBooking.mockResolvedValue({
       Response: {
         TraceId: 'TRACE123',
         BookingId: 987654,
@@ -115,14 +157,8 @@ vi.mock('../api/tekTravelsApiClient', () => ({
           },
         },
       },
-    }),
-  }),
-}));
+    });
 
-describe('Hotel Booking End-to-End Tests', () => {
-  let mockSearchCriteria: HotelSearchCriteria;
-
-  beforeEach(() => {
     // Clear all sessions and storage
     hotelBookingService.cancelSession();
     combinedBookingService.cancelSession();

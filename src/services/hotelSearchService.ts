@@ -94,7 +94,9 @@ export interface HotelSearchSession {
 // ============================================================================
 
 export class HotelSearchService {
-  private apiClient = getTboHotelApiClient();
+  private get apiClient() {
+    return getTboHotelApiClient();
+  }
   private currentSession: HotelSearchSession | null = null;
 
   /**
@@ -115,10 +117,12 @@ export class HotelSearchService {
       // Call the API
       const response: HotelSearchResponse = await this.apiClient.searchHotels(request);
 
+      const rawHotels = response?.Hotels || (response as any)?.HotelSearchResult?.HotelResults;
+
       // Check if API returned success
-      if (response.Status === 1 && response.Hotels) {
+      if (rawHotels && rawHotels.length > 0) {
         // Transform API response to internal model
-        const hotels = this.transformHotelsToInternalModel(response.Hotels);
+        const hotels = this.transformHotelsToInternalModel(rawHotels);
 
         const result: HotelSearchResult = {
           hotels,
@@ -134,7 +138,7 @@ export class HotelSearchService {
       }
 
       // API returned error status
-      throw new Error(response.Message || 'Hotel search failed');
+      throw new Error(response?.Message || 'Hotel search failed');
 
     } catch (error) {
       // Requirement 1.5: Mock fallback for API failures
@@ -335,35 +339,35 @@ export class HotelSearchService {
    * Transform API hotels to internal model
    * Requirement 1.7: Extract and store BookingCode from API response
    */
-  private transformHotelsToInternalModel(hotels: Hotel[]): HotelResult[] {
+  private transformHotelsToInternalModel(hotels: any[]): HotelResult[] {
     return hotels.map(hotel => ({
-      bookingCode: hotel.BookingCode, // Extract BookingCode
-      hotelCode: hotel.HotelCode,
-      hotelName: hotel.HotelName,
-      starRating: hotel.StarRating,
-      address: hotel.HotelAddress,
-      contactNumber: hotel.HotelContactNo,
-      cityName: hotel.CityName,
-      countryName: hotel.CountryName,
+      bookingCode: hotel.BookingCode || hotel.bookingCode, // Extract BookingCode
+      hotelCode: hotel.HotelCode || hotel.hotelCode,
+      hotelName: hotel.HotelName || hotel.hotelName,
+      starRating: hotel.StarRating ?? hotel.starRating ?? 0,
+      address: hotel.HotelAddress || hotel.address || '',
+      contactNumber: hotel.HotelContactNo || hotel.contactNumber || '',
+      cityName: hotel.CityName || hotel.cityName || '',
+      countryName: hotel.CountryName || hotel.countryName || '',
       price: {
-        currency: hotel.Price.CurrencyCode,
-        roomPrice: hotel.Price.RoomPrice,
-        tax: hotel.Price.Tax,
-        extraGuestCharge: hotel.Price.ExtraGuestCharge,
-        childCharge: hotel.Price.ChildCharge,
-        otherCharges: hotel.Price.OtherCharges,
-        discount: hotel.Price.Discount,
-        publishedPrice: hotel.Price.PublishedPrice,
-        offeredPrice: hotel.Price.OfferedPrice,
-        agentCommission: hotel.Price.AgentCommission,
-        agentMarkUp: hotel.Price.AgentMarkUp,
+        currency: hotel.Price?.CurrencyCode || hotel.currency || 'USD',
+        roomPrice: hotel.Price?.RoomPrice ?? hotel.Price?.PublishedPrice ?? 0,
+        tax: hotel.Price?.Tax ?? 0,
+        extraGuestCharge: hotel.Price?.ExtraGuestCharge ?? 0,
+        childCharge: hotel.Price?.ChildCharge ?? 0,
+        otherCharges: hotel.Price?.OtherCharges ?? 0,
+        discount: hotel.Price?.Discount ?? 0,
+        publishedPrice: hotel.Price?.PublishedPrice ?? 0,
+        offeredPrice: hotel.Price?.OfferedPrice ?? hotel.Price?.PublishedPrice ?? 0,
+        agentCommission: hotel.Price?.AgentCommission ?? 0,
+        agentMarkUp: hotel.Price?.AgentMarkUp ?? 0,
       },
-      refundable: hotel.Refundable,
-      mealType: hotel.MealType,
-      roomType: hotel.RoomType,
-      availableRooms: hotel.AvailableRooms,
-      amenities: hotel.Amenities || [],
-      hotelPicture: hotel.HotelPicture,
+      refundable: hotel.Refundable ?? hotel.IsRefundable ?? false,
+      mealType: hotel.MealType || hotel.Inclusion?.[0] || '',
+      roomType: hotel.RoomType || hotel.RoomTypeName || '',
+      availableRooms: hotel.AvailableRooms ?? 5,
+      amenities: hotel.Amenities || hotel.Inclusion || [],
+      hotelPicture: hotel.HotelPicture || '',
       hotelImages: hotel.HotelImages || [],
     }));
   }

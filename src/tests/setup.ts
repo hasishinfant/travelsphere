@@ -4,11 +4,47 @@
  * This file runs before all tests and sets up the testing environment.
  */
 
-import { expect, afterEach, beforeAll, afterAll } from 'vitest';
+import { expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { setupServer } from 'msw/node';
 import { hotelApiHandlers } from './mocks/hotelApiHandlers';
+
+// Compatibility shim for Jest tests running in Vitest
+(globalThis as any).jest = vi;
+
+// JSDOM polyfills
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = vi.fn();
+}
+if (typeof window !== 'undefined') {
+  if (!window.matchMedia) {
+    window.matchMedia = vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+  }
+  if (!window.ResizeObserver) {
+    window.ResizeObserver = vi.fn().mockImplementation(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    }));
+  }
+  if (!window.IntersectionObserver) {
+    window.IntersectionObserver = vi.fn().mockImplementation(() => ({
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    }));
+  }
+}
 
 // Setup MSW server with hotel API handlers
 export const server = setupServer(...hotelApiHandlers);

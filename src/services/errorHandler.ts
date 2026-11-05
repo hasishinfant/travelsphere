@@ -460,7 +460,13 @@ class ErrorHandler {
         },
       },
       // @ts-expect-error - Additional properties for compatibility
-      error: errorCode,
+      error: {
+        code: errorCode,
+        message: apiError.ErrorMessage || 'Unknown error',
+        details: {
+          originalCode: apiError.ErrorCode,
+        },
+      },
       recoverable: this.isRecoverableErrorCode(errorCode),
     };
   }
@@ -488,7 +494,8 @@ class ErrorHandler {
    * Hotel Requirement 8.4: Parse API errors
    */
   transformTBOHotelError(apiError: any): ApiErrorResponse {
-    const errorCode = this.normalizeTBOHotelErrorCode(apiError.ErrorCode || apiError.errorCode);
+    const rawCode = apiError.ErrorCode || apiError.errorCode;
+    const errorCode = this.normalizeTBOHotelErrorCode(rawCode);
     const errorMessage = apiError.ErrorMessage || apiError.errorMessage || apiError.message;
     
     return {
@@ -500,7 +507,13 @@ class ErrorHandler {
         },
       },
       // @ts-expect-error - Additional properties for compatibility
-      error: errorCode,
+      error: {
+        code: errorCode,
+        message: errorMessage,
+        details: {
+          originalCode: rawCode,
+        },
+      },
       recoverable: this.isRecoverableErrorCode(errorCode),
     };
   }

@@ -86,6 +86,7 @@ export interface HotelBookingConfirmation {
   confirmationNumber: string;
   bookingReferenceId: string;
   hotel: Hotel;
+  hotelName?: string;
   guestDetails: GuestDetails[];
   totalFare: number;
   currency: string;
@@ -152,6 +153,23 @@ class HotelBookingService {
    * Requirements: 7.2
    */
   getCurrentSession(): HotelBookingSession | null {
+    const stored = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const expiresAt = new Date(parsed.expiresAt);
+        if (new Date() > expiresAt) {
+          this.cancelSession();
+          return null;
+        }
+      } catch {
+        // ignore parse error
+      }
+    } else if (this.currentSession) {
+      this.cancelSession();
+      return null;
+    }
+
     // Check if session has expired
     if (this.currentSession && new Date() > this.currentSession.expiresAt) {
       this.cancelSession();
@@ -303,13 +321,15 @@ class HotelBookingService {
     session: HotelBookingSession,
     guestDetails: GuestDetails[]
   ): HotelBookingConfirmation {
+    const hotelName = (session.hotel as any)?.hotelName || (session.hotel as any)?.HotelName || response.HotelDetails?.HotelName || '';
     return {
       confirmationNumber: response.ConfirmationNo,
       bookingReferenceId: response.BookingRefNo,
       hotel: session.hotel,
+      hotelName,
       guestDetails,
-      totalFare: response.HotelDetails.TotalFare,
-      currency: response.HotelDetails.CurrencyCode,
+      totalFare: response.HotelDetails?.TotalFare ?? 0,
+      currency: response.HotelDetails?.CurrencyCode || 'USD',
       checkIn: session.searchCriteria.checkIn,
       checkOut: session.searchCriteria.checkOut,
       bookedAt: new Date(),

@@ -30,7 +30,9 @@ export interface RepricingResult {
 // ============================================================================
 
 class RepricingService {
-  private apiClient = getTekTravelsApiClient();
+  private get apiClient() {
+    return getTekTravelsApiClient();
+  }
 
   /**
    * Re-price a selected flight to validate current pricing
@@ -105,6 +107,9 @@ class RepricingService {
     } catch (error) {
       // Handle flight unavailability and other errors (Requirement 3.4)
       if (error instanceof Error) {
+        if (error.message.startsWith('Re-pricing failed:')) {
+          throw error;
+        }
         // Check if error indicates flight unavailability
         if (
           error.message.includes('not available') ||

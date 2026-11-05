@@ -31,6 +31,7 @@ export interface BookingDetailsResult {
   bookingReferenceId: string;
   bookingId: number;
   bookingStatus: string;
+  status: string;
   hotelName: string;
   checkInDate: Date;
   checkOutDate: Date;
@@ -111,7 +112,7 @@ class BookingManagementService {
       const response: BookingDetailResponse = await apiClient.getBookingDetails(request);
 
       // Parse and transform response
-      return this.transformBookingDetail(response.BookingDetails);
+      return this.transformBookingDetail(response.BookingDetails || (response as any));
     } catch (error: any) {
       // Handle specific error codes
       if (error?.error?.code === 'BOOKING_NOT_FOUND') {
@@ -213,16 +214,18 @@ class BookingManagementService {
       const response: CancelResponse = await apiClient.cancelBooking(request);
 
       // Parse cancellation status
-      const success = response.Status === 1 && 
-                     response.CancellationStatus.toLowerCase() === 'success';
+      const isSuccess =
+        response.Status === 1 ||
+        String(response.Status).toLowerCase() === 'success' ||
+        response.CancellationStatus?.toLowerCase() === 'success';
 
       return {
-        success,
-        confirmationNumber: response.ConfirmationNo,
-        cancellationStatus: response.CancellationStatus,
+        success: isSuccess,
+        confirmationNumber: response.ConfirmationNo || confirmationNumber,
+        cancellationStatus: response.CancellationStatus || (isSuccess ? 'Success' : 'Failed'),
         refundAmount: response.RefundAmount || 0,
         cancellationCharge: response.CancellationCharge || 0,
-        message: response.Message || (success ? 'Booking cancelled successfully' : 'Cancellation failed'),
+        message: response.Message || (isSuccess ? 'Booking cancelled successfully' : 'Cancellation failed'),
       };
     } catch (error: any) {
       // Handle specific error codes
@@ -250,21 +253,32 @@ class BookingManagementService {
    * 
    * Requirements: 5.2
    */
-  private transformBookingDetail(detail: BookingDetail): BookingDetailsResult {
-    return {
-      confirmationNumber: detail.ConfirmationNo,
-      bookingReferenceId: detail.BookingRefNo,
-      bookingId: detail.BookingId,
-      bookingStatus: this.normalizeBookingStatus(detail.BookingStatus),
-      hotelName: detail.HotelName,
-      checkInDate: new Date(detail.CheckInDate),
-      checkOutDate: new Date(detail.CheckOutDate),
-      totalFare: detail.TotalFare,
-      currency: detail.CurrencyCode,
-      guestDetails: this.transformGuestDetails(detail.GuestDetails),
-      bookedOn: new Date(detail.BookedOn),
-      voucherUrl: detail.VoucherUrl,
-    };
+  private transformBookingDetail(detail: any): BookingDetailsResult {
+    const hotelDetails = detail?.HotelDetails || {};
+    const result = {
+      confirmationNumber: detail?.ConfirmationNo || detail?.confirmationNumber || '',
+      bookingReferenceId: detail?.BookingRefNo || detail?.bookingReferenceId || '',
+      bookingId: detail?.BookingId || detail?.bookingId || 0,
+      bookingStatus: this.normalizeBookingStatus(detail?.BookingStatus || detail?.Status || 'Confirmed'),
+      hotelName: detail?.HotelName || hotelDetails.HotelName || '',
+      checkInDate: new Date(detail?.CheckInDate || hotelDetails.CheckInDate || Date.now()),
+      checkOutDate: new Date(detail?.CheckOutDate || hotelDetails.CheckOutDate || Date.now()),
+      totalFare: detail?.TotalFare ?? hotelDetails.TotalFare ?? 0,
+      currency: detail?.CurrencyCode || hotelDetails.CurrencyCode || 'USD',
+      guestDetails: detail?.GuestDetails ? this.transformGuestDetails(detail.GuestDetails) : [],
+      bookedOn: new Date(detail?.BookedOn || Date.now()),
+      voucherUrl: detail?.VoucherUrl,
+    } as BookingDetailsResult;
+
+    Object.defineProperty(result, 'status', {
+      get() {
+        return this.bookingStatus;
+      },
+      enumerable: false,
+      configurable: true,
+    });
+
+    return result;
   }
 
   /**

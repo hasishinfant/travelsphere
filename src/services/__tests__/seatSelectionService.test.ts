@@ -13,14 +13,18 @@ import type {
   SeatSellResponse,
   SeatInfo,
 } from '../../types/tekTravelsApi';
+import { getTekTravelsApiClient } from '../api/tekTravelsApiClient';
 
 // Mock the API client
-vi.mock('../api/tekTravelsApiClient', () => ({
-  getTekTravelsApiClient: vi.fn(() => ({
+vi.mock('../api/tekTravelsApiClient', () => {
+  const mockClient = {
     getSeatMap: vi.fn(),
     sellSeats: vi.fn(),
-  })),
-}));
+  };
+  return {
+    getTekTravelsApiClient: vi.fn(() => mockClient),
+  };
+});
 
 describe('SeatSelectionService', () => {
   let service: SeatSelectionService;
@@ -31,7 +35,6 @@ describe('SeatSelectionService', () => {
     service = getSeatSelectionService();
     
     // Get the mocked API client
-    const { getTekTravelsApiClient } = require('../api/tekTravelsApiClient');
     mockApiClient = getTekTravelsApiClient();
   });
 

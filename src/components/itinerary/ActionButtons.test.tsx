@@ -1,14 +1,15 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 import ActionButtons from './ActionButtons';
 
 describe('ActionButtons', () => {
-  const mockOnChatWithAssistant = jest.fn();
-  const mockOnSaveTrip = jest.fn();
+  const mockOnChatWithAssistant = vi.fn();
+  const mockOnSaveTrip = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders both action buttons', () => {
@@ -19,8 +20,8 @@ describe('ActionButtons', () => {
       />
     );
     
-    expect(screen.getByText('💬 Chat with Travel Assistant')).toBeInTheDocument();
-    expect(screen.getByText('💾 Save Trip')).toBeInTheDocument();
+    expect(screen.getByText('Ask the assistant')).toBeInTheDocument();
+    expect(screen.getByText('Save itinerary')).toBeInTheDocument();
   });
 
   it('calls onChatWithAssistant when chat button is clicked', () => {
@@ -31,7 +32,7 @@ describe('ActionButtons', () => {
       />
     );
     
-    const chatButton = screen.getByText('💬 Chat with Travel Assistant');
+    const chatButton = screen.getByText('Ask the assistant');
     fireEvent.click(chatButton);
     
     expect(mockOnChatWithAssistant).toHaveBeenCalledTimes(1);
@@ -45,7 +46,7 @@ describe('ActionButtons', () => {
       />
     );
     
-    const saveButton = screen.getByText('💾 Save Trip');
+    const saveButton = screen.getByText('Save itinerary');
     fireEvent.click(saveButton);
     
     expect(mockOnSaveTrip).toHaveBeenCalledTimes(1);
@@ -60,8 +61,8 @@ describe('ActionButtons', () => {
       />
     );
     
-    expect(screen.getByText('💾 Saving...')).toBeInTheDocument();
-    expect(screen.queryByText('💾 Save Trip')).not.toBeInTheDocument();
+    expect(screen.getByText('Saving…')).toBeInTheDocument();
+    expect(screen.queryByText('Save itinerary')).not.toBeInTheDocument();
   });
 
   it('disables save button when isSaving is true', () => {
@@ -73,7 +74,7 @@ describe('ActionButtons', () => {
       />
     );
     
-    const saveButton = screen.getByText('💾 Saving...');
+    const saveButton = screen.getByText('Saving…').closest('button');
     expect(saveButton).toBeDisabled();
   });
 
@@ -86,28 +87,27 @@ describe('ActionButtons', () => {
       />
     );
     
-    const saveButton = screen.getByText('💾 Saving...');
+    const saveButton = screen.getByText('Saving…').closest('button')!;
     fireEvent.click(saveButton);
     
     expect(mockOnSaveTrip).not.toHaveBeenCalled();
   });
 
   it('applies correct CSS classes', () => {
-    render(
+    const { container } = render(
       <ActionButtons
         onChatWithAssistant={mockOnChatWithAssistant}
         onSaveTrip={mockOnSaveTrip}
       />
     );
     
-    const container = screen.getByRole('generic');
-    expect(container).toHaveClass('action-buttons');
+    expect(container.firstChild).toHaveClass('itinerary-actions');
     
-    const chatButton = screen.getByText('💬 Chat with Travel Assistant');
-    expect(chatButton).toHaveClass('chat-button', 'primary');
+    const chatButton = screen.getByText('Ask the assistant').closest('button');
+    expect(chatButton).toHaveClass('btn', 'btn-primary');
     
-    const saveButton = screen.getByText('💾 Save Trip');
-    expect(saveButton).toHaveClass('save-button', 'secondary');
+    const saveButton = screen.getByText('Save itinerary').closest('button');
+    expect(saveButton).toHaveClass('btn', 'btn-secondary');
   });
 
   it('handles default isSaving prop correctly', () => {
@@ -118,7 +118,7 @@ describe('ActionButtons', () => {
       />
     );
     
-    const saveButton = screen.getByText('💾 Save Trip');
+    const saveButton = screen.getByText('Save itinerary').closest('button');
     expect(saveButton).not.toBeDisabled();
     expect(saveButton).toBeEnabled();
   });
