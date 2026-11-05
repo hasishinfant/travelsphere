@@ -37,8 +37,24 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Type check
+        run: npx tsc --noEmit
+
       - name: Build production assets
         run: npm run build
+        env:
+          # Public, browser-safe values only (Supabase anon key is protected by RLS).
+          # Set them under Settings → Secrets and variables → Actions → Variables.
+          # If unset, the app builds in guest/offline mode instead of failing.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+
+      - name: Verify no secrets in bundle
+        run: |
+          if grep -rEl "sk-(proj-)?[A-Za-z0-9_-]{20,}|service_role|LOCAL_JWT_SECRET|postgres(ql)?://" dist; then
+            echo "::error::Possible secret found in build output"; exit 1
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

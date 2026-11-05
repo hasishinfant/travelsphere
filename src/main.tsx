@@ -2,9 +2,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { installCrashReporter } from './utils/crashReporter';
 import './styles/global.css';
 import './styles/components.css';
 import './styles/utilities.css';
+
+installCrashReporter();
 
 // Get the root element
 const rootElement = document.getElementById('root');

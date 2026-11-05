@@ -151,3 +151,22 @@ keys are supplied:
 
 Status vocabulary used in all later reports: *Fully implemented · Partially implemented ·
 Requires external credentials or assets · Pending · Future scope.*
+
+## 9. Production hardening (2026-11-05)
+
+| Area | Finding | Fix |
+|---|---|---|
+| Crash | `supabaseClient.ts` threw at import when `VITE_SUPABASE_*` was unset; CI builds without them, so the GitHub Pages site rendered a blank page | Client is now optional (`isSupabaseConfigured`); app falls back to guest mode |
+| Crash | `getSession()` rejection left the app on an infinite spinner | `.catch/.finally` always releases the loading state |
+| Secrets | Demo account passwords shipped in the public bundle | Test-account panel is dev-only and tree-shaken from production |
+| Secrets | Full source maps published to Pages | `sourcemap: false` for production builds |
+| Secrets | Stale `VITE_OPENAI_API_KEY` typing invited putting a secret in a `VITE_` var | Removed; `vite-env.d.ts` documents that `VITE_*` is public |
+| CI | No type check or secret scan before deploy | Workflow runs `tsc --noEmit` and greps `dist/` for key/DB-URL/JWT patterns |
+| Crash logs | Production stripped *all* `console.*`, including errors | Only `log/info/debug/trace` stripped; new `utils/crashReporter.ts` keeps a redacted ring buffer (`window.__travelsphereCrashes()`) |
+| Auth | Password-reset link pointed to a non-existent `/reset-password` outside the `/tbo/` base | Redirects to the app base URL |
+| UX | No way in without Supabase | "Continue as guest" on the login page |
+| Responsive | Fixed 320px trip cards overflowed narrow phones | `min(320px, 82vw)`; verified no horizontal overflow at 390px on all main routes |
+
+**Database:** roles are stored in `profiles.role`, guarded by the `guard_profile_role` trigger and enforced by RLS; client-side `user_metadata.role` is display-only. Server secrets (`DATABASE_URL`, `LOCAL_JWT_SECRET`) live only in `server/.env` (gitignored, never committed — verified across full history).
+
+**Enabling sign-in on Pages:** add repository *variables* `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (Settings → Secrets and variables → Actions → Variables). Only the public anon key — never the service-role key.

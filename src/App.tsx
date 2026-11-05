@@ -64,16 +64,24 @@ const App: React.FC = () => {
   const basename = import.meta.env.PROD ? '/tbo' : '/';
 
   React.useEffect(() => {
-    // Hydrate current session once on mount
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) {
-        persistLocalUser(buildLocalProfile(data.session.user));
-        setIsAuthenticated(true);
-      } else if (!localStorage.getItem('user')) {
-        setIsAuthenticated(false);
-      }
+    // Guest / offline mode: no auth backend configured.
+    if (!supabase) {
       setAuthReady(true);
-    });
+      return;
+    }
+
+    // Hydrate current session once on mount. Never block the UI if auth is unreachable.
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (data.session?.user) {
+          persistLocalUser(buildLocalProfile(data.session.user));
+          setIsAuthenticated(true);
+        } else if (!localStorage.getItem('user')) {
+          setIsAuthenticated(false);
+        }
+      })
+      .catch((err) => console.warn('[auth] session hydrate failed:', err))
+      .finally(() => setAuthReady(true));
 
     // Subscribe to future auth changes (sign-in, sign-out, token refresh, cross-tab)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -81,6 +89,11 @@ const App: React.FC = () => {
         persistLocalUser(buildLocalProfile(session.user));
         setIsAuthenticated(true);
       } else {
+        // Keep guest sessions; only clear real (Supabase-backed) users on sign-out.
+        try {
+          const u = JSON.parse(localStorage.getItem('user') || 'null');
+          if (u?.guest) return;
+        } catch { /* corrupt entry — clear it */ }
         localStorage.removeItem('user');
         setIsAuthenticated(false);
       }

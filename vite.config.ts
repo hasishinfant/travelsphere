@@ -45,15 +45,17 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
-    // Enable source maps for debugging
-    sourcemap: true,
+    // Source maps are generated locally for debugging but never published:
+    // GitHub Pages would otherwise serve the full original source.
+    sourcemap: mode === 'production' ? false : true,
     // Optimize chunk size
     chunkSizeWarningLimit: 1000,
     // Enable minification
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Remove console.log in production
+        // Strip noisy logging but keep console.error / console.warn so crashes stay diagnosable
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
         drop_debugger: true,
       },
     },
@@ -76,8 +78,8 @@ export default defineConfig(({ mode }) => ({
   esbuild: {
     // Remove unused imports
     treeShaking: true,
-    // Drop console and debugger in production
-    drop: mode === 'production' ? ['console', 'debugger'] : [],
+    // Drop debugger statements in production (console.* is handled by terser above)
+    drop: mode === 'production' ? ['debugger'] : [],
   },
   // Performance hints
   preview: {

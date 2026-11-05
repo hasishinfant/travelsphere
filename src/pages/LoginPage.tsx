@@ -6,18 +6,22 @@ import {
 } from 'lucide-react';
 import Photo from '@/components/ui/Photo';
 import { getDestination } from '@/data/destinations';
-import { signIn, signUp, sendPasswordReset, buildLocalProfile, persistLocalUser } from '@/services/authService';
+import { signIn, signUp, sendPasswordReset, buildLocalProfile, persistLocalUser, continueAsGuest } from '@/services/authService';
+import { isSupabaseConfigured } from '@/services/supabaseClient';
 import { refreshJourneys } from '@/services/journeySync';
 import './LoginPage.css';
 
-// ─── Test accounts (credentials stored only in this file — never transmitted to any server other than Supabase) ───
-const TEST_ACCOUNTS = [
+// ─── Test accounts — development builds only ───
+// Demo credentials must never ship in the public production bundle. `import.meta.env.DEV`
+// is statically false in `vite build`, so this array is tree-shaken out of production.
+const SHOW_TEST_ACCOUNTS = import.meta.env.DEV;
+const TEST_ACCOUNTS = !SHOW_TEST_ACCOUNTS ? [] : [
   { name: 'Arjun Sharma',   email: 'arjun.sharma@tbo-test.com',   password: 'TBOtest@2024', role: 'Business Traveler' },
   { name: 'Priya Nair',     email: 'priya.nair@tbo-test.com',     password: 'TBOtest@2024', role: 'Leisure Explorer' },
   { name: 'Rahul Verma',    email: 'rahul.verma@tbo-test.com',    password: 'TBOtest@2024', role: 'Frequent Flyer' },
   { name: 'Ananya Iyer',    email: 'ananya.iyer@tbo-test.com',    password: 'TBOtest@2024', role: 'Budget Traveler' },
   { name: 'Kiran Mehta',    email: 'kiran.mehta@tbo-test.com',    password: 'TBOtest@2024', role: 'Admin' },
-] as const;
+];
 
 const avatarColors = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6'];
 
@@ -88,7 +92,7 @@ const LoginPage: React.FC = () => {
     }
   };
 
-  const fillTestAccount = (acc: (typeof TEST_ACCOUNTS)[number]) => {
+  const fillTestAccount = (acc: { name: string; email: string; password: string }) => {
     setFormData({ email: acc.email, password: acc.password, name: acc.name });
     setIsLogin(true);
     setError(''); setInfo('');
@@ -112,6 +116,12 @@ const LoginPage: React.FC = () => {
             <p>{isLogin ? 'Sign in to see your trips and itineraries.' : 'Plan, book and keep every trip in one place.'}</p>
           </div>
 
+          {!isSupabaseConfigured && (
+            <div className="notice login-info" role="status">
+              Account sign-in isn’t configured for this deployment. Continue as a guest — your trips are saved in this browser.
+            </div>
+          )}
+
           {/* Error / Info banners */}
           {error && (
             <div className="notice notice-danger login-error" role="alert">
@@ -125,7 +135,7 @@ const LoginPage: React.FC = () => {
           )}
 
           {/* Test accounts panel */}
-          {isLogin && (
+          {isLogin && SHOW_TEST_ACCOUNTS && isSupabaseConfigured && (
             <div className="test-accounts-section">
               <button
                 type="button"
@@ -164,7 +174,7 @@ const LoginPage: React.FC = () => {
                       </button>
                     ))}
                   </div>
-                  <p className="test-accounts-pwd-hint">All test accounts use password: <code>TBOtest@2024</code></p>
+                  <p className="test-accounts-pwd-hint">Test accounts (dev only) — created by <code>scripts/seed-test-users.sh</code></p>
                 </div>
               )}
             </div>
@@ -257,6 +267,15 @@ const LoginPage: React.FC = () => {
               {!submitting && <ArrowRight size={18} />}
             </button>
           </form>
+
+          <button
+            type="button"
+            className="demo-btn guest-btn"
+            onClick={() => { continueAsGuest(); navigate('/'); }}
+            disabled={submitting}
+          >
+            Continue as guest
+          </button>
 
           <div className="auth-switch">
             <p>

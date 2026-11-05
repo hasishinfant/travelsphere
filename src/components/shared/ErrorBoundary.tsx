@@ -1,5 +1,6 @@
 // Error boundary component
 import React, { Component, ReactNode } from 'react';
+import { recordCrash } from '@/utils/crashReporter';
 
 interface Props {
   children: ReactNode;
@@ -21,7 +22,7 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    recordCrash('react', error, errorInfo.componentStack ?? undefined);
   }
 
   render() {

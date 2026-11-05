@@ -1,6 +1,6 @@
 // authService.ts — All authentication operations via Supabase Auth.
 // Never import the raw supabase client outside of this file and supabaseClient.ts.
-import { supabase } from './supabaseClient';
+import { supabase, requireSupabase } from './supabaseClient';
 import type { Session, User } from '@supabase/supabase-js';
 
 export interface AuthProfile {
@@ -16,7 +16,7 @@ export interface AuthProfile {
 // ─── Sign In ────────────────────────────────────────────────────────────────
 
 export async function signIn(email: string, password: string): Promise<{ user: User; session: Session }> {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await requireSupabase().auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
   if (!data.user || !data.session) throw new Error('Sign-in failed — no session returned.');
   return { user: data.user, session: data.session };
@@ -25,7 +25,7 @@ export async function signIn(email: string, password: string): Promise<{ user: U
 // ─── Sign Up ─────────────────────────────────────────────────────────────────
 
 export async function signUp(email: string, password: string, fullName: string): Promise<{ user: User; session: Session | null }> {
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await requireSupabase().auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName } },
@@ -38,8 +38,10 @@ export async function signUp(email: string, password: string, fullName: string):
 // ─── Sign Out ────────────────────────────────────────────────────────────────
 
 export async function signOut(): Promise<void> {
-  const { error } = await supabase.auth.signOut();
-  if (error) console.warn('[authService] signOut error:', error.message);
+  if (supabase) {
+    const { error } = await supabase.auth.signOut().catch((e: Error) => ({ error: e }));
+    if (error) console.warn('[authService] signOut error:', error.message);
+  }
   localStorage.removeItem('user');
   window.dispatchEvent(new Event('auth-change'));
 }
@@ -47,6 +49,7 @@ export async function signOut(): Promise<void> {
 // ─── Get current session ─────────────────────────────────────────────────────
 
 export async function getAuthSession(): Promise<Session | null> {
+  if (!supabase) return null;
   const { data } = await supabase.auth.getSession();
   return data.session;
 }
@@ -81,8 +84,26 @@ export function persistLocalUser(profile: AuthProfile) {
 // ─── Reset password email ─────────────────────────────────────────────────────
 
 export async function sendPasswordReset(email: string): Promise<void> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+  const { error } = await requireSupabase().auth.resetPasswordForEmail(email, {
+    // Respect the deploy base path (e.g. /tbo/ on GitHub Pages)
+    redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
   });
   if (error) throw new Error(error.message);
+}
+
+// ─── Guest mode (no account; data stays in this browser) ─────────────────────
+
+export function continueAsGuest() {
+  localStorage.setItem('user', JSON.stringify({
+    id: 'guest',
+    email: '',
+    full_name: 'Guest',
+    name: 'Guest',
+    role: 'user',
+    guest: true,
+    loggedIn: true,
+    loginTime: new Date().toISOString(),
+    offline: true,
+  }));
+  window.dispatchEvent(new Event('auth-change'));
 }
