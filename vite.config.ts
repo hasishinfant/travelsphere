@@ -33,34 +33,15 @@ export default defineConfig(({ mode }) => ({
     // Performance optimizations
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Separate vendor chunks for better caching
-          vendor: ['react', 'react-dom'],
-          router: ['react-router-dom'],
-          query: ['@tanstack/react-query'],
-          axios: ['axios'],
-          // Separate feature chunks for lazy loading
-          'destination-features': [
-            './src/components/destination/DestinationCard.tsx',
-            './src/components/destination/DestinationGrid.tsx',
-            './src/components/destination/VRModal.tsx'
-          ],
-          'trip-planner-features': [
-            './src/components/trip-planner/TripPlannerForm.tsx',
-            './src/components/trip-planner/DestinationDropdown.tsx',
-            './src/components/trip-planner/BudgetSelector.tsx',
-            './src/components/trip-planner/DateRangePicker.tsx',
-            './src/components/trip-planner/InterestSelector.tsx'
-          ],
-          'chat-features': [
-            './src/components/chat/ChatContainer.tsx',
-            './src/components/chat/ChatInput.tsx',
-            './src/components/chat/QuickSuggestions.tsx'
-          ],
-          'itinerary-features': [
-            './src/components/itinerary/ItineraryTimeline.tsx',
-            './src/components/itinerary/DayCard.tsx'
-          ]
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('three')) {
+              return 'three';
+            }
+            if (id.includes('@supabase')) {
+              return 'supabase';
+            }
+          }
         },
       },
     },

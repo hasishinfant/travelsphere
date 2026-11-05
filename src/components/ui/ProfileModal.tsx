@@ -1,7 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { getUser, updateUser, HOME_AIRPORTS } from '@/services/tripStore';
+import { getUser, updateUser } from '@/services/tripStore';
 import { api, getSession, ApiError } from '@/services/apiClient';
+
+/** Common home airports for the profile picker. */
+export const HOME_AIRPORTS = [
+  { code: 'BLR', city: 'Bengaluru' },
+  { code: 'BOM', city: 'Mumbai' },
+  { code: 'DEL', city: 'New Delhi' },
+  { code: 'MAA', city: 'Chennai' },
+  { code: 'HYD', city: 'Hyderabad' },
+  { code: 'DXB', city: 'Dubai' },
+  { code: 'SIN', city: 'Singapore' },
+  { code: 'LHR', city: 'London' },
+  { code: 'CDG', city: 'Paris' },
+  { code: 'FRA', city: 'Frankfurt' },
+  { code: 'JFK', city: 'New York' },
+  { code: 'LAX', city: 'Los Angeles' },
+  { code: 'YVR', city: 'Vancouver' },
+  { code: 'SYD', city: 'Sydney' },
+  { code: 'HND', city: 'Tokyo' },
+];
 
 interface ProfileModalProps {
   onClose: () => void;
