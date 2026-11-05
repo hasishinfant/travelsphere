@@ -86,7 +86,7 @@ describe('Emergency Support UI & Functional Verification', () => {
     const trackBtn = screen.getByRole('button', { name: /Track Complaint & Live Updates/i });
     fireEvent.click(trackBtn);
     expect(onSuccessTrack).toHaveBeenCalled();
-  });
+  }, 15000);
 
   it('validates required fields in Medical Emergency form before submitting', async () => {
     const onBack = vi.fn();

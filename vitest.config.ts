@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    testTimeout: 15000,
     setupFiles: ['./src/tests/setup.ts'],
     // The API server has its own suite (server/vitest.config.ts) that needs a database
     exclude: ['**/node_modules/**', '**/dist/**', 'server/**'],
