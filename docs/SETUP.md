@@ -59,7 +59,17 @@ cd risk-service && .venv/bin/python -m pytest -q                      # risk eng
 
 `AUTH_MODE=local` is refused when `NODE_ENV=production`.
 
-## 6. API
+## 6. Hotel booking (LiteAPI)
+
+1. Create a free account at https://connect.nuitee.com and copy the **sandbox** key from *Developer tools*.
+2. In `server/.env`: `LITEAPI_API_KEY=<sandbox key>` (leave `LITEAPI_ENV=sandbox`). Restart the API.
+3. `GET /api/v1/hotels/status` should report `configured: true`.
+
+Sandbox searches return real hotels and prices; bookings are simulated and nothing is charged. A production key bills the
+LiteAPI account, so live bookings stay disabled unless `LITEAPI_ENV=production` **and**
+`LITEAPI_ALLOW_LIVE_BOOKINGS=true` are both set. The key is only ever used by the server.
+
+## 7. API
 
 All responses are JSON. Errors: `{ "error": { "code", "message", "details?" } }`.
 Authenticated routes need `Authorization: Bearer <token>`. Every query runs as the `authenticated`

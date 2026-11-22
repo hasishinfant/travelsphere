@@ -79,6 +79,7 @@ Migration `supabase/migrations/0004_risk_intelligence.sql` (0001–0003 untouche
 | `safety_alerts` | destination-wide or personal alerts; partial unique index = one active alert per recipient + dedup key |
 | `assessment_history` | append-only timeline with previous category |
 | `emergency_facilities`, `facility_searches` | 30-day OSM facility cache, including "searched, none found" |
+| `hotel_bookings` (0005) | hotel bookings made through LiteAPI: owner, provider booking id, stay, price, status, cancellation fee/refund; owner/staff read, server-only writes |
 | extended | `model_versions` (status, config, features, dataset, artefact hash), `incidents` (destination, hazard type, verified, verified_by, assigned_to), `notifications.safety_alert_id` |
 
 Constraints: coordinate ranges, enums, validity ordering, one-parent rule, retention. Indexes on every lookup path.
@@ -112,6 +113,13 @@ Tests: `supabase/tests/rls_test.sql` (existing) and `supabase/tests/rls_risk_tes
 | GET | `/api/v1/alerts` | own + destination-wide; `status`, pagination |
 | POST | `/api/v1/alerts/:id/acknowledge` | own alerts |
 | POST / DELETE | `/api/v1/devices[/:id]` | FCM / web-push tokens |
+| GET | `/api/v1/hotels/status` | whether hotel booking is configured, sandbox or production |
+| POST | `/api/v1/hotels/search` | `city` + `country_code` (or `latitude`/`longitude`), `checkin`, `checkout`, `rooms[]` (adults, children ages); 30/min |
+| GET | `/api/v1/hotels/:hotelId` | description, photos, facilities, check-in/out times |
+| POST | `/api/v1/hotels/prebook` | `offer_id` → final price, price/terms changes |
+| POST | `/api/v1/hotels/book` | `prebook_id`, holder, lead guest per room; recorded in `hotel_bookings`; 10 per 15 min |
+| GET | `/api/v1/hotels/bookings`, `/bookings/:id` | own bookings (`from`/`to`); details include live provider status |
+| POST | `/api/v1/hotels/bookings/:id/cancel` | own bookings; records fee and refund |
 | GET | `/api/places/conditions`, `/api/places/:id/assessment` | existing UI endpoints, now fed by the engine (shape unchanged) |
 
 ## 6. Eight-factor methodology
@@ -182,10 +190,10 @@ missing information, status, and the disclaimer that the category/index is not a
 | Suite | Result |
 |---|---|
 | Python `pytest` (risk-service) | **120 passed** — factors incl. threshold boundaries (67), aggregation/override/missing/stale/journeys/safer route/access (19), geometry/solar/parsers on real GDACS, USGS, Open-Meteo responses/HTTP retries/data quality (21), FastAPI + Postgres end-to-end with mocked providers incl. provider failures and alert dedup (7), ML features/no look-ahead/validation/metrics/gate (6) |
-| Node `vitest` (server) | **65 passed** — profile, journeys, places, v1 auth, destinations, history, journey derivation/ownership/consent, incidents incl. RLS and transitions, alerts, client validation/timeouts, place mapping, FCM dispatch) |
+| Node `vitest` (server) | **74 passed** — profile, journeys, places, v1 auth, destinations, history, journey derivation/ownership/consent, incidents incl. RLS and transitions, alerts, client validation/timeouts, place mapping, FCM dispatch, LiteAPI client normalisation and errors, hotel routes (validation, ownership, cancellation, live-booking guard) |
 | RLS SQL | `rls_test.sql` passed · `rls_risk_test.sql` passed |
 | Live end-to-end (local, real providers) | Express → FastAPI → Postgres: `/api/places/conditions` for 10 places (Iceland HIGH — forecast 33 m/s gusts; New York MODERATE — 200 m fog; Bali MODERATE — thunderstorm; others LOW), journey assessment via OSRM (Iceland trek HIGH, personal + destination alert created), incident created |
-| Frontend `vitest` | **457 passed** |
+| Frontend `vitest` | **139 passed** — includes the hotel services and an end-to-end booking workflow test (search → verify price → guests → confirm) |
 
 ## 12. Security
 
@@ -201,10 +209,11 @@ Overpass) receive coordinates — self-host for production.
 ## 13. Environment
 
 `server/.env` — `DATABASE_URL`, `AUTH_MODE`, `LOCAL_JWT_SECRET` | `SUPABASE_URL`, `CORS_ORIGINS`, `RISK_SERVICE_URL`,
-`RISK_SERVICE_TOKEN`, `RISK_SERVICE_TIMEOUT_MS`, `ASSESSMENT_MAX_AGE_MIN`, `FCM_PROJECT_ID`, `FCM_SERVICE_ACCOUNT_JSON`.
+`RISK_SERVICE_TOKEN`, `RISK_SERVICE_TIMEOUT_MS`, `ASSESSMENT_MAX_AGE_MIN`, `FCM_PROJECT_ID`, `FCM_SERVICE_ACCOUNT_JSON`,
+`LITEAPI_API_KEY`, `LITEAPI_ENV`, `LITEAPI_ALLOW_LIVE_BOOKINGS`, `LITEAPI_TIMEOUT_MS`.
 `risk-service/.env` — `DATABASE_URL`, `RISK_SERVICE_TOKEN` (same value), `RISK_HOST`, `RISK_PORT`,
 `RISK_SCHEDULER_ENABLED`, `RISK_HTTP_TIMEOUT_S`, optional `OSRM_DRIVING_URL`, `OSRM_FOOT_URL`, `OVERPASS_URLS`.
-No provider keys are needed: all data sources used are keyless.
+The risk data sources are keyless. Hotel booking needs a LiteAPI key (free sandbox key; see SETUP.md §6).
 
 ## 14. Deployment
 
@@ -232,6 +241,7 @@ resources were created; the steps above map directly onto ECS/Fargate or EC2 + R
 | APScheduler jobs | Implemented (enable in one instance) |
 | Response accessibility | **External-dependent** — every public Overpass mirror timed out/504'd during testing, so live access results were "unknown" (handled as PARTIAL, never as safe); logic covered by tests; self-host Overpass |
 | OSRM routing | External-dependent (demo server; fair use) |
+| Hotel booking (LiteAPI) | **Credential-dependent** — client, routes, `hotel_bookings` table and the full booking UI are implemented and tested against documented response shapes; not yet run against the live sandbox (needs your key) |
 | FCM push | **Credential-dependent** — sender + dispatcher implemented and unit-tested with a fake transport; not tested against Firebase |
 | Supabase run | Credential-dependent — `server/.env` points at a Supabase project whose pooler rejected the connection; nothing was applied there. All verification used local Postgres |
 | ML model | Trained on real data, evaluated, **withheld** by the gate (insufficient performance) |

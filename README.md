@@ -6,6 +6,9 @@ Each destination is scored from eight measured factors (weather, active hazards,
 time of travel, hazard history, population exposure and data reliability) using live data from Open-Meteo, GDACS and
 USGS. Planned journeys get their own assessment based on the route, timing, activity and access to emergency care.
 
+Hotels anywhere in the world can be searched and booked through [LiteAPI](https://docs.nuitee.com) (Nuitée). With a free
+sandbox key, prices and availability are real and bookings are simulated — nothing is charged.
+
 ## Project structure
 
 ```
@@ -32,6 +35,9 @@ npm run dev            # terminal 2 — app on http://localhost:3000
 
 `dev:backend` creates the local database, applies the migrations, sets up the Python environment and loads the hazard
 archive the first time it runs.
+
+To enable hotel search and booking, create a free account at [connect.nuitee.com](https://connect.nuitee.com), copy the
+sandbox key from *Developer tools* and set `LITEAPI_API_KEY` in `server/.env`.
 
 ## Tests
 
