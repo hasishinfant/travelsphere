@@ -1,0 +1,49 @@
+{
+  "version": "scoring-v1",
+  "status": "baseline — thresholds from published definitions; aggregation weights are NOT validated",
+  "composite_index": {
+    "method": "weighted_mean_over_available",
+    "description": "Ranking/trend index only. Not a probability. Data reliability is excluded by design.",
+    "weights": {
+      "weather_severity": 1,
+      "hazard_severity": 1,
+      "distance_to_hazard": 1,
+      "route_exposure": 1,
+      "time_factor": 1,
+      "historical_incident_risk": 1,
+      "population_exposure": 1
+    }
+  },
+  "destination": {
+    "category_method": "primary_hazard_max",
+    "primary_factors": ["weather_severity", "hazard_severity"],
+    "class_to_category": {"none": "LOW", "minor": "LOW", "moderate": "MODERATE", "severe": "HIGH", "extreme": "HIGH"},
+    "required_for_category": "at least one primary factor available"
+  },
+  "journey": {
+    "outdoor_activities": ["trekking", "water"],
+    "outdoor_weather_escalation": {"min_class": "moderate", "steps": 1},
+    "context_cap": "moderate",
+    "poor_access_escalation": {"min_hazard_class": "moderate", "steps": 1},
+    "access_bands_minutes": {"adequate": 60, "limited": 120},
+    "access_bands_note": "60 min: trauma 'golden hour' convention; 120 min: Lancet Commission on Global Surgery 2-hour access benchmark",
+    "facility_search_radius_m": 25000,
+    "safer_route_min_reduction": 0.25
+  },
+  "critical_override": {
+    "sources": ["gdacs", "usgs-earthquakes"],
+    "alert_levels": ["red"],
+    "require_verified": true,
+    "require_affecting": true,
+    "description": "A verified red alert (GDACS red / USGS PAGER red) affecting the location or route forces CRITICAL regardless of other factors."
+  },
+  "history": {"window_years": 10, "radius_m": 150000, "usgs_min_magnitude": 6.0,
+              "usgs_min_magnitude_note": "USGS 'strong' magnitude class (>= 6): damaging shaking possible at tens of km"},
+  "hazard_search_radius_m": 500000,
+  "alerts": {"min_level": "HIGH", "destination_ttl_hours": 12},
+  "ml_gate": {
+    "min_pr_auc_lift_unseen": 3.0,
+    "min_recall_unseen": 0.5,
+    "note": "Acceptance policy: an ML signal is shown only if, on the held-out-location 2024 test set, PR-AUC is at least 3x the prevalence and recall at the validation-chosen threshold is at least 0.5. It never sets the risk category."
+  }
+}
