@@ -237,7 +237,8 @@ describe('places — 8-factor safety assessments', () => {
   it('uses the traveller’s own journey: trekking in Paris today raises the same rain to HIGH', async () => {
     const appOk = createApp(config, db, undefined, new WeatherService(db, fetchOk), stubRisk);
     const { token } = await signIn('trekker@test.local');
-    const today = new Date().toISOString().slice(0, 10);
+    // Use the database's date: it decides whether a journey is current, and can differ from UTC near midnight.
+    const today = (await db.query(`select current_date::text as d`)).rows[0].d as string;
     await request(appOk).post('/api/journeys').set(as(token)).send({
       ...paris, start_date: today, end_date: today,
       items: [{ day_number: 1, title: 'Seine riverside walk', activity_type: 'trekking' }],
