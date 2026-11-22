@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { rateLimit } from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { z } from 'zod';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
@@ -12,6 +12,11 @@ import { profileRouter } from './routes/profile.js';
 import { journeysRouter } from './routes/journeys.js';
 import { placesRouter } from './routes/places.js';
 import { WeatherService } from './services/weather.js';
+import { createRiskService, type RiskService } from './integrations/riskService.js';
+import { destinationsRouter } from './routes/v1/destinations.js';
+import { assessmentsRouter, journeyAssessmentRouter } from './routes/v1/assessments.js';
+import { incidentsRouter } from './routes/v1/incidents.js';
+import { alertsRouter, devicesRouter } from './routes/v1/alerts.js';
 
 export const API_VERSION = '0.1.0';
 
@@ -25,6 +30,7 @@ export function createApp(
   db: Db,
   verifier: TokenVerifier = createVerifier(config),
   weather: WeatherService = new WeatherService(db),
+  risk: RiskService = createRiskService(config),
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -33,7 +39,7 @@ export function createApp(
   app.use(cors({
     origin: (origin, cb) => cb(null, !origin || config.corsOrigins.includes(origin)),
     allowedHeaders: ['Authorization', 'Content-Type'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   }));
   app.use(express.json({ limit: '256kb' }));
 
@@ -42,15 +48,19 @@ export function createApp(
   app.use('/api', generalLimiter);
 
   // Health — reports which modes are active so nothing is mistaken for production
-  app.get('/api/health', route(async (_req, res) => {
-    const database = (await dbHealthy(db)) ? 'connected' : 'unavailable';
-    res.status(database === 'connected' ? 200 : 503).json({
-      status: database === 'connected' ? 'ok' : 'degraded',
+  const health = route(async (_req, res) => {
+    const [dbOk, riskHealth] = await Promise.all([dbHealthy(db), risk.health()]);
+    const database = dbOk ? 'connected' : 'unavailable';
+    res.status(dbOk ? 200 : 503).json({
+      status: dbOk && riskHealth ? 'ok' : 'degraded',
       version: API_VERSION,
       auth_mode: config.AUTH_MODE,
       database,
+      risk_service: riskHealth ? { status: riskHealth.status, engine_version: riskHealth.engine_version } : 'unavailable',
     });
-  }));
+  });
+  app.get('/api/health', health);
+  app.get('/api/v1/health', health);
 
   // Local development sign-in (no password; refused outside AUTH_MODE=local, which is refused in production)
   if (config.AUTH_MODE === 'local' && verifier.issueLocal) {
@@ -71,7 +81,18 @@ export function createApp(
   const auth = requireAuth(verifier);
   app.use('/api/profile', auth, profileRouter(db));
   app.use('/api/journeys', auth, journeysRouter(db));
-  app.use('/api/places', auth, placesRouter(db, weather));
+  app.use('/api/places', auth, placesRouter(db, weather, risk, config.ASSESSMENT_MAX_AGE_MIN));
+
+  // Versioned API (risk intelligence, incidents, alerts)
+  const assessLimiter = rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: 'draft-8', legacyHeaders: false,
+    keyGenerator: req => req.user?.id ?? ipKeyGenerator(req.ip ?? '') });
+  app.use('/api/v1/destinations', auth, destinationsRouter(db, risk, config.ASSESSMENT_MAX_AGE_MIN));
+  app.use('/api/v1/assessments', auth, (req, res, next) => (req.method === 'POST' ? assessLimiter(req, res, next) : next()),
+    assessmentsRouter(db, risk, config.ASSESSMENT_MAX_AGE_MIN));
+  app.use('/api/v1/journeys', auth, journeyAssessmentRouter(db));
+  app.use('/api/v1/incidents', auth, incidentsRouter(db));
+  app.use('/api/v1/alerts', auth, alertsRouter(db));
+  app.use('/api/v1/devices', auth, devicesRouter(db));
 
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'not_found', 'No such endpoint')));
   app.use(errorHandler);

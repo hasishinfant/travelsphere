@@ -6,6 +6,8 @@ import { HttpError, parse, route } from '../http.js';
 import { PLACES, getPlace, type PlaceProfile } from '../data/places.js';
 import type { WeatherService } from '../services/weather.js';
 import { assess, type Assessment, type JourneyCtx, type ZoneHit } from '../services/riskEngine.js';
+import type { RiskService } from '../integrations/riskService.js';
+import { latestDestinationAssessment, storedToAssessment, toPlaceShape, weatherFromFactors } from '../services/assessments.js';
 
 const HAVERSINE = (lat: string, lng: string) => `(2 * 6371000 * asin(sqrt(
   power(sin(radians(${lat} - $1) / 2), 2) +
@@ -79,33 +81,74 @@ const full = (a: Assessment) => ({
   notice: 'Travel safety information only. Always follow official warnings and local emergency services.',
 });
 
-export function placesRouter(db: Db, weather: WeatherService) {
+/** Legacy rule baseline (rules-v1) — used only when the risk-intelligence service is unreachable. */
+async function legacy(db: Db, weather: WeatherService, userId: string, places: PlaceProfile[]) {
+  const obs = await weather.observe(places);
+  return Promise.all(places.map(async p => assess({
+    place: p,
+    observation: obs.get(p.id) ?? null,
+    zones: await zonesNear(db, p),
+    incidentCount: await incidentsNear(db, p),
+    journey: await journeyFor(db, userId, p.id),
+  })));
+}
+
+const legacyFull = (a: Assessment) => ({ ...full(a), engine: 'fallback',
+  uncertainty: `${a.uncertainty}. Shown because the risk-intelligence service is unavailable.` });
+
+export function placesRouter(db: Db, weather: WeatherService, risk?: RiskService, maxAgeMin = 30) {
   const r = Router();
 
-  const run = async (userId: string, places: PlaceProfile[]) => {
-    const obs = await weather.observe(places);
-    return Promise.all(places.map(async p => assess({
-      place: p,
-      observation: obs.get(p.id) ?? null,
-      zones: await zonesNear(db, p),
-      incidentCount: await incidentsNear(db, p),
-      journey: await journeyFor(db, userId, p.id),
-    })));
+  /** 8-factor engine result for one place in the place-card shape, or null if the engine is unreachable. */
+  const engine = async (place: PlaceProfile) => {
+    if (!risk) return null;
+    try {
+      const stored = await latestDestinationAssessment(db, place.id, maxAgeMin);
+      if (stored) {
+        const a = storedToAssessment(stored);
+        return toPlaceShape(a as any, weatherFromFactors(stored.factors));
+      }
+      const fresh = await risk.assessDestination(place.id);
+      return toPlaceShape(fresh as any, fresh.weather);
+    } catch (err) {
+      console.warn(`[places] risk service unavailable for ${place.id}: ${(err as Error).message}`);
+      return null;
+    }
   };
 
-  // Compact meter data for every place (cards)
+  // Compact meter data for every place (cards). Up to 3 places are assessed concurrently.
   r.get('/conditions', route(async (req, res) => {
-    const results = await run(req.user!.id, PLACES);
-    res.json({ places: results.map(summary), model_version: results[0]?.modelVersion });
+    const results: (ReturnType<typeof toPlaceShape> | null)[] = new Array(PLACES.length).fill(null);
+    let next = 0;
+    await Promise.all(Array.from({ length: 3 }, async () => {
+      while (next < PLACES.length) {
+        const i = next++;
+        results[i] = await engine(PLACES[i]);
+      }
+    }));
+    const missing = PLACES.filter((_, i) => !results[i]);
+    const fallback = missing.length ? await legacy(db, weather, req.user!.id, missing) : [];
+    const places = PLACES.map((p, i) => {
+      if (results[i]) {
+        const { factors: _f, reasons: _r, recommended_action: _a, observation_age_min: _o, model_version: _m,
+          uncertainty: _u, notice: _n, ...summaryOnly } = results[i]!;
+        return summaryOnly;
+      }
+      return summary(fallback[missing.indexOf(p)]);
+    });
+    const firstEngine = results.find(Boolean);
+    res.json({ places, model_version: firstEngine?.model_version ?? fallback[0]?.modelVersion });
   }));
 
-  // Full 8-factor assessment for one place; recorded in risk_assessments
+  // Full 8-factor assessment for one place
   r.get('/:id/assessment', route(async (req, res) => {
     const id = parse(z.string().regex(/^[a-z0-9-]{2,40}$/), req.params.id);
     const place = getPlace(id);
     if (!place) throw new HttpError(404, 'not_found', 'Unknown place');
-    const [a] = await run(req.user!.id, [place]);
+    const shaped = await engine(place);
+    if (shaped) return res.json({ assessment: shaped });
 
+    const [a] = await legacy(db, weather, req.user!.id, [place]);
     if (a.riskLevel) {
       // Server-only write. Skip if an identical result was recorded in the last 15 minutes.
       await db.query(
@@ -122,7 +165,7 @@ export function placesRouter(db: Db, weather: WeatherService) {
           a.dataStatus, a.uncertainty, a.modelVersion, a.factorsAvailable],
       );
     }
-    res.json({ assessment: full(a) });
+    res.json({ assessment: legacyFull(a) });
   }));
 
   return r;

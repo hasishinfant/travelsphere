@@ -4,6 +4,12 @@ import { SignJWT } from 'jose';
 import { loadConfig } from '../src/config.js';
 import { createPool, type Db } from '../src/db.js';
 import { createApp } from '../src/app.js';
+import { HttpError } from '../src/http.js';
+import type { RiskService } from '../src/integrations/riskService.js';
+
+// Risk service that is up but cannot assess → /api/places uses the labelled rules-v1 fallback in these tests
+const unavailable = () => Promise.reject(new HttpError(503, 'risk_service_unavailable', 'down'));
+const stubRisk: RiskService = { health: async () => ({ status: 'ok' }), assessDestination: unavailable, assessJourney: unavailable };
 
 const ADMIN_URL = process.env.TEST_ADMIN_DATABASE_URL || 'postgres://localhost:5432/postgres';
 const DB_URL = ADMIN_URL.replace(/\/[^/]*$/, '/travelsphere_api_test');
@@ -39,7 +45,7 @@ const paris = {
 
 beforeAll(() => {
   db = createPool(DB_URL);
-  app = createApp(config, db);
+  app = createApp(config, db, undefined, undefined, stubRisk);
 });
 afterAll(async () => {
   await db.end();
@@ -216,7 +222,7 @@ describe('places — 8-factor safety assessments', () => {
   });
 
   it('returns a meter summary for every place from live conditions', async () => {
-    const appOk = createApp(config, db, undefined, new WeatherService(db, fetchOk));
+    const appOk = createApp(config, db, undefined, new WeatherService(db, fetchOk), stubRisk);
     const { token } = await signIn('meter@test.local');
     const res = await request(appOk).get('/api/places/conditions').set(as(token));
     expect(res.status).toBe(200);
@@ -229,7 +235,7 @@ describe('places — 8-factor safety assessments', () => {
   });
 
   it('uses the traveller’s own journey: trekking in Paris today raises the same rain to HIGH', async () => {
-    const appOk = createApp(config, db, undefined, new WeatherService(db, fetchOk));
+    const appOk = createApp(config, db, undefined, new WeatherService(db, fetchOk), stubRisk);
     const { token } = await signIn('trekker@test.local');
     const today = new Date().toISOString().slice(0, 10);
     await request(appOk).post('/api/journeys').set(as(token)).send({
@@ -248,7 +254,7 @@ describe('places — 8-factor safety assessments', () => {
   });
 
   it('records the assessment once (deduplicated within 15 minutes)', async () => {
-    const appOk = createApp(config, db, undefined, new WeatherService(db, fetchOk));
+    const appOk = createApp(config, db, undefined, new WeatherService(db, fetchOk), stubRisk);
     const { token, id } = await signIn('recorder@test.local');
     await request(appOk).get('/api/places/kyoto/assessment').set(as(token));
     await request(appOk).get('/api/places/kyoto/assessment').set(as(token));
@@ -260,7 +266,7 @@ describe('places — 8-factor safety assessments', () => {
 
   it('provider down and nothing stored → no risk level, status UNAVAILABLE', async () => {
     await db.query(`delete from public.environment_observations where place_id = 'bali'`);
-    const appDown = createApp(config, db, undefined, new WeatherService(db, fetchDown));
+    const appDown = createApp(config, db, undefined, new WeatherService(db, fetchDown), stubRisk);
     const { token } = await signIn('outage@test.local');
     const res = await request(appDown).get('/api/places/bali/assessment').set(as(token));
     expect(res.status).toBe(200);
@@ -269,8 +275,8 @@ describe('places — 8-factor safety assessments', () => {
 
   it('provider down but a recent observation is stored → served from the database', async () => {
     const { token } = await signIn('fallback@test.local');
-    await request(createApp(config, db, undefined, new WeatherService(db, fetchOk))).get('/api/places/rome/assessment').set(as(token));
-    const res = await request(createApp(config, db, undefined, new WeatherService(db, fetchDown)))
+    await request(createApp(config, db, undefined, new WeatherService(db, fetchOk), stubRisk)).get('/api/places/rome/assessment').set(as(token));
+    const res = await request(createApp(config, db, undefined, new WeatherService(db, fetchDown), stubRisk))
       .get('/api/places/rome/assessment').set(as(token));
     expect(res.body.assessment.risk_level).toBe('LOW');
     expect(res.body.assessment.observed_at).not.toBeNull();
