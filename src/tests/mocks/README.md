@@ -10,7 +10,6 @@ Mock Service Worker (MSW) intercepts HTTP requests at the network level and retu
 
 - **`hotelApiHandlers.ts`**: MSW handlers for TBO Hotel API endpoints
 - **`mockHotelData.ts`**: Mock data for hotel API responses
-- **`mockFlightData.ts`**: Mock data for flight API responses
 - **`hotelApiHandlers.test.ts`**: Tests demonstrating MSW handler usage
 
 ## Setup

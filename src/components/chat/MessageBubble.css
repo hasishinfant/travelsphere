@@ -1,7 +1,0 @@
-.message-bubble { display: flex; flex-direction: column; gap: 4px; max-width: min(78%, 560px); animation: fade-up 220ms var(--ease) both; }
-.message-content { padding: var(--space-3) var(--space-4); border-radius: var(--r-lg); line-height: 1.55; white-space: pre-wrap; }
-.assistant-message { align-self: flex-start; }
-.assistant-message .message-content { background: var(--surface-2); color: var(--ink); border-top-left-radius: 6px; }
-.user-message { align-self: flex-end; align-items: flex-end; }
-.user-message .message-content { background: var(--accent); color: #fff; border-top-right-radius: 6px; }
-.message-timestamp { font-size: 11px; color: var(--muted-2); padding: 0 4px; }
