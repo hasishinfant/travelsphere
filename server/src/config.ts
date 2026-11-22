@@ -19,6 +19,13 @@ const Env = z.object({
   /** Firebase Cloud Messaging (HTTP v1). Both required to send push; otherwise alerts stay in-app. */
   FCM_PROJECT_ID: z.string().min(1).optional(),
   FCM_SERVICE_ACCOUNT_JSON: z.string().min(1).optional(),
+  /** LiteAPI (Nuitée) hotel inventory. Free sandbox key: https://connect.nuitee.com → Developer tools. */
+  LITEAPI_API_KEY: z.string().min(10).optional(),
+  /** sandbox: bookings are simulated. production: real reservations billed to the LiteAPI account. */
+  LITEAPI_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+  /** Production bookings stay disabled unless this is explicitly true. */
+  LITEAPI_ALLOW_LIVE_BOOKINGS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
+  LITEAPI_TIMEOUT_MS: z.coerce.number().int().min(2000).max(120_000).default(30_000),
 });
 
 export type Config = z.infer<typeof Env> & { corsOrigins: string[] };

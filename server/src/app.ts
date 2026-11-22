@@ -17,6 +17,8 @@ import { destinationsRouter } from './routes/v1/destinations.js';
 import { assessmentsRouter, journeyAssessmentRouter } from './routes/v1/assessments.js';
 import { incidentsRouter } from './routes/v1/incidents.js';
 import { alertsRouter, devicesRouter } from './routes/v1/alerts.js';
+import { hotelsRouter } from './routes/v1/hotels.js';
+import { createLiteApi, type HotelProvider } from './integrations/liteapi.js';
 
 export const API_VERSION = '0.1.0';
 
@@ -31,6 +33,9 @@ export function createApp(
   verifier: TokenVerifier = createVerifier(config),
   weather: WeatherService = new WeatherService(db),
   risk: RiskService = createRiskService(config),
+  hotels: HotelProvider | null = config.LITEAPI_API_KEY
+    ? createLiteApi({ apiKey: config.LITEAPI_API_KEY, env: config.LITEAPI_ENV, timeoutMs: config.LITEAPI_TIMEOUT_MS })
+    : null,
 ) {
   const app = express();
   app.disable('x-powered-by');
@@ -57,6 +62,7 @@ export function createApp(
       auth_mode: config.AUTH_MODE,
       database,
       risk_service: riskHealth ? { status: riskHealth.status, engine_version: riskHealth.engine_version } : 'unavailable',
+      hotels: hotels ? `configured (${hotels.env})` : 'not_configured',
     });
   });
   app.get('/api/health', health);
@@ -93,6 +99,7 @@ export function createApp(
   app.use('/api/v1/incidents', auth, incidentsRouter(db));
   app.use('/api/v1/alerts', auth, alertsRouter(db));
   app.use('/api/v1/devices', auth, devicesRouter(db));
+  app.use('/api/v1/hotels', auth, hotelsRouter(db, hotels, { allowLiveBookings: config.LITEAPI_ALLOW_LIVE_BOOKINGS }));
 
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'not_found', 'No such endpoint')));
   app.use(errorHandler);
