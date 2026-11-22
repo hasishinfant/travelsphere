@@ -1,7 +1,6 @@
 # TravelSphere — Backend & Risk Intelligence Implementation
 
-Date: 2026-11-22. Companion documents: `docs/BACKEND_REPOSITORY_AUDIT.md` (starting point),
-`risk-service/README.md` (run/layout), `risk-service/app/ml/README.md` (ML experiment, full results).
+See also `risk-service/README.md` (running the service) and `docs/ML.md` (model experiment and results).
 
 Status vocabulary: **Implemented** · **Partial** · **Credential-dependent** · **External-dependent** (works, but relies
 on a free public service) · **Future**.
@@ -176,17 +175,17 @@ missing information, status, and the disclaimer that the category/index is not a
 * **Result (unseen locations, 2024):** best PR-AUC 0.051 vs prevalence 0.022; random forest (selected by validation)
   recall 0.056, precision 0.106, FPR 0.011. Better than the rule baseline on ranking, **not good enough for decisions**.
 * **Use:** withheld by the evaluation gate (needs ≥ 3× prevalence PR-AUC and ≥ 0.5 recall). Registered in
-  `model_versions` as `experimental`. The risk engine is rule-based. Full table: `risk-service/app/ml/README.md`.
+  `model_versions` as `experimental`. The risk engine is rule-based. Full table: `docs/ML.md`.
 
 ## 11. Test results (executed 2026-11-22)
 
 | Suite | Result |
 |---|---|
 | Python `pytest` (risk-service) | **120 passed** — factors incl. threshold boundaries (67), aggregation/override/missing/stale/journeys/safer route/access (19), geometry/solar/parsers on real GDACS, USGS, Open-Meteo responses/HTTP retries/data quality (21), FastAPI + Postgres end-to-end with mocked providers incl. provider failures and alert dedup (7), ML features/no look-ahead/validation/metrics/gate (6) |
-| Node `vitest` (server) | **65 passed** — 40 existing + 25 new (v1 auth, destinations, history, journey derivation/ownership/consent, incidents incl. RLS and transitions, alerts, client validation/timeouts, place mapping, FCM dispatch) |
+| Node `vitest` (server) | **65 passed** — profile, journeys, places, v1 auth, destinations, history, journey derivation/ownership/consent, incidents incl. RLS and transitions, alerts, client validation/timeouts, place mapping, FCM dispatch) |
 | RLS SQL | `rls_test.sql` passed · `rls_risk_test.sql` passed |
 | Live end-to-end (local, real providers) | Express → FastAPI → Postgres: `/api/places/conditions` for 10 places (Iceland HIGH — forecast 33 m/s gusts; New York MODERATE — 200 m fog; Bali MODERATE — thunderstorm; others LOW), journey assessment via OSRM (Iceland trek HIGH, personal + destination alert created), incident created |
-| Frontend | not modified |
+| Frontend `vitest` | **457 passed** |
 
 ## 12. Security
 

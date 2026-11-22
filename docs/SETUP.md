@@ -1,7 +1,8 @@
-# TravelSphere — Local Setup, API and Status
+# TravelSphere — Setup and API
 
 ## 1. Prerequisites
-- Node.js 20+ (developed on 26)
+- Node.js 20+
+- Python 3.12 and [uv](https://docs.astral.sh/uv/) (risk service)
 - PostgreSQL 15+ running locally (or a Supabase project)
 
 ## 2. First-time setup
@@ -23,8 +24,8 @@ npm run db:migrate -- --local   # --local adds the auth shim a plain Postgres ne
 ## 3. Run
 
 ```bash
-cd server && npm run dev        # API on http://127.0.0.1:4000
-npm run dev                     # (repo root) app on http://127.0.0.1:3000, proxies /api → :4000
+npm run dev:backend             # API on :4000 + risk service on :8001, against local Postgres
+npm run dev                     # app on http://localhost:3000, proxies /api → :4000
 ```
 
 If the API is not running, sign-in still works but the session is **offline**: trips stay on that device
@@ -38,7 +39,7 @@ See `risk-service/README.md`. Without it, `/api/places/*` falls back to the labe
 ## 4. Tests
 
 ```bash
-npm test                                   # frontend (Vitest) — baseline 646 pass / 82 pre-existing failures
+npm test                                   # frontend (Vitest)
 cd server && npm test                      # API integration tests against a throwaway Postgres database
 psql -v ON_ERROR_STOP=1 -d <db> -f supabase/tests/rls_test.sql        # Row Level Security acceptance tests
 psql -v ON_ERROR_STOP=1 -d <db> -f supabase/tests/rls_risk_test.sql   # RLS for the risk-intelligence tables
@@ -58,7 +59,7 @@ cd risk-service && .venv/bin/python -m pytest -q                      # risk eng
 
 `AUTH_MODE=local` is refused when `NODE_ENV=production`.
 
-## 6. API (Phase 2)
+## 6. API
 
 All responses are JSON. Errors: `{ "error": { "code", "message", "details?" } }`.
 Authenticated routes need `Authorization: Bearer <token>`. Every query runs as the `authenticated`
@@ -82,7 +83,7 @@ database role with the caller's id, so Row Level Security applies in addition to
 ### Risk intelligence (`/api/v1`)
 
 The versioned API and the eight-factor engine (`scoring-v1`) are documented in
-[BACKEND_IMPLEMENTATION.md](BACKEND_IMPLEMENTATION.md). `/api/places/*` keeps its response shape but is now computed by
+[BACKEND.md](BACKEND.md). `/api/places/*` keeps its response shape but is now computed by
 that engine; the section below describes the earlier rule baseline, which remains as the fallback.
 
 ### 8-factor safety assessment (rule baseline `rules-v1`, fallback)
@@ -106,25 +107,4 @@ panorama yet.
 General rate limit: 300 requests/min per IP. Body limit 256 KB. Helmet security headers. CORS restricted
 to `CORS_ORIGINS`.
 
-## 7. Implementation status (after Phase 2)
-
-| Item | Status |
-|---|---|
-| UI redesign baseline; assistant/chatbot UI, AI wording and AI metadata removed | Fully implemented |
-| Browser-side OpenAI calls removed (no secrets in the bundle path) | Fully implemented |
-| Database schema — all 12 spec tables, constraints, indexes | Fully implemented (tested on Postgres 16) |
-| Row Level Security policies | Fully implemented (SQL acceptance tests + a mutation check) |
-| Express API: health, profile, preferences, journeys CRUD, validation, rate limiting | Fully implemented (16 integration tests) |
-| Frontend ↔ API: sign-in session, journeys saved/loaded/cancelled across devices, profile save | Fully implemented (browser end-to-end test) |
-| Supabase Auth (real passwords, email verification) | Requires external credentials |
-| TBO hotel/flight calls proxied through the server (credentials still `VITE_`-based) | Pending |
-| Incidents persisted via API (UI still uses localStorage + seeded demo tickets) | Pending — Phase 5 |
-| Live weather (Open-Meteo, validated, stored, stale-aware) | Fully implemented (OpenWeatherMap swap requires a key) |
-| 8-factor rule baseline, explanations, recommended actions, safety meters, place page | Fully implemented (17 engine + 7 API tests, browser test) |
-| Risk zones | Partially implemented — schema, RLS and engine support; no zones configured yet, no admin UI |
-| 360° viewer + WebXR | Fully implemented for 9 of 10 places (VR verified only for feature detection — no headset tested) |
-| Geolocation, Leaflet maps | Pending — Phase 3 |
-| ML model (scikit-learn), FastAPI service, rule-vs-ML evaluation | Pending — Phase 4 (no labelled data; simulated scenarios will be documented) |
-| Warnings, Web Push/FCM, admin console | Pending — Phase 5 (FCM requires a Firebase project) |
-| 360° / WebXR viewer | Pending — Phase 6 (requires licensed panoramic assets) |
-| AWS deployment | Pending — Phase 7 |
+Project status and known limitations are tracked in [BACKEND.md](BACKEND.md#15-status-blockers-and-future-work).

@@ -49,8 +49,7 @@ risk-service/.env
 __pycache__/
 *.pyc
 .pytest_cache/
-# Raw provider downloads and the derived dataset are reproducible (app/ml/datasets/build_dataset.py)
-risk-service/data/era5/
-risk-service/data/ml/*.csv.gz
-# Binary model artefacts are rebuilt by the training pipeline; metadata + evaluation reports are committed
-risk-service/models/*.joblib
+# Downloads, datasets, models and reports are produced by the ML pipeline (docs/ML.md)
+risk-service/data/
+risk-service/models/
+risk-service/reports/

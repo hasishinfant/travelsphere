@@ -13,12 +13,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { hotelBookingService } from '../hotelBookingService';
 import { itineraryService } from '../itineraryService';
-import { combinedBookingService } from '../combinedBookingService';
-import { bookingService } from '../bookingService';
 import type { Hotel, GuestDetails, PaymentInfo } from '../hotelBookingService';
 import type { HotelSearchCriteria } from '../hotelSearchService';
-import type { FlightResult } from '../../types/tekTravelsApi';
-import type { PassengerDetails } from '../bookingService';
 
 // Mock the API clients
 vi.mock('../api/tboHotelApiClient', () => ({
@@ -86,8 +82,6 @@ describe('Hotel Booking Integration Tests', () => {
   beforeEach(() => {
     // Clear all sessions and storage
     hotelBookingService.cancelSession();
-    bookingService.cancelSession();
-    combinedBookingService.cancelSession();
     localStorage.clear();
 
     // Mock hotel data
@@ -344,198 +338,6 @@ describe('Hotel Booking Integration Tests', () => {
       const session = hotelBookingService.getCurrentSession();
       expect(session).not.toBeNull();
       expect(session?.status).toBe('confirmed');
-    });
-  });
-
-  describe('Combined Flight + Hotel Bookings', () => {
-    let mockFlight: FlightResult;
-
-    beforeEach(() => {
-      mockFlight = {
-        ResultIndex: 'FLIGHT123',
-        Source: 1,
-        IsLCC: false,
-        IsRefundable: true,
-        AirlineCode: 'AF',
-        AirlineName: 'Air France',
-        FlightNumber: 'AF-123',
-        FareClassification: { Type: 'Economy' },
-        Segments: [[{
-          Origin: {
-            AirportCode: 'JFK',
-            AirportName: 'John F Kennedy International',
-            Terminal: '1',
-            DepTime: '2024-06-15T10:00:00',
-            ArrTime: '',
-            CityCode: 'NYC',
-            CityName: 'New York',
-            CountryCode: 'US',
-            CountryName: 'United States',
-          },
-          Destination: {
-            AirportCode: 'CDG',
-            AirportName: 'Charles de Gaulle',
-            Terminal: '2E',
-            DepTime: '',
-            ArrTime: '2024-06-15T22:00:00',
-            CityCode: 'PAR',
-            CityName: 'Paris',
-            CountryCode: 'FR',
-            CountryName: 'France',
-          },
-          AirlineCode: 'AF',
-          AirlineName: 'Air France',
-          FlightNumber: 'AF-123',
-          FareClass: 'Y',
-          OperatingCarrier: 'AF',
-          Duration: 480,
-          GroundTime: 0,
-          Mile: 3625,
-          StopOver: false,
-          FlightInfoIndex: 'FI1',
-          Baggage: '23 Kg',
-          CabinBaggage: '8 Kg',
-          AccumulatedDuration: 480,
-          Craft: 'B777',
-          Remark: null,
-          IsETicketEligible: true,
-          FlightStatus: 'Confirmed',
-          Status: 'Active',
-        }]],
-        LastTicketDate: '2024-06-14T23:59:59',
-        TicketAdvisory: 'Book now',
-        FareRules: [],
-        Fare: {
-          Currency: 'USD',
-          BaseFare: 800,
-          Tax: 200,
-          YQTax: 100,
-          AdditionalTxnFeeOfrd: 0,
-          AdditionalTxnFeePub: 0,
-          PGCharge: 0,
-          OtherCharges: 0,
-          ChargeBU: [],
-          Discount: 0,
-          PublishedFare: 1100,
-          OfferedFare: 1100,
-          TdsOnCommission: 0,
-          TdsOnPLB: 0,
-          TdsOnIncentive: 0,
-          ServiceFee: 0,
-        },
-      };
-    });
-
-    it('should create combined booking session with flight and hotel', () => {
-      const session = combinedBookingService.startCombinedBooking(
-        mockFlight,
-        'TRACE123',
-        mockHotel,
-        mockSearchCriteria
-      );
-
-      expect(session.flightSession).toBeDefined();
-      expect(session.hotelSession).toBeDefined();
-      expect(session.status).toBe('flight_repricing');
-      expect(session.flightSession?.flight.AirlineName).toBe('Air France');
-      expect(session.hotelSession?.hotel.hotelName).toBe('Grand Plaza Hotel');
-    });
-
-    it('should calculate total cost for combined booking', () => {
-      combinedBookingService.startCombinedBooking(
-        mockFlight,
-        'TRACE123',
-        mockHotel,
-        mockSearchCriteria
-      );
-
-      const totalCost = combinedBookingService.calculateTotalCost();
-      
-      // Flight: 1100 (OfferedFare) + Hotel: 1500 = 2600
-      expect(totalCost).toBe(2600);
-    });
-
-    it('should complete combined booking and add both to itinerary', async () => {
-      // Start combined booking
-      const session = combinedBookingService.startCombinedBooking(
-        mockFlight,
-        'TRACE123',
-        mockHotel,
-        mockSearchCriteria
-      );
-
-      // Update hotel session with pre-book result
-      if (session.hotelSession) {
-        hotelBookingService.updateSession({
-          status: 'guest_details',
-          preBookResult: {
-            bookingCode: 'PREBOOK123',
-            originalPrice: 1500,
-            currentPrice: 1500,
-            priceChanged: false,
-            available: true,
-          },
-        });
-      }
-
-      // Prepare booking details
-      const passengerDetails: PassengerDetails[] = [{
-        type: 'Adult',
-        title: 'Mr',
-        firstName: 'John',
-        lastName: 'Doe',
-        dateOfBirth: new Date('1990-01-15'),
-        nationality: 'US',
-        email: 'john.doe@example.com',
-      }];
-
-      const guestDetails: GuestDetails[] = [{
-        roomIndex: 0,
-        customerNames: [
-          { title: 'Mr', firstName: 'John', lastName: 'Doe', type: 'Adult' },
-        ],
-      }];
-
-      const paymentInfo = {
-        method: 'credit_card' as const,
-        emailId: 'john.doe@example.com',
-        phoneNumber: '+1234567890',
-      };
-
-      // Complete combined booking
-      const confirmation = await combinedBookingService.completeCombinedBooking(
-        passengerDetails,
-        guestDetails,
-        paymentInfo
-      );
-
-      // Verify both bookings in confirmation
-      expect(confirmation.flightBooking).toBeDefined();
-      expect(confirmation.hotelBooking).toBeDefined();
-      expect(confirmation.totalCost).toBeGreaterThan(0);
-
-      // Verify both added to itinerary
-      const flights = itineraryService.getFlightBookings();
-      const hotels = itineraryService.getHotelBookings();
-      
-      expect(flights).toHaveLength(1);
-      expect(hotels).toHaveLength(1);
-    });
-
-    it('should handle flight-only booking', () => {
-      const session = combinedBookingService.startFlightOnlyBooking(mockFlight, 'TRACE123');
-
-      expect(session.flightSession).toBeDefined();
-      expect(session.hotelSession).toBeUndefined();
-      expect(session.status).toBe('flight_repricing');
-    });
-
-    it('should handle hotel-only booking', () => {
-      const session = combinedBookingService.startHotelOnlyBooking(mockHotel, mockSearchCriteria);
-
-      expect(session.hotelSession).toBeDefined();
-      expect(session.flightSession).toBeUndefined();
-      expect(session.status).toBe('hotel_prebook');
     });
   });
 

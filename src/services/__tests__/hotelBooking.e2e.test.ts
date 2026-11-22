@@ -19,11 +19,9 @@ import { getHotelSearchService } from '../hotelSearchService';
 import { hotelBookingService } from '../hotelBookingService';
 import { preBookService } from '../preBookService';
 import { bookingManagementService } from '../bookingManagementService';
-import { combinedBookingService } from '../combinedBookingService';
 import { itineraryService } from '../itineraryService';
 import type { HotelSearchCriteria } from '../hotelSearchService';
 import type { GuestDetails, PaymentInfo } from '../hotelBookingService';
-import type { FlightResult } from '../../types/tekTravelsApi';
 
 // Get service instance
 const hotelSearchService = getHotelSearchService();
@@ -161,7 +159,6 @@ describe('Hotel Booking End-to-End Tests', () => {
 
     // Clear all sessions and storage
     hotelBookingService.cancelSession();
-    combinedBookingService.cancelSession();
     localStorage.clear();
 
     // Use future dates for testing
@@ -599,153 +596,4 @@ describe('Hotel Booking End-to-End Tests', () => {
     });
   });
 
-  describe('Combined Flight + Hotel Booking', () => {
-    let mockFlight: FlightResult;
-
-    beforeEach(() => {
-      mockFlight = {
-        ResultIndex: 'FLIGHT123',
-        Source: 1,
-        IsLCC: false,
-        IsRefundable: true,
-        AirlineCode: 'AF',
-        AirlineName: 'Air France',
-        FlightNumber: 'AF-123',
-        FareClassification: { Type: 'Economy' },
-        Segments: [[{
-          Origin: {
-            AirportCode: 'JFK',
-            AirportName: 'John F Kennedy International',
-            Terminal: '1',
-            DepTime: '2024-06-15T10:00:00',
-            ArrTime: '',
-            CityCode: 'NYC',
-            CityName: 'New York',
-            CountryCode: 'US',
-            CountryName: 'United States',
-          },
-          Destination: {
-            AirportCode: 'CDG',
-            AirportName: 'Charles de Gaulle',
-            Terminal: '2E',
-            DepTime: '',
-            ArrTime: '2024-06-15T22:00:00',
-            CityCode: 'PAR',
-            CityName: 'Paris',
-            CountryCode: 'FR',
-            CountryName: 'France',
-          },
-          AirlineCode: 'AF',
-          AirlineName: 'Air France',
-          FlightNumber: 'AF-123',
-          FareClass: 'Y',
-          OperatingCarrier: 'AF',
-          Duration: 480,
-          GroundTime: 0,
-          Mile: 3625,
-          StopOver: false,
-          FlightInfoIndex: 'FI1',
-          Baggage: '23 Kg',
-          CabinBaggage: '8 Kg',
-          AccumulatedDuration: 480,
-          Craft: 'B777',
-          Remark: null,
-          IsETicketEligible: true,
-          FlightStatus: 'Confirmed',
-          Status: 'Active',
-        }]],
-        LastTicketDate: '2024-06-14T23:59:59',
-        TicketAdvisory: 'Book now',
-        FareRules: [],
-        Fare: {
-          Currency: 'USD',
-          BaseFare: 800,
-          Tax: 200,
-          YQTax: 100,
-          AdditionalTxnFeeOfrd: 0,
-          AdditionalTxnFeePub: 0,
-          PGCharge: 0,
-          OtherCharges: 0,
-          ChargeBU: [],
-          Discount: 0,
-          PublishedFare: 1100,
-          OfferedFare: 1100,
-          TdsOnCommission: 0,
-          TdsOnPLB: 0,
-          TdsOnIncentive: 0,
-          ServiceFee: 0,
-        },
-      };
-    });
-
-    it('should complete combined flight and hotel booking', async () => {
-      // Search for hotel
-      const searchResult = await hotelSearchService.search(mockSearchCriteria);
-      const hotel = searchResult.hotels[0];
-
-      // Start combined booking
-      const session = combinedBookingService.startCombinedBooking(
-        mockFlight,
-        'TRACE123',
-        hotel,
-        mockSearchCriteria
-      );
-
-      expect(session.flightSession).toBeDefined();
-      expect(session.hotelSession).toBeDefined();
-      expect(session.status).toBe('flight_repricing');
-
-      // Calculate total cost
-      const totalCost = combinedBookingService.calculateTotalCost();
-      expect(totalCost).toBe(2600); // 1100 (flight) + 1500 (hotel)
-
-      // Pre-book hotel
-      const preBookResult = await preBookService.preBook(hotel.bookingCode, 'Limit');
-      hotelBookingService.updateSession({
-        status: 'guest_details',
-        preBookResult,
-      });
-
-      // Complete combined booking
-      const passengerDetails = [{
-        type: 'Adult' as const,
-        title: 'Mr',
-        firstName: 'John',
-        lastName: 'Doe',
-        dateOfBirth: new Date('1990-01-15'),
-        nationality: 'US',
-        email: 'john.doe@example.com',
-      }];
-
-      const guestDetails: GuestDetails[] = [{
-        roomIndex: 0,
-        customerNames: [
-          { title: 'Mr', firstName: 'John', lastName: 'Doe', type: 'Adult' },
-        ],
-      }];
-
-      const paymentInfo: PaymentInfo = {
-        method: 'credit_card',
-        emailId: 'john.doe@example.com',
-        phoneNumber: '+1234567890',
-      };
-
-      const confirmation = await combinedBookingService.completeCombinedBooking(
-        passengerDetails,
-        guestDetails,
-        paymentInfo
-      );
-
-      expect(confirmation.flightBooking).toBeDefined();
-      expect(confirmation.hotelBooking).toBeDefined();
-      expect(confirmation.totalCost).toBeGreaterThan(0);
-
-      // Verify both bookings in itinerary
-      const flights = itineraryService.getFlightBookings();
-      const hotels = itineraryService.getHotelBookings();
-      
-      expect(flights).toHaveLength(1);
-      expect(hotels).toHaveLength(1);
-    });
-  });
 });

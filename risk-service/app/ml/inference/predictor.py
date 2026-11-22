@@ -1,4 +1,4 @@
-"""Inference for the experimental hazard-event classifier (see app/ml/README.md).
+"""Inference for the experimental hazard-event classifier (see docs/ML.md).
 
 The model's output is reported as a separate, clearly-labelled signal. It does NOT change the risk category: it has
 been evaluated only on its own target (GDACS Orange/Red flood/cyclone events near a location), its score is not a
@@ -54,7 +54,7 @@ def gate(meta: dict) -> tuple[bool, str]:
 def status() -> dict:
     model, meta = _load(str(get_settings().model_dir))
     if model is None:
-        return {"available": False, "reason": "No trained model artefact (run the training pipeline: see app/ml/README.md)"}
+        return {"available": False, "reason": "No trained model artefact (run the training pipeline: see docs/ML.md)"}
     passed, why = gate(meta)
     return {"available": True, "model_id": meta["model_id"], "trained_at": meta["trained_at"], "status": "experimental",
             "passes_evaluation_gate": passed, "gate_detail": why, "test_metrics": meta["metrics"].get("test")}

@@ -38,8 +38,8 @@ app/
   services/               orchestration: data acquisition with fallbacks, destination, journey, alerts
   database/               SQLAlchemy engine + repository (bound parameters only)
   background/scheduler.py APScheduler jobs
-  ml/                     dataset builder, validation, features, training, evaluation, inference (see app/ml/README.md)
-config/scoring-v1.json    scoring configuration (versioned)
+  ml/                     dataset builder, validation, features, training, evaluation, inference (see docs/ML.md)
+  config/scoring-v1.json  scoring configuration (versioned)
 tests/                    pytest (factors, aggregation, journeys, geometry, parsers on real responses, API + DB, ML)
 ```
 
