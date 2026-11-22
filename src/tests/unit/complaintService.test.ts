@@ -23,7 +23,7 @@ describe('Emergency & Hotel Complaint Service', () => {
       hotelName: 'The Grand Palace Hotel',
       hotelCity: 'Mumbai',
       isExternalHotel: false,
-      bookingReference: 'TBO-HTL-77412',
+      bookingReference: 'TS-HTL-77412',
       roomNumber: '402',
       complaintCategory: 'room_cleanliness',
       complaintSubject: 'Dirty bathroom upon check-in',

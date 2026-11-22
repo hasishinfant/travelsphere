@@ -195,7 +195,7 @@ const INITIAL_DEMO_RECORDS: EmergencyComplaintRecord[] = [
     hotelCity: 'Mumbai',
     hotelAddress: '123 Marine Drive, Colaba, Mumbai, India',
     isExternalHotel: false,
-    bookingReference: 'TBO-HTL-77412',
+    bookingReference: 'TS-HTL-77412',
     roomNumber: 'Suite 408',
     checkInDate: '2026-11-01',
     checkOutDate: '2026-11-05',
@@ -344,15 +344,15 @@ class EmergencyComplaintService {
         const bookings = JSON.parse(storedBookings);
         if (Array.isArray(bookings)) {
           bookings.forEach((b: any, index: number) => {
-            const hotelName = b.hotel?.HotelName || b.hotelName || `Hotel Booking #${index + 1}`;
-            const hotelId = b.hotel?.HotelCode || b.bookingReferenceId || `BOOKED-${index}`;
+            const hotelName = b.hotelName || b.hotel?.hotelName || `Hotel Booking #${index + 1}`;
+            const hotelId = b.hotel?.hotelCode || b.bookingReferenceId || `BOOKED-${index}`;
             hotelsMap.set(hotelId, {
               id: hotelId,
               name: hotelName,
-              city: b.hotel?.CityName || 'Booked Destination',
-              address: b.hotel?.HotelAddress,
-              starRating: b.hotel?.StarRating || 4,
-              bookingReference: b.confirmationNumber || b.bookingReferenceId || `TBO-HTL-${70000 + index}`,
+              city: b.hotel?.cityName || 'Booked Destination',
+              address: b.hotel?.address,
+              starRating: b.hotel?.starRating || 4,
+              bookingReference: b.confirmationNumber || b.bookingReferenceId || `TS-HTL-${70000 + index}`,
               checkIn: b.checkIn ? new Date(b.checkIn).toISOString().split('T')[0] : '2026-11-01',
               checkOut: b.checkOut ? new Date(b.checkOut).toISOString().split('T')[0] : '2026-11-05',
               isUserBooking: true,
@@ -401,7 +401,7 @@ class EmergencyComplaintService {
         city: 'Mumbai',
         address: '123 Marine Drive, Colaba, Mumbai, India',
         starRating: 5,
-        bookingReference: 'TBO-HTL-77412',
+        bookingReference: 'TS-HTL-77412',
         checkIn: '2026-11-01',
         checkOut: '2026-11-05',
         isUserBooking: true,
@@ -412,7 +412,7 @@ class EmergencyComplaintService {
         city: 'New Delhi',
         address: '456 MG Road, Connaught Place, New Delhi, India',
         starRating: 4,
-        bookingReference: 'TBO-HTL-89210',
+        bookingReference: 'TS-HTL-89210',
         checkIn: '2026-11-12',
         checkOut: '2026-11-16',
         isUserBooking: true,

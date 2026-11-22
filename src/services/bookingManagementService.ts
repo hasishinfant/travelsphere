@@ -1,46 +1,8 @@
 /**
- * Booking Management Service
- * 
- * Manages hotel booking retrieval, viewing, and cancellation operations.
- * Provides methods to:
- * - Retrieve booking details by confirmation number or booking reference
- * - List bookings within a date range
- * - Cancel existing bookings
- * 
- * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6
+ * The traveller's own hotel bookings: list, details (live status from the provider) and cancellation.
  */
 
-import { getTboHotelApiClient } from './api/tboHotelApiClient';
-import type {
-  BookingDetailRequest,
-  BookingDetailResponse,
-  BookingListRequest,
-  BookingListResponse,
-  CancelRequest,
-  CancelResponse,
-  BookingDetail,
-  BookingSummary,
-} from '../types/tboHotelApi';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface BookingDetailsResult {
-  confirmationNumber: string;
-  bookingReferenceId: string;
-  bookingId: number;
-  bookingStatus: string;
-  status: string;
-  hotelName: string;
-  checkInDate: Date;
-  checkOutDate: Date;
-  totalFare: number;
-  currency: string;
-  guestDetails: GuestInfo[];
-  bookedOn: Date;
-  voucherUrl?: string;
-}
+import { hotelApi, type StoredBooking } from './hotelApi';
 
 export interface GuestInfo {
   customerNames: {
@@ -49,11 +11,6 @@ export interface GuestInfo {
     lastName: string;
     type: 'Adult' | 'Child';
   }[];
-}
-
-export interface BookingListResult {
-  bookings: BookingSummaryResult[];
-  totalCount: number;
 }
 
 export interface BookingSummaryResult {
@@ -65,6 +22,24 @@ export interface BookingSummaryResult {
   bookingStatus: string;
   totalFare: number;
   currency: string;
+  sandbox: boolean;
+}
+
+export interface BookingDetailsResult extends BookingSummaryResult {
+  bookingId: string;
+  status: string;
+  roomName: string | null;
+  boardName: string | null;
+  guestDetails: GuestInfo[];
+  bookedOn: Date;
+  cancellationPolicy: string;
+  hotelConfirmationCode: string | null;
+  voucherUrl?: string;
+}
+
+export interface BookingListResult {
+  bookings: BookingSummaryResult[];
+  totalCount: number;
 }
 
 export interface CancellationResult {
@@ -76,277 +51,74 @@ export interface CancellationResult {
   message: string;
 }
 
-// ============================================================================
-// Service Implementation
-// ============================================================================
+const STATUS_LABEL: Record<string, string> = {
+  CONFIRMED: 'Confirmed',
+  CANCELLED: 'Cancelled',
+  CANCELED: 'Cancelled',
+  CANCELLED_WITH_CHARGES: 'Cancelled',
+};
+const label = (s: string) => STATUS_LABEL[s?.toUpperCase()] ?? s ?? 'Unknown';
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const day = (s: string) => new Date(`${s.slice(0, 10)}T00:00:00`);
+
+const summary = (b: StoredBooking): BookingSummaryResult => ({
+  confirmationNumber: b.booking_id,
+  bookingReferenceId: b.booking_id,
+  hotelName: b.hotel_name,
+  checkInDate: day(b.checkin),
+  checkOutDate: day(b.checkout),
+  bookingStatus: label(b.status),
+  totalFare: Number(b.price),
+  currency: b.currency,
+  sandbox: b.sandbox,
+});
 
 class BookingManagementService {
-  /**
-   * Get detailed booking information by confirmation number or booking reference
-   * 
-   * @param confirmationNumber - The confirmation number from booking
-   * @param bookingReference - Alternative booking reference ID
-   * @returns Promise resolving to booking details
-   * 
-   * Requirements: 5.1, 5.2
-   */
-  async getBookingDetails(
-    confirmationNumber?: string,
-    bookingReference?: string
-  ): Promise<BookingDetailsResult> {
-    // Validate that at least one identifier is provided
-    if (!confirmationNumber && !bookingReference) {
-      throw new Error('Either confirmation number or booking reference ID must be provided');
-    }
-
-    try {
-      const apiClient = getTboHotelApiClient();
-      
-      // Prepare request
-      const request: BookingDetailRequest = {
-        ConfirmationNo: confirmationNumber,
-        BookingRefNo: bookingReference,
-      };
-
-      // Call API
-      const response: BookingDetailResponse = await apiClient.getBookingDetails(request);
-
-      // Parse and transform response
-      return this.transformBookingDetail(response.BookingDetails || (response as any));
-    } catch (error: any) {
-      // Handle specific error codes
-      if (error?.error?.code === 'BOOKING_NOT_FOUND') {
-        throw new Error('Booking not found. Please check your confirmation number.');
-      }
-      if (error?.error?.code === 'INVALID_CONFIRMATION_NUMBER') {
-        throw new Error('Invalid confirmation number provided.');
-      }
-      if (error?.error?.code === 'NETWORK_ERROR') {
-        throw new Error('Network error occurred. Please check your connection and try again.');
-      }
-      
-      // If error has a custom message, use it
-      if (error?.error?.message) {
-        console.error('Failed to retrieve booking details:', error);
-        throw new Error(error.error.message);
-      }
-      
-      console.error('Failed to retrieve booking details:', error);
-      throw new Error('Failed to retrieve booking details. Please try again later.');
-    }
-  }
-
-  /**
-   * Get list of bookings within a date range
-   * 
-   * @param fromDate - Start date (YYYY-MM-DD)
-   * @param toDate - End date (YYYY-MM-DD)
-   * @returns Promise resolving to list of bookings
-   * 
-   * Requirements: 5.5
-   */
-  async getBookingsByDateRange(
-    fromDate: string,
-    toDate: string
-  ): Promise<BookingListResult> {
-    // Validate date format
-    if (!this.isValidDateFormat(fromDate) || !this.isValidDateFormat(toDate)) {
-      throw new Error('Invalid date format. Expected YYYY-MM-DD');
-    }
-
-    // Validate date range
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    
-    if (from > to) {
-      throw new Error('From date must be before or equal to to date');
-    }
-
-    try {
-      const apiClient = getTboHotelApiClient();
-      
-      // Prepare request
-      const request: BookingListRequest = {
-        FromDate: fromDate,
-        ToDate: toDate,
-      };
-
-      // Call API
-      const response: BookingListResponse = await apiClient.getBookingsByDateRange(request);
-
-      // Transform response
-      const bookings = response.Bookings.map(booking => 
-        this.transformBookingSummary(booking)
-      );
-
-      return {
-        bookings,
-        totalCount: bookings.length,
-      };
-    } catch (error: any) {
-      console.error('Failed to retrieve bookings by date range:', error);
-      throw new Error('Failed to retrieve bookings. Please try again later.');
-    }
-  }
-
-  /**
-   * Cancel a hotel booking
-   * 
-   * @param confirmationNumber - The confirmation number of the booking to cancel
-   * @returns Promise resolving to cancellation result
-   * 
-   * Requirements: 5.3, 5.4
-   */
-  async cancelBooking(confirmationNumber: string): Promise<CancellationResult> {
-    if (!confirmationNumber || confirmationNumber.trim() === '') {
-      throw new Error('Confirmation number is required for cancellation');
-    }
-
-    try {
-      const apiClient = getTboHotelApiClient();
-      
-      // Prepare request
-      const request: CancelRequest = {
-        ConfirmationNo: confirmationNumber,
-      };
-
-      // Call API
-      const response: CancelResponse = await apiClient.cancelBooking(request);
-
-      // Parse cancellation status
-      const isSuccess =
-        response.Status === 1 ||
-        String(response.Status).toLowerCase() === 'success' ||
-        response.CancellationStatus?.toLowerCase() === 'success';
-
-      return {
-        success: isSuccess,
-        confirmationNumber: response.ConfirmationNo || confirmationNumber,
-        cancellationStatus: response.CancellationStatus || (isSuccess ? 'Success' : 'Failed'),
-        refundAmount: response.RefundAmount || 0,
-        cancellationCharge: response.CancellationCharge || 0,
-        message: response.Message || (isSuccess ? 'Booking cancelled successfully' : 'Cancellation failed'),
-      };
-    } catch (error: any) {
-      // Handle specific error codes
-      if (error?.error?.code === 'CANCELLATION_NOT_ALLOWED') {
-        throw new Error('This booking cannot be cancelled. Please contact support.');
-      }
-      if (error?.error?.code === 'BOOKING_ALREADY_CANCELLED') {
-        throw new Error('This booking has already been cancelled.');
-      }
-      if (error?.error?.code === 'TIMEOUT') {
-        throw new Error('Request timed out. Please try again.');
-      }
-      
-      console.error('Failed to cancel booking:', error);
-      throw new Error('Failed to cancel booking. Please try again later.');
-    }
-  }
-
-  // ============================================================================
-  // Private Helper Methods
-  // ============================================================================
-
-  /**
-   * Transform API booking detail to internal format
-   * 
-   * Requirements: 5.2
-   */
-  private transformBookingDetail(detail: any): BookingDetailsResult {
-    const hotelDetails = detail?.HotelDetails || {};
-    const result = {
-      confirmationNumber: detail?.ConfirmationNo || detail?.confirmationNumber || '',
-      bookingReferenceId: detail?.BookingRefNo || detail?.bookingReferenceId || '',
-      bookingId: detail?.BookingId || detail?.bookingId || 0,
-      bookingStatus: this.normalizeBookingStatus(detail?.BookingStatus || detail?.Status || 'Confirmed'),
-      hotelName: detail?.HotelName || hotelDetails.HotelName || '',
-      checkInDate: new Date(detail?.CheckInDate || hotelDetails.CheckInDate || Date.now()),
-      checkOutDate: new Date(detail?.CheckOutDate || hotelDetails.CheckOutDate || Date.now()),
-      totalFare: detail?.TotalFare ?? hotelDetails.TotalFare ?? 0,
-      currency: detail?.CurrencyCode || hotelDetails.CurrencyCode || 'USD',
-      guestDetails: detail?.GuestDetails ? this.transformGuestDetails(detail.GuestDetails) : [],
-      bookedOn: new Date(detail?.BookedOn || Date.now()),
-      voucherUrl: detail?.VoucherUrl,
-    } as BookingDetailsResult;
-
-    Object.defineProperty(result, 'status', {
-      get() {
-        return this.bookingStatus;
-      },
-      enumerable: false,
-      configurable: true,
+  async getBookingDetails(confirmationNumber: string): Promise<BookingDetailsResult> {
+    if (!confirmationNumber?.trim()) throw new Error('A confirmation number is required');
+    const b = await hotelApi.booking(confirmationNumber.trim());
+    const p = b.provider;
+    const guestDetails: GuestInfo[] = (p.rooms.length ? p.rooms : [{ guestName: b.holder_name }]).map(r => {
+      const [firstName, ...rest] = (r.guestName || b.holder_name).split(' ');
+      return { customerNames: [{ title: '', firstName, lastName: rest.join(' '), type: 'Adult' as const }] };
     });
-
-    return result;
-  }
-
-  /**
-   * Transform API booking summary to internal format
-   */
-  private transformBookingSummary(summary: BookingSummary): BookingSummaryResult {
     return {
-      confirmationNumber: summary.ConfirmationNo,
-      bookingReferenceId: summary.BookingRefNo,
-      hotelName: summary.HotelName,
-      checkInDate: new Date(summary.CheckInDate),
-      checkOutDate: new Date(summary.CheckOutDate),
-      bookingStatus: this.normalizeBookingStatus(summary.BookingStatus),
-      totalFare: summary.TotalFare,
-      currency: summary.CurrencyCode,
+      ...summary(b),
+      bookingStatus: label(p.status || b.status),
+      bookingId: b.booking_id,
+      status: p.status || b.status,
+      roomName: p.rooms[0]?.roomName ?? b.room_name,
+      boardName: p.rooms[0]?.boardName ?? b.board_name,
+      guestDetails,
+      bookedOn: new Date(b.created_at),
+      cancellationPolicy: p.cancellation,
+      hotelConfirmationCode: p.hotelConfirmationCode,
     };
   }
 
-  /**
-   * Transform guest details from API format to internal format
-   */
-  private transformGuestDetails(apiGuestDetails: any[]): GuestInfo[] {
-    return apiGuestDetails.map((room) => ({
-      customerNames: room.CustomerNames.map((customer: any) => ({
-        title: customer.Title,
-        firstName: customer.FirstName,
-        lastName: customer.LastName,
-        type: customer.Type as 'Adult' | 'Child',
-      })),
-    }));
+  async getBookingsByDateRange(fromDate: string, toDate: string): Promise<BookingListResult> {
+    if (!DATE.test(fromDate) || !DATE.test(toDate)) throw new Error('Invalid date format. Expected YYYY-MM-DD');
+    if (fromDate > toDate) throw new Error('From date must be before or equal to to date');
+    const bookings = (await hotelApi.bookings(fromDate, toDate)).map(summary);
+    return { bookings, totalCount: bookings.length };
   }
 
-  /**
-   * Normalize booking status to consistent format
-   * 
-   * Requirements: 5.2
-   */
-  private normalizeBookingStatus(status: string): string {
-    const statusMap: Record<string, string> = {
-      'confirmed': 'Confirmed',
-      'pending': 'Pending',
-      'cancelled': 'Cancelled',
-      'failed': 'Failed',
-      'vouchered': 'Confirmed',
+  async cancelBooking(confirmationNumber: string): Promise<CancellationResult> {
+    if (!confirmationNumber?.trim()) throw new Error('Confirmation number is required for cancellation');
+    const c = await hotelApi.cancel(confirmationNumber.trim());
+    const charged = c.cancellationFee > 0;
+    return {
+      success: true,
+      confirmationNumber: c.bookingId,
+      cancellationStatus: label(c.status),
+      refundAmount: c.refundAmount,
+      cancellationCharge: c.cancellationFee,
+      message: charged
+        ? `Booking cancelled. A cancellation fee of ${c.currency} ${c.cancellationFee.toFixed(2)} applies; refund ${c.currency} ${c.refundAmount.toFixed(2)}.`
+        : `Booking cancelled. Refund: ${c.currency} ${c.refundAmount.toFixed(2)}.`,
     };
-
-    const lowerStatus = status.toLowerCase();
-    return statusMap[lowerStatus] || status;
-  }
-
-  /**
-   * Validate date format (YYYY-MM-DD)
-   */
-  private isValidDateFormat(dateString: string): boolean {
-    const regex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!regex.test(dateString)) {
-      return false;
-    }
-
-    // Check if it's a valid date
-    const date = new Date(dateString);
-    return date instanceof Date && !isNaN(date.getTime());
   }
 }
-
-// ============================================================================
-// Export Singleton Instance
-// ============================================================================
 
 export const bookingManagementService = new BookingManagementService();
 export default bookingManagementService;

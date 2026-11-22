@@ -1,72 +1,15 @@
 /**
- * Hotel Booking Service
- * 
- * Manages the sequential hotel booking workflow and session state.
- * Maintains BookingCode consistency across all booking steps and handles session lifecycle.
- * 
- * Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+ * Hotel booking session (select room → verify price → guest details → confirm) and booking completion through the
+ * TravelSphere API. The session survives page reloads for 30 minutes.
  */
 
-import type { 
-  Hotel, 
-  PreBookResponse, 
-  HotelBookingResponse,
-  HotelBookingRequest,
-  GuestDetail as ApiGuestDetail,
-  CustomerName as ApiCustomerName
-} from '../types/tboHotelApi';
-import { getTboHotelApiClient } from './api/tboHotelApiClient';
+import { hotelApi, ymd } from './hotelApi';
+import type { HotelResult, HotelSearchCriteria } from './hotelSearchService';
+import type { PreBookResult } from './preBookService';
 
-// ============================================================================
-// Types
-// ============================================================================
+export type { HotelSearchCriteria } from './hotelSearchService';
 
-export type HotelBookingStatus = 
-  | 'search' 
-  | 'details' 
-  | 'prebook' 
-  | 'guest_details' 
-  | 'payment' 
-  | 'confirmed';
-
-export interface HotelBookingSession {
-  sessionId: string;
-  hotel: Hotel;
-  searchCriteria: HotelSearchCriteria;
-  bookingCode: string;
-  preBookResult?: PreBookResult;
-  status: HotelBookingStatus;
-  createdAt: Date;
-  expiresAt: Date;
-}
-
-export interface HotelSearchCriteria {
-  checkIn: Date;
-  checkOut: Date;
-  hotelCodes?: string;
-  cityCode?: string;
-  guestNationality: string;
-  paxRooms: PaxRoom[];
-}
-
-export interface PaxRoom {
-  adults: number;
-  children: number;
-  childrenAges: number[];
-}
-
-export interface PreBookResult {
-  bookingCode: string;
-  originalPrice: number;
-  currentPrice: number;
-  priceChanged: boolean;
-  available: boolean;
-}
-
-export interface GuestDetails {
-  roomIndex: number;
-  customerNames: CustomerName[];
-}
+export type HotelBookingStatus = 'details' | 'prebook' | 'guest_details' | 'payment' | 'confirmed';
 
 export interface CustomerName {
   title: string;
@@ -75,18 +18,22 @@ export interface CustomerName {
   type: 'Adult' | 'Child';
 }
 
+export interface GuestDetails {
+  roomIndex: number;
+  customerNames: CustomerName[];
+}
+
 export interface PaymentInfo {
   method: 'credit_card' | 'debit_card' | 'upi' | 'net_banking';
   emailId?: string;
   phoneNumber?: string;
-  // Additional payment fields would be added here
 }
 
 export interface HotelBookingConfirmation {
   confirmationNumber: string;
   bookingReferenceId: string;
-  hotel: Hotel;
-  hotelName?: string;
+  hotel: HotelResult;
+  hotelName: string;
   guestDetails: GuestDetails[];
   totalFare: number;
   currency: string;
@@ -94,449 +41,203 @@ export interface HotelBookingConfirmation {
   checkOut: Date;
   bookedAt: Date;
   status: string;
-  voucherUrl?: string;
+  /** True for provider sandbox bookings: simulated, nothing charged. */
+  sandbox: boolean;
+  cancellationPolicy: string;
 }
 
-// ============================================================================
-// Constants
-// ============================================================================
+export interface HotelBookingSession {
+  sessionId: string;
+  hotel: HotelResult;
+  searchCriteria: HotelSearchCriteria;
+  /** Offer id of the selected room. */
+  bookingCode: string;
+  preBookResult?: PreBookResult;
+  guestDetails?: GuestDetails[];
+  paymentInfo?: PaymentInfo;
+  confirmation?: HotelBookingConfirmation;
+  status: HotelBookingStatus;
+  createdAt: Date;
+  expiresAt: Date;
+}
 
 const SESSION_TIMEOUT_MINUTES = 30;
 const SESSION_STORAGE_KEY = 'hotel_booking_session';
+const BOOKINGS_STORAGE_KEY = 'hotel_bookings';
 
-// ============================================================================
-// Service Implementation
-// ============================================================================
+const revive = (s: HotelBookingSession): HotelBookingSession => ({
+  ...s,
+  createdAt: new Date(s.createdAt),
+  expiresAt: new Date(s.expiresAt),
+  searchCriteria: { ...s.searchCriteria, checkIn: new Date(s.searchCriteria.checkIn), checkOut: new Date(s.searchCriteria.checkOut) },
+  confirmation: s.confirmation && {
+    ...s.confirmation,
+    checkIn: new Date(s.confirmation.checkIn),
+    checkOut: new Date(s.confirmation.checkOut),
+    bookedAt: new Date(s.confirmation.bookedAt),
+  },
+});
 
 class HotelBookingService {
   private currentSession: HotelBookingSession | null = null;
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  /**
-   * Initialize a new hotel booking session
-   * 
-   * @param hotel - The selected hotel to book
-   * @param searchCriteria - The search criteria used to find the hotel
-   * @returns The initialized booking session
-   * 
-   * Requirements: 7.1, 7.4
-   */
-  startBooking(hotel: Hotel, searchCriteria: HotelSearchCriteria): HotelBookingSession {
-    // Cancel any existing session
+  startBooking(hotel: HotelResult, searchCriteria: HotelSearchCriteria): HotelBookingSession {
     this.cancelSession();
-
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + SESSION_TIMEOUT_MINUTES * 60 * 1000);
-
     const session: HotelBookingSession = {
-      sessionId: this.generateSessionId(),
+      sessionId: `hotel_session_${now.getTime()}_${Math.random().toString(36).slice(2, 11)}`,
       hotel,
       searchCriteria,
-      bookingCode: hotel.BookingCode,
+      bookingCode: hotel.bookingCode,
       status: 'details',
       createdAt: now,
-      expiresAt,
+      expiresAt: new Date(now.getTime() + SESSION_TIMEOUT_MINUTES * 60_000),
     };
-
     this.currentSession = session;
-    this.persistSession(session);
-    this.scheduleSessionTimeout();
-
+    this.persist(session);
+    this.scheduleTimeout();
     return session;
   }
 
-  /**
-   * Get the current active booking session
-   * 
-   * @returns The current session or null if no active session
-   * 
-   * Requirements: 7.2
-   */
+  /** The active session, restored from storage after a reload; null when none or expired. */
   getCurrentSession(): HotelBookingSession | null {
-    const stored = localStorage.getItem(SESSION_STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        const expiresAt = new Date(parsed.expiresAt);
-        if (new Date() > expiresAt) {
-          this.cancelSession();
-          return null;
-        }
-      } catch {
-        // ignore parse error
-      }
-    } else if (this.currentSession) {
-      this.cancelSession();
-      return null;
-    }
-
-    // Check if session has expired
+    if (!this.currentSession) this.restoreSession();
     if (this.currentSession && new Date() > this.currentSession.expiresAt) {
       this.cancelSession();
       return null;
     }
-
     return this.currentSession;
   }
 
-  /**
-   * Update the current session with new data
-   * 
-   * @param stepData - Partial session data to update
-   * 
-   * Requirements: 7.2, 7.4
-   */
   updateSession(stepData: Partial<HotelBookingSession>): void {
-    if (!this.currentSession) {
-      throw new Error('No active hotel booking session');
-    }
-
-    // Check if session has expired
-    if (new Date() > this.currentSession.expiresAt) {
-      this.cancelSession();
-      throw new Error('Hotel booking session has expired');
-    }
-
-    // Update session with new data
-    this.currentSession = {
-      ...this.currentSession,
-      ...stepData,
-    };
-
-    this.persistSession(this.currentSession);
-  }
-
-  /**
-   * Cancel the current booking session and clean up resources
-   * 
-   * Requirements: 7.3
-   */
-  cancelSession(): void {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-      this.timeoutId = null;
-    }
-
-    this.currentSession = null;
-    this.clearPersistedSession();
-  }
-
-  /**
-   * Complete the hotel booking with guest details and payment information
-   * 
-   * @param guestDetails - Guest information for each room
-   * @param paymentInfo - Payment information
-   * @returns Hotel booking confirmation
-   * 
-   * Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
-   */
-  async completeBooking(
-    guestDetails: GuestDetails[], 
-    paymentInfo: PaymentInfo
-  ): Promise<HotelBookingConfirmation> {
     const session = this.getCurrentSession();
-    
-    if (!session) {
-      throw new Error('No active hotel booking session');
-    }
+    if (!session) throw new Error('Your booking session has expired — please search again');
+    this.currentSession = { ...session, ...stepData };
+    this.persist(this.currentSession);
+  }
 
-    if (!session.preBookResult) {
-      throw new Error('Pre-booking validation required before completing booking');
-    }
-
-    // Use the BookingCode from pre-book result (most recent)
-    const bookingCode = session.preBookResult.bookingCode;
-
-    // Transform guest details to API format
-    const apiGuestDetails = this.transformGuestDetailsToApiFormat(guestDetails);
-
-    // Generate unique reference IDs
-    const clientReferenceId = this.generateClientReferenceId();
-    const bookingReferenceId = this.generateBookingReferenceId();
-
-    // Build the booking request
-    const bookingRequest: HotelBookingRequest = {
-      BookingCode: bookingCode,
-      CustomerDetails: apiGuestDetails,
-      ClientReferenceId: clientReferenceId,
-      BookingReferenceId: bookingReferenceId,
-      TotalFare: session.preBookResult.currentPrice,
-      EmailId: paymentInfo.emailId || '',
-      PhoneNumber: paymentInfo.phoneNumber || '',
-      BookingType: 'API',
-      PaymentMode: this.mapPaymentMethodToApiFormat(paymentInfo.method),
-    };
-
+  cancelSession(): void {
+    if (this.timeoutId) clearTimeout(this.timeoutId);
+    this.timeoutId = null;
+    this.currentSession = null;
     try {
-      // Call the booking API
-      const apiClient = getTboHotelApiClient();
-      const response = await apiClient.createBooking(bookingRequest);
-
-      // Generate booking confirmation from API response
-      const confirmation = this.generateBookingConfirmation(
-        response,
-        session,
-        guestDetails
-      );
-
-      // Update session status to confirmed
-      this.updateSession({
-        status: 'confirmed',
-      });
-
-      // Integrate with TravelSphere itinerary system
-      await this.integrateWithItinerary(confirmation);
-
-      return confirmation;
-    } catch (error) {
-      // Preserve session for retry on failure (Requirement 4.4)
-      console.error('Hotel booking failed:', error);
-      throw error;
+      localStorage.removeItem(SESSION_STORAGE_KEY);
+    } catch {
+      /* storage unavailable */
     }
   }
 
-  /**
-   * Transform guest details from internal format to API format
-   * 
-   * Requirements: 4.1
-   */
-  private transformGuestDetailsToApiFormat(guestDetails: GuestDetails[]): ApiGuestDetail[] {
-    return guestDetails.map(room => ({
-      CustomerNames: room.customerNames.map(customer => ({
-        Title: customer.title,
-        FirstName: customer.firstName,
-        LastName: customer.lastName,
-        Type: customer.type,
-      })),
-    }));
-  }
-
-  /**
-   * Generate booking confirmation from API response
-   * 
-   * Requirements: 4.2, 4.6
-   */
-  private generateBookingConfirmation(
-    response: HotelBookingResponse,
-    session: HotelBookingSession,
-    guestDetails: GuestDetails[]
-  ): HotelBookingConfirmation {
-    const hotelName = (session.hotel as any)?.hotelName || (session.hotel as any)?.HotelName || response.HotelDetails?.HotelName || '';
-    return {
-      confirmationNumber: response.ConfirmationNo,
-      bookingReferenceId: response.BookingRefNo,
-      hotel: session.hotel,
-      hotelName,
-      guestDetails,
-      totalFare: response.HotelDetails?.TotalFare ?? 0,
-      currency: response.HotelDetails?.CurrencyCode || 'USD',
-      checkIn: session.searchCriteria.checkIn,
-      checkOut: session.searchCriteria.checkOut,
-      bookedAt: new Date(),
-      status: 'Confirmed',
-      voucherUrl: response.VoucherUrl,
-    };
-  }
-
-  /**
-   * Integrate hotel booking with TravelSphere itinerary system
-   * 
-   * Requirements: 4.5
-   */
-  private async integrateWithItinerary(confirmation: HotelBookingConfirmation): Promise<void> {
-    try {
-      // Import itinerary service dynamically to avoid circular dependencies
-      const { itineraryService } = await import('./itineraryService');
-      
-      // Transform confirmation to HotelBooking format for itinerary
-      const hotelBooking = {
-        confirmationNumber: confirmation.confirmationNumber,
-        bookingReferenceId: confirmation.bookingReferenceId,
-        // @ts-expect-error - API uses PascalCase, code uses camelCase
-        hotelName: confirmation.hotel.hotelName,
-        // @ts-expect-error - API uses PascalCase, code uses camelCase
-        address: confirmation.hotel.address,
-        // @ts-expect-error - API uses PascalCase, code uses camelCase
-        cityName: confirmation.hotel.cityName,
-        // @ts-expect-error - API uses PascalCase, code uses camelCase
-        countryName: confirmation.hotel.countryName,
-        // @ts-expect-error - API uses PascalCase, code uses camelCase
-        starRating: confirmation.hotel.starRating,
-        checkIn: confirmation.checkIn,
-        checkOut: confirmation.checkOut,
-        // @ts-expect-error - API uses PascalCase, code uses camelCase
-        roomType: confirmation.hotel.roomType,
-        // @ts-expect-error - API uses PascalCase, code uses camelCase
-        mealType: confirmation.hotel.mealType,
-        guests: confirmation.guestDetails.flatMap(room => 
-          room.customerNames.map(guest => `${guest.title} ${guest.firstName} ${guest.lastName}`)
-        ),
-        totalFare: confirmation.totalFare,
-        currency: confirmation.currency,
-        status: confirmation.status,
-        bookedAt: confirmation.bookedAt,
-        // @ts-expect-error - API uses PascalCase, code uses camelCase
-        refundable: confirmation.hotel.refundable,
-      };
-      
-      // Add to itinerary service
-      itineraryService.addHotelBooking(hotelBooking);
-      
-      // Also store in separate hotel bookings storage for backward compatibility
-      const existingBookings = this.getStoredHotelBookings();
-      existingBookings.push(confirmation);
-      localStorage.setItem('hotel_bookings', JSON.stringify(existingBookings));
-      
-      console.log('Hotel booking integrated with itinerary:', confirmation.confirmationNumber);
-    } catch (error) {
-      console.error('Failed to integrate hotel booking with itinerary:', error);
-      // Don't throw - booking is still successful even if itinerary integration fails
-    }
-  }
-
-  /**
-   * Get stored hotel bookings from local storage
-   */
-  private getStoredHotelBookings(): HotelBookingConfirmation[] {
-    try {
-      const stored = localStorage.getItem('hotel_bookings');
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('Failed to retrieve stored hotel bookings:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Map payment method to API format
-   */
-  private mapPaymentMethodToApiFormat(method: string): string {
-    // TBO API uses 'Limit' for credit limit payment mode
-    // Map internal payment methods to API format
-    const paymentModeMap: Record<string, string> = {
-      'credit_card': 'Limit',
-      'debit_card': 'Limit',
-      'upi': 'Limit',
-      'net_banking': 'Limit',
-    };
-    
-    return paymentModeMap[method] || 'Limit';
-  }
-
-  /**
-   * Generate unique client reference ID
-   */
-  private generateClientReferenceId(): string {
-    return `TS_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  }
-
-  /**
-   * Generate unique booking reference ID
-   */
-  private generateBookingReferenceId(): string {
-    return `BOOK_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  }
-
-  /**
-   * Restore a session from storage (e.g., after page refresh)
-   * 
-   * @returns The restored session or null if no valid session exists
-   * 
-   * Requirements: 7.5
-   */
   restoreSession(): HotelBookingSession | null {
     try {
-      const stored = localStorage.getItem(SESSION_STORAGE_KEY);
-      if (!stored) {
-        return null;
-      }
-
-      const session: HotelBookingSession = JSON.parse(stored);
-      
-      // Convert date strings back to Date objects
-      session.createdAt = new Date(session.createdAt);
-      session.expiresAt = new Date(session.expiresAt);
-      session.searchCriteria.checkIn = new Date(session.searchCriteria.checkIn);
-      session.searchCriteria.checkOut = new Date(session.searchCriteria.checkOut);
-
-      // Check if session has expired
+      const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (!raw) return null;
+      const session = revive(JSON.parse(raw));
       if (new Date() > session.expiresAt) {
-        this.clearPersistedSession();
+        localStorage.removeItem(SESSION_STORAGE_KEY);
         return null;
       }
-
       this.currentSession = session;
-      this.scheduleSessionTimeout();
-
+      this.scheduleTimeout();
       return session;
-    } catch (error) {
-      console.error('Failed to restore hotel booking session:', error);
-      this.clearPersistedSession();
+    } catch {
       return null;
     }
   }
 
-  // ============================================================================
-  // Private Helper Methods
-  // ============================================================================
+  /** Book the verified room. Requires a successful pre-book in the session. */
+  async completeBooking(guestDetails: GuestDetails[], paymentInfo: PaymentInfo): Promise<HotelBookingConfirmation> {
+    const session = this.getCurrentSession();
+    if (!session) throw new Error('Your booking session has expired — please search again');
+    const pre = session.preBookResult;
+    if (!pre?.available || !pre.prebookId) throw new Error('The price must be verified before booking');
+    if (!paymentInfo.emailId || !paymentInfo.phoneNumber) throw new Error('Email and phone number are required');
 
-  /**
-   * Generate a unique session ID
-   */
-  private generateSessionId(): string {
-    return `hotel_session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const leads = guestDetails.map(room => room.customerNames.find(c => c.type === 'Adult') ?? room.customerNames[0]);
+    if (!leads.length || leads.some(l => !l?.firstName || !l?.lastName)) {
+      throw new Error('Each room needs a lead guest name');
+    }
+    const { hotel, searchCriteria } = session;
+    const { booking } = await hotelApi.book({
+      prebook_id: pre.prebookId,
+      hotel: { id: hotel.hotelCode, name: hotel.hotelName, city: hotel.cityName || undefined,
+        country_code: /^[A-Za-z]{2}$/.test(hotel.countryName) ? hotel.countryName : undefined },
+      checkin: ymd(searchCriteria.checkIn),
+      checkout: ymd(searchCriteria.checkOut),
+      room_name: hotel.roomType,
+      board_name: hotel.mealType,
+      refundable: pre.refundable,
+      guests_count: searchCriteria.paxRooms.reduce((n, r) => n + r.adults + r.children, 0),
+      holder: { first_name: leads[0].firstName.trim(), last_name: leads[0].lastName.trim(),
+        email: paymentInfo.emailId.trim(), phone: paymentInfo.phoneNumber.trim() },
+      guests: leads.map(l => ({ first_name: l.firstName.trim(), last_name: l.lastName.trim() })),
+    });
+
+    const confirmation: HotelBookingConfirmation = {
+      confirmationNumber: booking.booking_id,
+      bookingReferenceId: booking.booking_id,
+      hotel,
+      hotelName: booking.hotel_name,
+      guestDetails,
+      totalFare: Number(booking.price),
+      currency: booking.currency,
+      checkIn: searchCriteria.checkIn,
+      checkOut: searchCriteria.checkOut,
+      bookedAt: new Date(),
+      status: booking.status,
+      sandbox: booking.sandbox,
+      cancellationPolicy: pre.cancellationPolicy,
+    };
+    this.updateSession({ status: 'confirmed', guestDetails, paymentInfo, confirmation });
+    await this.addToItinerary(confirmation);
+    return confirmation;
   }
 
-  /**
-   * Persist the session to localStorage
-   */
-  private persistSession(session: HotelBookingSession): void {
+  private async addToItinerary(c: HotelBookingConfirmation): Promise<void> {
+    try {
+      const { itineraryService } = await import('./itineraryService');
+      itineraryService.addHotelBooking({
+        confirmationNumber: c.confirmationNumber,
+        bookingReferenceId: c.bookingReferenceId,
+        hotelName: c.hotelName,
+        address: c.hotel.address,
+        cityName: c.hotel.cityName,
+        countryName: c.hotel.countryName,
+        starRating: c.hotel.starRating,
+        checkIn: c.checkIn,
+        checkOut: c.checkOut,
+        roomType: c.hotel.roomType,
+        mealType: c.hotel.mealType,
+        guests: c.guestDetails.flatMap(r => r.customerNames.map(g => `${g.title} ${g.firstName} ${g.lastName}`)),
+        totalFare: c.totalFare,
+        currency: c.currency,
+        status: c.status,
+        bookedAt: c.bookedAt,
+        refundable: c.hotel.refundable,
+      });
+      const stored = JSON.parse(localStorage.getItem(BOOKINGS_STORAGE_KEY) || '[]');
+      localStorage.setItem(BOOKINGS_STORAGE_KEY, JSON.stringify([...(Array.isArray(stored) ? stored : []), c]));
+    } catch (err) {
+      // The booking itself succeeded; the itinerary is a convenience copy
+      console.error('Failed to add hotel booking to the itinerary:', err);
+    }
+  }
+
+  private persist(session: HotelBookingSession): void {
     try {
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-    } catch (error) {
-      console.error('Failed to persist hotel booking session:', error);
+    } catch {
+      /* storage unavailable */
     }
   }
 
-  /**
-   * Clear the persisted session from localStorage
-   */
-  private clearPersistedSession(): void {
-    try {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
-    } catch (error) {
-      console.error('Failed to clear persisted hotel booking session:', error);
-    }
-  }
-
-  /**
-   * Schedule automatic session timeout
-   * 
-   * Requirements: 7.3
-   */
-  private scheduleSessionTimeout(): void {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-    }
-
-    if (!this.currentSession) {
-      return;
-    }
-
-    const timeUntilExpiry = this.currentSession.expiresAt.getTime() - Date.now();
-
-    if (timeUntilExpiry > 0) {
-      this.timeoutId = setTimeout(() => {
-        console.log('Hotel booking session expired');
-        this.cancelSession();
-      }, timeUntilExpiry);
-    }
+  private scheduleTimeout(): void {
+    if (this.timeoutId) clearTimeout(this.timeoutId);
+    if (!this.currentSession) return;
+    const ms = this.currentSession.expiresAt.getTime() - Date.now();
+    if (ms > 0) this.timeoutId = setTimeout(() => this.cancelSession(), ms);
   }
 }
-
-// ============================================================================
-// Export Singleton Instance
-// ============================================================================
 
 export const hotelBookingService = new HotelBookingService();
 export default hotelBookingService;
