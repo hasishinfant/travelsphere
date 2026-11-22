@@ -16,11 +16,11 @@ import './LoginPage.css';
 // is statically false in `vite build`, so this array is tree-shaken out of production.
 const SHOW_TEST_ACCOUNTS = import.meta.env.DEV;
 const TEST_ACCOUNTS = !SHOW_TEST_ACCOUNTS ? [] : [
-  { name: 'Arjun Sharma',   email: 'arjun.sharma@tbo-test.com',   password: 'TBOtest@2024', role: 'Business Traveler' },
-  { name: 'Priya Nair',     email: 'priya.nair@tbo-test.com',     password: 'TBOtest@2024', role: 'Leisure Explorer' },
-  { name: 'Rahul Verma',    email: 'rahul.verma@tbo-test.com',    password: 'TBOtest@2024', role: 'Frequent Flyer' },
-  { name: 'Ananya Iyer',    email: 'ananya.iyer@tbo-test.com',    password: 'TBOtest@2024', role: 'Budget Traveler' },
-  { name: 'Kiran Mehta',    email: 'kiran.mehta@tbo-test.com',    password: 'TBOtest@2024', role: 'Admin' },
+  { name: 'Arjun Sharma',   email: 'arjun.sharma@travelsphere.test',   password: 'TravelSphere@2024', role: 'Business Traveler' },
+  { name: 'Priya Nair',     email: 'priya.nair@travelsphere.test',     password: 'TravelSphere@2024', role: 'Leisure Explorer' },
+  { name: 'Rahul Verma',    email: 'rahul.verma@travelsphere.test',    password: 'TravelSphere@2024', role: 'Frequent Flyer' },
+  { name: 'Ananya Iyer',    email: 'ananya.iyer@travelsphere.test',    password: 'TravelSphere@2024', role: 'Budget Traveler' },
+  { name: 'Kiran Mehta',    email: 'kiran.mehta@travelsphere.test',    password: 'TravelSphere@2024', role: 'Admin' },
 ];
 
 const avatarColors = ['#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6'];

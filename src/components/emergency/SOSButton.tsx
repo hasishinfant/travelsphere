@@ -84,7 +84,7 @@ export const SOSButton: React.FC<SOSButtonProps> = ({ className = '' }) => {
       ? `https://maps.google.com/?q=${location.lat},${location.lng}`
       : 'Unavailable';
     return encodeURIComponent(
-      `🚨 SOS EMERGENCY ALERT 🚨\n\nI need immediate help! This is an urgent SOS triggered via TBO Travel App.\n\n📍 Location: ${locationText}\n🕐 Time: ${timestamp}\n\nPlease contact me or send help immediately.`
+      `🚨 SOS EMERGENCY ALERT 🚨\n\nI need immediate help! This is an urgent SOS triggered via TravelSphere.\n\n📍 Location: ${locationText}\n🕐 Time: ${timestamp}\n\nPlease contact me or send help immediately.`
     );
   };
 
@@ -182,7 +182,7 @@ export const SOSButton: React.FC<SOSButtonProps> = ({ className = '' }) => {
                 <div className="sos-confirm-preview">
                   <p className="sos-preview-label">Message preview:</p>
                   <p className="sos-preview-text">
-                    🚨 SOS EMERGENCY ALERT 🚨 — I need immediate help! This is an urgent SOS via TBO Travel App.
+                    🚨 SOS EMERGENCY ALERT 🚨 — I need immediate help! This is an urgent SOS via TravelSphere.
                     {location ? ` 📍 GPS coordinates attached.` : ''} Please contact me or send help immediately.
                   </p>
                 </div>
