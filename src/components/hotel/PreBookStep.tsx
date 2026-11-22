@@ -1,11 +1,6 @@
 /**
- * Pre-Book Step Component
- * 
- * Validates hotel availability and pricing before final booking.
- * Displays price changes and requires user confirmation for increases.
- * Handles room unavailability scenarios.
- * 
- * Requirements: 3.2, 3.3, 3.4
+ * Pre-book step: confirms availability and the final price with the hotel provider. Continues automatically when
+ * nothing changed; otherwise the traveller must accept the new price or terms.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -38,7 +33,7 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
   const [preBookResult, setPreBookResult] = useState<PreBookResult | null>(null);
   const [userConfirmed, setUserConfirmed] = useState(false);
 
-  const originalPrice = session.hotel.Price.OfferedPrice;
+  const originalPrice = session.hotel.price.offeredPrice;
 
   useEffect(() => {
     performPreBook();
@@ -49,11 +44,7 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
     setError(null);
 
     try {
-      const result = await preBookService.preBook(
-        session.bookingCode,
-        originalPrice,
-        'Limit'
-      );
+      const result = await preBookService.preBook(session.bookingCode, originalPrice);
 
       setPreBookResult(result);
 
@@ -63,8 +54,8 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
         return;
       }
 
-      // If price hasn't changed, auto-proceed (Requirement 3.3)
-      if (!result.priceChanged || result.priceIncrease === 0) {
+      // Nothing changed since the search → continue without asking
+      if (!result.priceChanged && !result.cancellationPolicyChanged && !result.boardChanged) {
         onComplete(result);
       }
     } catch (err) {
@@ -144,9 +135,10 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
     );
   }
 
-  // Price change confirmation (Requirements 3.2, 3.3)
-  if (preBookResult && preBookResult.priceChanged && preBookResult.priceIncrease !== 0) {
+  // Price or terms changed: the traveller must confirm
+  if (preBookResult && (preBookResult.priceChanged || preBookResult.cancellationPolicyChanged || preBookResult.boardChanged)) {
     const priceIncreased = preBookResult.priceIncrease > 0;
+    const priceMoved = preBookResult.priceIncrease !== 0;
 
     return (
       <div className="prebook-step">
@@ -156,13 +148,15 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
           </div>
           
           <h3>
-            {priceIncreased ? 'Price Has Increased' : 'Price Has Decreased'}
+            {!priceMoved ? 'Booking Terms Have Changed' : priceIncreased ? 'Price Has Increased' : 'Price Has Decreased'}
           </h3>
-          
+
           <p className="price-change-message">
-            {priceIncreased
-              ? 'The room price has increased since your search. Please review the new price below.'
-              : 'Good news! The room price has decreased since your search.'}
+            {!priceMoved
+              ? 'The hotel updated the terms for this room. Please review them before continuing.'
+              : priceIncreased
+                ? 'The room price has increased since your search. Please review the new price below.'
+                : 'Good news! The room price has decreased since your search.'}
           </p>
 
           <div className="price-comparison">
@@ -192,13 +186,19 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
           {preBookResult.cancellationPolicyChanged && (
             <div className="policy-change-notice">
               <span className="notice-icon">ℹ️</span>
-              <span>The cancellation policy has also been updated.</span>
+              <span>Cancellation policy is now: {preBookResult.cancellationPolicy}</span>
+            </div>
+          )}
+          {preBookResult.boardChanged && (
+            <div className="policy-change-notice">
+              <span className="notice-icon">ℹ️</span>
+              <span>The meal plan for this room has changed.</span>
             </div>
           )}
 
           <div className="hotel-summary">
-            <h4>{session.hotel.HotelName}</h4>
-            <p>{session.hotel.HotelAddress}</p>
+            <h4>{session.hotel.hotelName}</h4>
+            <p>{session.hotel.address}</p>
             <p>
               {session.searchCriteria.checkIn.toLocaleDateString()} - {' '}
               {session.searchCriteria.checkOut.toLocaleDateString()}
@@ -214,7 +214,7 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
               className="btn-confirm"
               disabled={userConfirmed}
             >
-              {priceIncreased ? 'Accept New Price' : 'Continue with New Price'}
+              {!priceMoved ? 'Accept and Continue' : priceIncreased ? 'Accept New Price' : 'Continue with New Price'}
             </button>
           </div>
         </div>

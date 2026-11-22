@@ -1,33 +1,22 @@
 /**
- * Hotel Search Form Component
- * 
- * Provides hotel search functionality with:
- * - Location, check-in/check-out dates, rooms, and guest configuration
- * - Form validation for all inputs
- * - Integration with hotelSearchService
- * - Loading state during search
- * 
- * Requirements: 1.1
+ * Hotel search form: any city worldwide (city + 2-letter country code), dates, rooms and guests.
+ * Prefilled from ?location=<destination id> when coming from a destination page.
  */
 
 import React, { useState } from 'react';
 import { AlertCircle, Search, Plus, X } from 'lucide-react';
 import { getDestination } from '@/data/destinations';
-
-// TBO city codes for destinations in the app (used to prefill from ?location=)
-const CITY_CODES: Record<string, string> = {
-  paris: 'PAR', london: 'LON', rome: 'ROM', santorini: 'JTR', tokyo: 'TYO', kyoto: 'UKY',
-  bali: 'DPS', 'new-york': 'NYC', iceland: 'REK', bengaluru: 'BLR',
-};
-const initialCityCode = () => {
-  if (typeof window === 'undefined') return '';
-  const loc = new URLSearchParams(window.location.search).get('location');
-  const d = getDestination(loc);
-  return d ? CITY_CODES[d.id] || '' : (loc || '').slice(0, 3).toUpperCase();
-};
 import { getHotelSearchService } from '../../services/hotelSearchService';
-import type { HotelSearchCriteria, PaxRoomInput, HotelSearchResult } from '../../services/hotelSearchService';
+import type { HotelSearchCriteria, HotelSearchResult } from '../../services/hotelSearchService';
 import './HotelSearchForm.css';
+
+const MAX_ROOMS = 5;
+
+const initialLocation = () => {
+  if (typeof window === 'undefined') return { city: '', country: '' };
+  const d = getDestination(new URLSearchParams(window.location.search).get('location'));
+  return d ? { city: d.city, country: d.countryCode } : { city: '', country: '' };
+};
 
 interface FormErrors {
   location?: string;
@@ -59,7 +48,8 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
   const [errors, setErrors] = useState<FormErrors>({});
   
   // Form state
-  const [cityCode, setCityCode] = useState(initialCityCode);
+  const [city, setCity] = useState(() => initialLocation().city);
+  const [countryCode, setCountryCode] = useState(() => initialLocation().country);
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
   const [guestNationality, setGuestNationality] = useState('US');
@@ -71,8 +61,10 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
     const newErrors: FormErrors = {};
 
     // Validate location
-    if (!cityCode.trim()) {
-      newErrors.location = 'Please enter a city code';
+    if (!city.trim()) {
+      newErrors.location = 'Please enter a city';
+    } else if (!/^[A-Za-z]{2}$/.test(countryCode.trim())) {
+      newErrors.location = 'Please enter the 2-letter country code (e.g. FR, JP, IN)';
     }
 
     // Validate check-in date
@@ -143,14 +135,14 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
       const criteria: HotelSearchCriteria = {
         checkIn: new Date(checkIn),
         checkOut: new Date(checkOut),
-        cityCode: cityCode.trim(),
+        city: city.trim(),
+        countryCode: countryCode.trim().toUpperCase(),
         guestNationality: guestNationality.trim(),
         paxRooms: rooms.map(room => ({
           adults: room.adults,
           children: room.children,
           childrenAges: room.childrenAges,
         })),
-        isDetailedResponse: true,
       };
 
       // Call search service
@@ -176,7 +168,7 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
   };
 
   const handleAddRoom = () => {
-    if (rooms.length < 9) {
+    if (rooms.length < MAX_ROOMS) {
       setRooms([...rooms, { adults: 2, children: 0, childrenAges: [] }]);
     }
   };
@@ -219,7 +211,8 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
   };
 
   const handleReset = () => {
-    setCityCode('');
+    setCity('');
+    setCountryCode('');
     setCheckIn('');
     setCheckOut('');
     setGuestNationality('US');
@@ -256,23 +249,42 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
 
       <form onSubmit={handleSubmit} className="form-container">
         {/* Location */}
-        <div className="form-group">
-          <label htmlFor="cityCode">
-            City Code <span className="required">*</span>
-          </label>
-          <input
-            id="cityCode"
-            type="text"
-            value={cityCode}
-            onChange={(e) => setCityCode(e.target.value)}
-            placeholder="e.g., NYC, LON, PAR"
-            className={errors.location ? 'error' : ''}
-            disabled={isLoading}
-          />
-          {errors.location && (
-            <span className="error-text">{errors.location}</span>
-          )}
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="city">
+              City <span className="required">*</span>
+            </label>
+            <input
+              id="city"
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="e.g. Lisbon"
+              autoComplete="address-level2"
+              className={errors.location ? 'error' : ''}
+              disabled={isLoading}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="countryCode">
+              Country code <span className="required">*</span>
+            </label>
+            <input
+              id="countryCode"
+              type="text"
+              value={countryCode}
+              onChange={(e) => setCountryCode(e.target.value.toUpperCase().slice(0, 2))}
+              placeholder="e.g. PT"
+              maxLength={2}
+              autoComplete="country"
+              className={errors.location ? 'error' : ''}
+              disabled={isLoading}
+            />
+          </div>
         </div>
+        {errors.location && (
+          <span className="error-text">{errors.location}</span>
+        )}
 
         {/* Dates */}
         <div className="form-row">
@@ -346,7 +358,7 @@ const HotelSearchForm: React.FC<HotelSearchFormProps> = ({
         <div className="rooms-section">
           <div className="rooms-header">
             <h3>Rooms &amp; Guests</h3>
-            {rooms.length < 9 && (
+            {rooms.length < MAX_ROOMS && (
               <button
                 type="button"
                 onClick={handleAddRoom}

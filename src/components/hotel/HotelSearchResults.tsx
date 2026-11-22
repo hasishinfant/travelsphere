@@ -13,8 +13,7 @@
 import React, { useState, useMemo } from 'react';
 import Icon from '@/components/shared/Icon';
 import { getHotelSearchService } from '../../services/hotelSearchService';
-import type { HotelResult, HotelSearchResult } from '../../services/hotelSearchService';
-import type { HotelSearchFilters } from '../../types/tboHotelApi';
+import type { HotelResult, HotelSearchFilters, HotelSearchResult, MealPlan } from '../../services/hotelSearchService';
 import './HotelSearchResults.css';
 
 interface HotelSearchResultsProps {
@@ -71,12 +70,12 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
 
   return (
     <div className="hotel-search-results">
-      {/* Mock Mode Indicator */}
-      {searchResult.isMockData && (
+      {/* Sandbox indicator */}
+      {searchResult.sandbox && (
         <div className="mock-mode-banner">
           <span className="mock-icon"><Icon name="info" size="sm" /></span>
           <div className="mock-text">
-            <strong>Demo Mode:</strong> Showing sample hotel data. Real API is unavailable.
+            <strong>Test mode:</strong> live hotels and prices from the provider sandbox. Bookings are simulated and nothing is charged.
           </div>
         </div>
       )}
@@ -87,7 +86,7 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
           {filteredAndSortedHotels.length} {filteredAndSortedHotels.length === 1 ? 'Hotel' : 'Hotels'} Found
         </h2>
         <p className="search-summary">
-          {searchResult.searchCriteria.cityCode && `in ${searchResult.searchCriteria.cityCode}`}
+          in {searchResult.searchCriteria.city}, {searchResult.searchCriteria.countryCode}
         </p>
       </div>
 
@@ -99,8 +98,8 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
             <label htmlFor="starRating">Star Rating</label>
             <select
               id="starRating"
-              value={filters.StarRating || ''}
-              onChange={(e) => handleFilterChange('StarRating', e.target.value ? parseInt(e.target.value) : undefined)}
+              value={filters.starRating || ''}
+              onChange={(e) => handleFilterChange('starRating', e.target.value ? parseInt(e.target.value) : undefined)}
             >
               <option value="">All Ratings</option>
               <option value="5">5 Stars</option>
@@ -114,8 +113,8 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
             <label htmlFor="refundable">Cancellation</label>
             <select
               id="refundable"
-              value={filters.Refundable === undefined ? '' : filters.Refundable ? 'true' : 'false'}
-              onChange={(e) => handleFilterChange('Refundable', e.target.value === '' ? undefined : e.target.value === 'true')}
+              value={filters.refundable === undefined ? '' : filters.refundable ? 'true' : 'false'}
+              onChange={(e) => handleFilterChange('refundable', e.target.value === '' ? undefined : e.target.value === 'true')}
             >
               <option value="">All Hotels</option>
               <option value="true">Refundable Only</option>
@@ -128,15 +127,15 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
             <label htmlFor="mealType">Meal Plan</label>
             <select
               id="mealType"
-              value={filters.MealType || ''}
-              onChange={(e) => handleFilterChange('MealType', e.target.value ? parseInt(e.target.value) : undefined)}
+              value={filters.mealPlan || ''}
+              onChange={(e) => handleFilterChange('mealPlan', (e.target.value || undefined) as MealPlan | undefined)}
             >
               <option value="">All Meal Plans</option>
-              <option value="1">Room Only</option>
-              <option value="2">Breakfast Included</option>
-              <option value="3">Half Board</option>
-              <option value="4">Full Board</option>
-              <option value="5">All Inclusive</option>
+              <option value="room_only">Room Only</option>
+              <option value="breakfast">Breakfast Included</option>
+              <option value="half_board">Half Board</option>
+              <option value="full_board">Full Board</option>
+              <option value="all_inclusive">All Inclusive</option>
             </select>
           </div>
 
@@ -200,7 +199,9 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onSelect }) => {
     <div className="hotel-card">
       {/* Hotel Image */}
       <div className="hotel-image">
-        <img src={hotel.hotelPicture} alt={hotel.hotelName} loading="lazy" decoding="async" />
+        {hotel.hotelPicture
+          ? <img src={hotel.hotelPicture} alt={hotel.hotelName} loading="lazy" decoding="async" />
+          : <div className="hotel-image-empty"><Icon name="hotel" size="xl" /></div>}
         {hotel.refundable && (
           <span className="refundable-badge">Free Cancellation</span>
         )}
@@ -218,7 +219,7 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onSelect }) => {
         </div>
 
         <p className="hotel-location">
-          <Icon name="location" size="xs" /> {hotel.address}, {hotel.cityName}
+          <Icon name="location" size="xs" /> {[hotel.address, hotel.cityName].filter(Boolean).join(', ')}
         </p>
 
         <div className="hotel-details">
@@ -254,7 +255,7 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onSelect }) => {
               <span className="currency">{hotel.price.currency}</span>
               <span className="amount">{hotel.price.offeredPrice.toFixed(2)}</span>
             </div>
-            <span className="price-label">per night</span>
+            <span className="price-label">total, {hotel.nights} night{hotel.nights === 1 ? '' : 's'}</span>
           </div>
 
           <button onClick={onSelect} className="btn-select">
@@ -262,11 +263,8 @@ const HotelCard: React.FC<HotelCardProps> = ({ hotel, onSelect }) => {
           </button>
         </div>
 
-        {/* Available Rooms */}
-        {hotel.availableRooms <= 3 && (
-          <div className="availability-warning">
-            Only {hotel.availableRooms} room{hotel.availableRooms !== 1 ? 's' : ''} left!
-          </div>
+        {hotel.offers.length > 1 && (
+          <div className="availability-note">{hotel.offers.length} room options</div>
         )}
       </div>
     </div>

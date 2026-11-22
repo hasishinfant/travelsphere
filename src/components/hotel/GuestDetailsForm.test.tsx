@@ -9,62 +9,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import GuestDetailsForm from './GuestDetailsForm';
 import { HotelBookingSession, GuestDetails, PaymentInfo } from '../../services/hotelBookingService';
-import type { Hotel } from '../../types/tboHotelApi';
+import { criteria, session } from '../../tests/hotelFixtures';
 
 describe('GuestDetailsForm', () => {
   let mockSession: HotelBookingSession;
-  let mockHotel: Hotel;
   let mockOnSubmit: ReturnType<typeof vi.fn>;
   let mockOnBack: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockHotel = {
-      BookingCode: 'TEST123',
-      HotelCode: 'HTL001',
-      HotelName: 'Luxury Resort',
-      StarRating: 5,
-      HotelAddress: '789 Beach Rd',
-      HotelContactNo: '+1234567890',
-      CityName: 'Miami',
-      CountryName: 'USA',
-      Price: {
-        CurrencyCode: 'USD',
-        RoomPrice: 300,
-        Tax: 30,
-        ExtraGuestCharge: 0,
-        ChildCharge: 0,
-        OtherCharges: 0,
-        Discount: 0,
-        PublishedPrice: 330,
-        OfferedPrice: 330,
-        AgentCommission: 0,
-        AgentMarkUp: 0,
-      },
-      Refundable: true,
-      MealType: 'All Inclusive',
-      RoomType: 'Ocean View Suite',
-      AvailableRooms: 2,
-      Amenities: ['WiFi', 'Pool', 'Spa'],
-      HotelPicture: 'resort.jpg',
-      HotelImages: ['img1.jpg'],
-    };
-
-    mockSession = {
-      sessionId: 'session123',
-      hotel: mockHotel,
-      searchCriteria: {
-        checkIn: new Date('2024-08-01'),
-        checkOut: new Date('2024-08-05'),
-        guestNationality: 'US',
-        paxRooms: [
-          { adults: 2, children: 1, childrenAges: [8] },
-        ],
-      },
-      bookingCode: 'TEST123',
+    mockSession = session({
       status: 'guest_details',
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-    };
+      searchCriteria: criteria({ paxRooms: [{ adults: 2, children: 1, childrenAges: [8] }] }),
+    });
 
     mockOnSubmit = vi.fn();
     mockOnBack = vi.fn();

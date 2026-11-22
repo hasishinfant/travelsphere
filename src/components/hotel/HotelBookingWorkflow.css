@@ -115,19 +115,70 @@
   min-height: 400px;
 }
 
-.step-placeholder {
-  padding: 2rem;
-  text-align: center;
-}
-
-.step-placeholder h3 {
+.step-summary h3 {
   color: var(--ink);
-  margin-bottom: 1rem;
+  margin: 0 0 4px;
 }
 
-.step-placeholder p {
+.summary-address {
   color: var(--muted);
-  margin-bottom: 0.5rem;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.summary-grid dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.summary-grid dd {
+  margin: 2px 0 0;
+  color: var(--ink);
+}
+
+.summary-total dd {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.payment-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--ink-2);
+  background: var(--accent-soft);
+}
+
+.payment-notice.live {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+
+.contact-line {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 12px 0 0;
+}
+
+.hotel-booking-workflow .error-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--danger-ink);
 }
 
 /* Workflow Actions */

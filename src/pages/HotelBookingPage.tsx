@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HotelBookingWorkflow, HotelSearchForm, HotelSearchResults } from '../components/hotel';
+import {
+  BookingDetailsView, BookingList, HotelBookingWorkflow, HotelDetailsModal, HotelSearchForm, HotelSearchResults,
+} from '../components/hotel';
 import { hotelBookingService, HotelBookingSession } from '../services/hotelBookingService';
 import type { HotelSearchResult, HotelResult } from '../services/hotelSearchService';
-import { ArrowLeft, ShieldCheck, BadgePercent, Headphones } from 'lucide-react';
+import { getSession } from '../services/apiClient';
+import { ArrowLeft, ShieldCheck, BadgePercent, ClipboardList } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
 import Photo from '@/components/ui/Photo';
 import { HOTEL_IMAGES } from '@/data/destinations';
@@ -13,6 +16,10 @@ const HotelBookingPage: React.FC = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState<HotelBookingSession | null>(null);
   const [searchResults, setSearchResults] = useState<HotelSearchResult | null>(null);
+  const [viewing, setViewing] = useState<HotelResult | null>(null);
+  const [openBooking, setOpenBooking] = useState<string | null>(null);
+  const [bookingsKey, setBookingsKey] = useState(0);
+  const signedIn = !!getSession();
 
   useEffect(() => {
     // Check if there's an active booking session
@@ -26,16 +33,13 @@ const HotelBookingPage: React.FC = () => {
     setSearchResults(results);
   };
 
-  const handleHotelSelect = (hotel: HotelResult) => {
-    if (searchResults) {
-      // Start a booking session with the selected hotel
-      const newSession = hotelBookingService.startBooking(
-        hotel as any, // Type conversion needed - HotelResult vs Hotel type mismatch
-        searchResults.searchCriteria
-      );
-      setSession(newSession);
-      setSearchResults(null);
-    }
+  // "View details" opens the hotel with its rooms; "Book now" starts the booking with the chosen room
+  const handleHotelSelect = (hotel: HotelResult) => setViewing(hotel);
+
+  const handleBookNow = (hotel: HotelResult) => {
+    if (!searchResults) return;
+    setSession(hotelBookingService.startBooking(hotel, searchResults.searchCriteria));
+    setViewing(null);
   };
 
   const handleBookingComplete = (confirmationNumber: string) => {
@@ -46,6 +50,7 @@ const HotelBookingPage: React.FC = () => {
   const handleCancel = () => {
     hotelBookingService.cancelSession();
     setSession(null);
+    setBookingsKey(k => k + 1); // a booking may have just been made
   };
 
   const handleBackToSearch = () => {
@@ -67,6 +72,7 @@ const HotelBookingPage: React.FC = () => {
       {session ? (
         <HotelBookingWorkflow
           session={session}
+          sandbox={searchResults?.sandbox ?? true}
           onComplete={handleBookingComplete}
           onCancel={handleCancel}
         />
@@ -82,13 +88,32 @@ const HotelBookingPage: React.FC = () => {
             <div className="surface hotel-side-card">
               <Photo src={HOTEL_IMAGES[0]} alt="Hotel pool deck with loungers" width={320} ratio="4 / 3" priority />
               <ul className="hotel-perks">
-                <li><BadgePercent size={18} /><div><p>Member rates</p><span>Prices shown include taxes and fees.</span></div></li>
-                <li><ShieldCheck size={18} /><div><p>Free cancellation</p><span>On most rooms, up to 24 h before check-in.</span></div></li>
-                <li><Headphones size={18} /><div><p>24/7 support</p><span>Reach us any time from Emergency.</span></div></li>
+                <li><BadgePercent size={18} /><div><p>Live rates</p><span>Prices for your whole stay, checked again before you book.</span></div></li>
+                <li><ShieldCheck size={18} /><div><p>Clear terms</p><span>Cancellation terms are shown for every room before you pay.</span></div></li>
+                <li><ClipboardList size={18} /><div><p>Manage bookings</p><span>View or cancel your stays below.</span></div></li>
               </ul>
             </div>
           </aside>
         </div>
+      )}
+
+      {viewing && (
+        <HotelDetailsModal hotel={viewing} isOpen onClose={() => setViewing(null)} onBookNow={handleBookNow} />
+      )}
+
+      {!session && !searchResults && signedIn && (
+        <section className="hotel-bookings-section">
+          <h2 className="section-title">Your hotel bookings</h2>
+          {openBooking ? (
+            <BookingDetailsView
+              confirmationNumber={openBooking}
+              onClose={() => setOpenBooking(null)}
+              onCancellationComplete={() => setBookingsKey(k => k + 1)}
+            />
+          ) : (
+            <BookingList key={bookingsKey} onViewDetails={setOpenBooking} onCancelBooking={setOpenBooking} />
+          )}
+        </section>
       )}
     </div>
   );

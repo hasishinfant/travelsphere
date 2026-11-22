@@ -31,14 +31,16 @@ const BookingList: React.FC<BookingListProps> = ({
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  // Set default date range (last 30 days to today)
   useEffect(() => {
+    // Recent and upcoming stays: 30 days back to a year ahead
     const today = new Date();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(today.getDate() - 30);
+    const nextYear = new Date();
+    nextYear.setFullYear(today.getFullYear() + 1);
 
     setFromDate(formatDate(thirtyDaysAgo));
-    setToDate(formatDate(today));
+    setToDate(formatDate(nextYear));
   }, []);
 
   // Load bookings when date range changes

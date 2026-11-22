@@ -470,3 +470,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+.sandbox-notice {
+  display: flex; align-items: center; gap: 8px; margin: 0 0 16px; padding: 10px 14px;
+  border-radius: 12px; background: var(--accent-soft); color: var(--ink-2); font-size: 14px;
+}

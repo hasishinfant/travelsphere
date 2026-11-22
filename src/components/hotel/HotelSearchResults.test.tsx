@@ -1,241 +1,71 @@
-/**
- * Hotel Search Results Component Tests
- * 
- * Tests for HotelSearchResults component:
- * - Results display
- * - Filter application
- * - Mock mode indication
- * - Empty results handling
- */
-
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import HotelSearchResults from './HotelSearchResults';
-import type { HotelSearchResult, HotelResult } from '../../services/hotelSearchService';
+import type { HotelSearchResult } from '../../services/hotelSearchService';
+import { criteria, hotelResult } from '../../tests/hotelFixtures';
 
-// Mock hotel search service
-vi.mock('../../services/hotelSearchService', () => ({
-  getHotelSearchService: () => ({
-    filterResults: vi.fn((hotels, filters) => {
-      let filtered = [...hotels];
-      
-      if (filters.StarRating !== undefined) {
-        filtered = filtered.filter(h => h.starRating === filters.StarRating);
-      }
-      
-      if (filters.Refundable !== undefined) {
-        filtered = filtered.filter(h => h.refundable === filters.Refundable);
-      }
-      
-      return filtered;
-    }),
-  }),
-}));
+const results = (over: Partial<HotelSearchResult> = {}): HotelSearchResult => {
+  const hotels = [
+    hotelResult(),
+    hotelResult({ bookingCode: 'b', hotelCode: 'b', hotelName: 'Breakfast Inn', starRating: 3, refundable: true,
+      mealType: 'Breakfast Included', price: { currency: 'EUR', offeredPrice: 120, publishedPrice: 120, discount: 0 } }),
+    hotelResult({ bookingCode: 'c', hotelCode: 'c', hotelName: 'Aurora Palace', starRating: 5, mealType: 'Half Board',
+      price: { currency: 'EUR', offeredPrice: 410, publishedPrice: 410, discount: 0 }, hotelPicture: '' }),
+  ];
+  return { hotels, searchCriteria: criteria(), totalResults: hotels.length, sandbox: false, ...over };
+};
+const names = () => screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent);
 
 describe('HotelSearchResults', () => {
-  const mockHotel: HotelResult = {
-    bookingCode: 'TEST-123',
-    hotelCode: 'HTL001',
-    hotelName: 'Test Hotel',
-    starRating: 4,
-    address: '123 Test St',
-    contactNumber: '+1-555-1234',
-    cityName: 'Test City',
-    countryName: 'Test Country',
-    price: {
-      currency: 'USD',
-      roomPrice: 100,
-      tax: 15,
-      extraGuestCharge: 0,
-      childCharge: 0,
-      otherCharges: 0,
-      discount: 10,
-      publishedPrice: 115,
-      offeredPrice: 105,
-      agentCommission: 0,
-      agentMarkUp: 0,
-    },
-    refundable: true,
-    mealType: 'Breakfast Included',
-    roomType: 'Deluxe Room',
-    availableRooms: 5,
-    amenities: ['WiFi', 'Pool', 'Gym'],
-    hotelPicture: 'https://example.com/hotel.jpg',
-    hotelImages: [],
-  };
-
-  const mockSearchResult: HotelSearchResult = {
-    hotels: [mockHotel],
-    searchCriteria: {
-      checkIn: new Date('2024-06-01'),
-      checkOut: new Date('2024-06-05'),
-      cityCode: 'NYC',
-      guestNationality: 'US',
-      paxRooms: [{ adults: 2, children: 0, childrenAges: [] }],
-    },
-    totalResults: 1,
-    isMockData: false,
-  };
-
-  it('renders hotel search results', () => {
-    render(<HotelSearchResults searchResult={mockSearchResult} />);
-    
-    expect(screen.getByText('1 Hotel Found')).toBeInTheDocument();
-    expect(screen.getByText('Test Hotel')).toBeInTheDocument();
+  it('lists hotels cheapest first with the total for the stay', () => {
+    render(<HotelSearchResults searchResult={results()} />);
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('3 Hotels Found');
+    expect(screen.getByText('in Paris, FR')).toBeInTheDocument();
+    expect(names()).toEqual(['Breakfast Inn', 'Hotel Lumière', 'Aurora Palace']);
+    expect(screen.getAllByText('total, 2 nights')).toHaveLength(3);
+    expect(screen.getAllByText('2 room options')).toHaveLength(3);
   });
 
-  it('displays mock mode banner when using mock data', () => {
-    const mockDataResult = { ...mockSearchResult, isMockData: true };
-    
-    render(<HotelSearchResults searchResult={mockDataResult} />);
-    
-    expect(screen.getByText(/Demo Mode/i)).toBeInTheDocument();
-    expect(screen.getByText(/Showing sample hotel data/i)).toBeInTheDocument();
+  it('labels sandbox results as test mode', () => {
+    const { rerender } = render(<HotelSearchResults searchResult={results()} />);
+    expect(screen.queryByText(/Test mode:/)).not.toBeInTheDocument();
+    rerender(<HotelSearchResults searchResult={results({ sandbox: true })} />);
+    expect(screen.getByText(/Test mode:/)).toBeInTheDocument();
   });
 
-  it('does not display mock mode banner for real data', () => {
-    render(<HotelSearchResults searchResult={mockSearchResult} />);
-    
-    expect(screen.queryByText(/Demo Mode/i)).not.toBeInTheDocument();
+  it('filters by stars, cancellation and meal plan, and clears filters', () => {
+    render(<HotelSearchResults searchResult={results()} />);
+    fireEvent.change(screen.getByLabelText('Star Rating'), { target: { value: '5' } });
+    expect(names()).toEqual(['Aurora Palace']);
+    fireEvent.click(screen.getByRole('button', { name: /clear all filters/i }));
+    fireEvent.change(screen.getByLabelText('Cancellation'), { target: { value: 'true' } });
+    expect(names()).toEqual(['Breakfast Inn']);
+    fireEvent.click(screen.getByRole('button', { name: /clear all filters/i }));
+    fireEvent.change(screen.getByLabelText('Meal Plan'), { target: { value: 'half_board' } });
+    expect(names()).toEqual(['Aurora Palace']);
   });
 
-  it('displays hotel details correctly', () => {
-    render(<HotelSearchResults searchResult={mockSearchResult} />);
-    
-    expect(screen.getByText('Test Hotel')).toBeInTheDocument();
-    expect(screen.getByText(/123 Test St, Test City/)).toBeInTheDocument();
-    expect(screen.getByText('Deluxe Room')).toBeInTheDocument();
-    expect(screen.getByText('Breakfast Included', { selector: '.meal-type' })).toBeInTheDocument();
-    expect(screen.getByText('105.00')).toBeInTheDocument();
+  it('sorts by stars and by name', () => {
+    render(<HotelSearchResults searchResult={results()} />);
+    fireEvent.change(screen.getByLabelText('Sort By'), { target: { value: 'rating' } });
+    expect(names()[0]).toBe('Aurora Palace');
+    fireEvent.change(screen.getByLabelText('Sort By'), { target: { value: 'name' } });
+    expect(names()).toEqual(['Aurora Palace', 'Breakfast Inn', 'Hotel Lumière']);
   });
 
-  it('displays refundable badge for refundable hotels', () => {
-    render(<HotelSearchResults searchResult={mockSearchResult} />);
-    
-    expect(screen.getByText('Free Cancellation')).toBeInTheDocument();
-  });
-
-  it('applies star rating filter', () => {
-    const multiHotelResult: HotelSearchResult = {
-      ...mockSearchResult,
-      hotels: [
-        mockHotel,
-        { ...mockHotel, bookingCode: 'TEST-456', hotelName: 'Five Star Hotel', starRating: 5 },
-      ],
-      totalResults: 2,
-    };
-    
-    render(<HotelSearchResults searchResult={multiHotelResult} />);
-    
-    expect(screen.getByText('2 Hotels Found')).toBeInTheDocument();
-    
-    const starFilter = screen.getByLabelText('Star Rating');
-    fireEvent.change(starFilter, { target: { value: '5' } });
-    
-    expect(screen.getByText('1 Hotel Found')).toBeInTheDocument();
-    expect(screen.getByText('Five Star Hotel')).toBeInTheDocument();
-  });
-
-  it('applies refundable filter', () => {
-    const multiHotelResult: HotelSearchResult = {
-      ...mockSearchResult,
-      hotels: [
-        mockHotel,
-        { ...mockHotel, bookingCode: 'TEST-789', hotelName: 'Non-Refundable Hotel', refundable: false },
-      ],
-      totalResults: 2,
-    };
-    
-    render(<HotelSearchResults searchResult={multiHotelResult} />);
-    
-    const refundableFilter = screen.getByLabelText('Cancellation');
-    fireEvent.change(refundableFilter, { target: { value: 'true' } });
-    
-    expect(screen.getByText('1 Hotel Found')).toBeInTheDocument();
-    expect(screen.getByText('Test Hotel')).toBeInTheDocument();
-  });
-
-  it('shows clear filters button when filters are active', () => {
-    render(<HotelSearchResults searchResult={mockSearchResult} />);
-    
-    expect(screen.queryByText('Clear All Filters')).not.toBeInTheDocument();
-    
-    const starFilter = screen.getByLabelText('Star Rating');
-    fireEvent.change(starFilter, { target: { value: '4' } });
-    
-    expect(screen.getByText('Clear All Filters')).toBeInTheDocument();
-  });
-
-  it('clears filters when clear button is clicked', () => {
-    render(<HotelSearchResults searchResult={mockSearchResult} />);
-    
-    const starFilter = screen.getByLabelText('Star Rating') as HTMLSelectElement;
-    fireEvent.change(starFilter, { target: { value: '4' } });
-    
-    expect(starFilter.value).toBe('4');
-    
-    const clearButton = screen.getByText('Clear All Filters');
-    fireEvent.click(clearButton);
-    
-    expect(starFilter.value).toBe('');
-  });
-
-  it('displays no results message when no hotels match filters', () => {
-    render(<HotelSearchResults searchResult={{ ...mockSearchResult, hotels: [] }} />);
-    
-    expect(screen.getByText('No Hotels Found')).toBeInTheDocument();
-    expect(screen.getByText('Try adjusting your filters or search criteria')).toBeInTheDocument();
-  });
-
-  it('sorts hotels by price', () => {
-    const multiHotelResult: HotelSearchResult = {
-      ...mockSearchResult,
-      hotels: [
-        { ...mockHotel, bookingCode: 'TEST-1', hotelName: 'Expensive Hotel', price: { ...mockHotel.price, offeredPrice: 200 } },
-        { ...mockHotel, bookingCode: 'TEST-2', hotelName: 'Cheap Hotel', price: { ...mockHotel.price, offeredPrice: 50 } },
-      ],
-      totalResults: 2,
-    };
-    
-    render(<HotelSearchResults searchResult={multiHotelResult} />);
-    
-    const hotelNames = screen.getAllByRole('heading', { level: 3 });
-    expect(hotelNames[0]).toHaveTextContent('Cheap Hotel');
-    expect(hotelNames[1]).toHaveTextContent('Expensive Hotel');
-  });
-
-  it('calls onHotelSelect when View Details is clicked', () => {
+  it('opens a hotel and shows a placeholder when there is no photo', () => {
     const onHotelSelect = vi.fn();
-    
-    render(<HotelSearchResults searchResult={mockSearchResult} onHotelSelect={onHotelSelect} />);
-    
-    const viewDetailsButton = screen.getByText('View Details');
-    fireEvent.click(viewDetailsButton);
-    
-    expect(onHotelSelect).toHaveBeenCalledWith(mockHotel);
+    const { container } = render(<HotelSearchResults searchResult={results()} onHotelSelect={onHotelSelect} />);
+    expect(container.querySelectorAll('.hotel-image-empty')).toHaveLength(1);
+    const card = screen.getByText('Breakfast Inn').closest('.hotel-card') as HTMLElement;
+    fireEvent.click(within(card).getByRole('button', { name: 'View Details' }));
+    expect(onHotelSelect).toHaveBeenCalledWith(expect.objectContaining({ hotelCode: 'b' }));
   });
 
-  it('displays availability warning for low room count', () => {
-    const lowAvailabilityHotel = { ...mockHotel, availableRooms: 2 };
-    const result = { ...mockSearchResult, hotels: [lowAvailabilityHotel] };
-    
-    render(<HotelSearchResults searchResult={result} />);
-    
-    expect(screen.getByText('Only 2 rooms left!')).toBeInTheDocument();
-  });
-
-  it('displays amenities with more indicator', () => {
-    const manyAmenitiesHotel = {
-      ...mockHotel,
-      amenities: ['WiFi', 'Pool', 'Gym', 'Spa', 'Restaurant', 'Bar'],
-    };
-    const result = { ...mockSearchResult, hotels: [manyAmenitiesHotel] };
-    
-    render(<HotelSearchResults searchResult={result} />);
-    
-    expect(screen.getByText('WiFi')).toBeInTheDocument();
-    expect(screen.getByText('+2 more')).toBeInTheDocument();
+  it('explains when nothing matches', () => {
+    render(<HotelSearchResults searchResult={results({ hotels: [], totalResults: 0 })} />);
+    expect(screen.getByText('No Hotels Found')).toBeInTheDocument();
   });
 });

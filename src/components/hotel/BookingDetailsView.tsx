@@ -246,8 +246,7 @@ const BookingDetailsView: React.FC<BookingDetailsViewProps> = ({
         <h3 className="section-title">Cancellation Policy</h3>
         <div className="policy-card">
           <p className="policy-text">
-            Cancellation charges may apply based on the hotel's policy and the time of cancellation.
-            Please review the terms carefully before proceeding with cancellation.
+            {booking.cancellationPolicy || 'Cancellation charges may apply based on the hotel\'s policy.'}
           </p>
           <p className="policy-warning">
             <Icon name="info" size="xs" /> Cancellation fees and refund amounts will be calculated at the time of cancellation.

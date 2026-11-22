@@ -17,3 +17,7 @@
   .hotel-search-layout { grid-template-columns: 1fr; }
   .hotel-search-side { display: none; }
 }
+
+.hotel-bookings-section {
+  margin-top: 32px;
+}

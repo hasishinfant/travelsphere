@@ -1,22 +1,25 @@
 /**
- * Hotel Details Modal Component
- * 
- * Displays detailed hotel information in a modal:
- * - Hotel description and overview
- * - Amenities and facilities
- * - Hotel images in gallery
- * - Check-in/check-out times
- * - Cancellation policies
- * 
- * Requirements: 2.2, 2.5
+ * Hotel details modal: photos, description, facilities, check-in/out times and a choice of rooms.
+ * "Book now" continues with the selected room's offer.
  */
 
 import React, { useState, useEffect } from 'react';
 import Icon from '@/components/shared/Icon';
-import { getHotelDetailsService } from '../../services/hotelDetailsService';
+import { getHotelDetailsService, type HotelDetailsResult } from '../../services/hotelDetailsService';
 import type { HotelResult } from '../../services/hotelSearchService';
-import type { HotelDetail } from '../../types/tboHotelApi';
+import type { HotelOffer } from '../../services/hotelApi';
 import './HotelDetailsModal.css';
+
+/** The hotel result with the chosen room's offer applied. */
+export const withOffer = (hotel: HotelResult, offer: HotelOffer): HotelResult => ({
+  ...hotel,
+  bookingCode: offer.offerId,
+  roomType: offer.roomName,
+  mealType: offer.boardName,
+  refundable: offer.refundable,
+  cancellationPolicy: offer.cancellation,
+  price: { currency: offer.currency, offeredPrice: offer.price, publishedPrice: offer.price, discount: 0 },
+});
 
 interface HotelDetailsModalProps {
   hotel: HotelResult;
@@ -33,7 +36,8 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
 }) => {
   const hotelDetailsService = getHotelDetailsService();
   
-  const [hotelDetails, setHotelDetails] = useState<HotelDetail | null>(null);
+  const [hotelDetails, setHotelDetails] = useState<HotelDetailsResult | null>(null);
+  const [offerId, setOfferId] = useState(hotel.bookingCode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -49,9 +53,7 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
     setError(null);
 
     try {
-      const details = await hotelDetailsService.getHotelDetails(hotel.hotelCode);
-      // @ts-expect-error - API returns array but we expect single object
-      setHotelDetails(details);
+      setHotelDetails(await hotelDetailsService.getHotelDetails(hotel.hotelCode));
     } catch (err) {
       console.error('Failed to load hotel details:', err);
       setError('Unable to load hotel details. Please try again.');
@@ -66,24 +68,27 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
     }
   };
 
+  const offers = hotel.offers.length ? hotel.offers : [];
+  const selected = offers.find(o => o.offerId === offerId) ?? offers[0];
+
   const handleBookNow = () => {
-    onBookNow?.(hotel);
+    onBookNow?.(selected ? withOffer(hotel, selected) : hotel);
   };
 
+  const images = hotelDetails?.images.length ? hotelDetails.images : hotel.hotelImages;
+
   const handlePrevImage = () => {
-    const images = hotelDetails?.Images || hotel.hotelImages;
     setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
   };
 
   const handleNextImage = () => {
-    const images = hotelDetails?.Images || hotel.hotelImages;
     setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   };
 
   if (!isOpen) return null;
 
-  const images = hotelDetails?.Images || hotel.hotelImages || [hotel.hotelPicture];
   const currentImage = images[currentImageIndex];
+  const price = selected ? { currency: selected.currency, amount: selected.price } : { currency: hotel.price.currency, amount: hotel.price.offeredPrice };
 
   return (
     <div className="hotel-details-modal-overlay" onClick={handleBackdropClick}>
@@ -95,7 +100,9 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
 
         {/* Image Gallery */}
         <div className="modal-image-gallery">
-          <img src={currentImage} alt={hotel.hotelName} />
+          {currentImage
+            ? <img src={currentImage} alt={hotel.hotelName} />
+            : <div className="gallery-empty"><Icon name="hotel" size="xl" /></div>}
           
           {images.length > 1 && (
             <>
@@ -140,11 +147,8 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
               </div>
             </div>
             <p className="hotel-address">
-              <Icon name="location" size="xs" /> {hotelDetails?.Address || hotel.address}, {hotel.cityName}, {hotel.countryName}
+              <Icon name="location" size="xs" /> {[hotelDetails?.address || hotel.address, hotel.cityName, hotel.countryName].filter(Boolean).join(', ')}
             </p>
-            {hotelDetails?.PhoneNumber && (
-              <p className="hotel-contact"><Icon name="phone" size="xs" /> {hotelDetails.PhoneNumber}</p>
-            )}
           </div>
 
           {/* Loading State */}
@@ -167,44 +171,19 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
           {!isLoading && !error && (
             <>
               {/* Description */}
-              {hotelDetails?.Description && (
+              {hotelDetails?.description && (
                 <section className="details-section">
                   <h3>About This Hotel</h3>
-                  <p className="hotel-description">{hotelDetails.Description}</p>
+                  <p className="hotel-description">{hotelDetails.description}</p>
                 </section>
               )}
 
-              {/* Room Details */}
-              <section className="details-section">
-                <h3>Room Details</h3>
-                <div className="room-info-grid">
-                  <div className="info-item">
-                    <span className="info-label">Room Type:</span>
-                    <span className="info-value">{hotel.roomType}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Meal Plan:</span>
-                    <span className="info-value">{hotel.mealType}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Available Rooms:</span>
-                    <span className="info-value">{hotel.availableRooms}</span>
-                  </div>
-                  <div className="info-item">
-                    <span className="info-label">Cancellation:</span>
-                    <span className={`info-value ${hotel.refundable ? 'refundable' : 'non-refundable'}`}>
-                      {hotel.refundable ? 'Free Cancellation' : 'Non-Refundable'}
-                    </span>
-                  </div>
-                </div>
-              </section>
-
               {/* Amenities */}
-              {(hotel.amenities.length > 0 || hotelDetails?.HotelFacilities) && (
+              {hotelDetails && hotelDetails.facilities.length > 0 && (
                 <section className="details-section">
                   <h3>Amenities & Facilities</h3>
                   <div className="amenities-grid">
-                    {(hotelDetails?.HotelFacilities || hotel.amenities).map((amenity, index) => (
+                    {hotelDetails.facilities.map((amenity, index) => (
                       <div key={index} className="amenity-item">
                         <span className="amenity-icon">✓</span>
                         <span>{amenity}</span>
@@ -215,30 +194,34 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
               )}
 
               {/* Hotel Policy */}
-              {hotelDetails?.HotelPolicy && (
+              {hotelDetails && (hotelDetails.policy.checkInTime || hotelDetails.policy.checkOutTime || hotelDetails.importantInformation) && (
                 <section className="details-section">
                   <h3>Hotel Policies</h3>
                   <div className="policy-grid">
-                    <div className="policy-item">
-                      <span className="policy-icon"><Icon name="clock" size="sm" /></span>
-                      <div className="policy-content">
-                        <strong>Check-in Time:</strong>
-                        <p>{hotelDetails.HotelPolicy.CheckInTime}</p>
+                    {hotelDetails.policy.checkInTime && (
+                      <div className="policy-item">
+                        <span className="policy-icon"><Icon name="clock" size="sm" /></span>
+                        <div className="policy-content">
+                          <strong>Check-in from:</strong>
+                          <p>{hotelDetails.policy.checkInTime}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="policy-item">
-                      <span className="policy-icon"><Icon name="clock" size="sm" /></span>
-                      <div className="policy-content">
-                        <strong>Check-out Time:</strong>
-                        <p>{hotelDetails.HotelPolicy.CheckOutTime}</p>
+                    )}
+                    {hotelDetails.policy.checkOutTime && (
+                      <div className="policy-item">
+                        <span className="policy-icon"><Icon name="clock" size="sm" /></span>
+                        <div className="policy-content">
+                          <strong>Check-out by:</strong>
+                          <p>{hotelDetails.policy.checkOutTime}</p>
+                        </div>
                       </div>
-                    </div>
-                    {hotelDetails.HotelPolicy.CancellationPolicy && (
+                    )}
+                    {hotelDetails.importantInformation && (
                       <div className="policy-item full-width">
                         <span className="policy-icon"><Icon name="clipboard" size="sm" /></span>
                         <div className="policy-content">
-                          <strong>Cancellation Policy:</strong>
-                          <p>{hotelDetails.HotelPolicy.CancellationPolicy}</p>
+                          <strong>Important information:</strong>
+                          <p>{hotelDetails.importantInformation}</p>
                         </div>
                       </div>
                     )}
@@ -246,56 +229,61 @@ const HotelDetailsModal: React.FC<HotelDetailsModalProps> = ({
                 </section>
               )}
 
-              {/* Nearby Attractions */}
-              {hotelDetails?.Attractions && hotelDetails.Attractions.length > 0 && (
-                <section className="details-section">
-                  <h3>Nearby Attractions</h3>
-                  <div className="attractions-list">
-                    {hotelDetails.Attractions.map((attraction, index) => (
-                      <div key={index} className="attraction-item">
-                        <span className="attraction-icon"><Icon name="location" size="sm" /></span>
-                        <div>
-                          <strong>{attraction.Key}</strong>
-                          <p>{attraction.Value}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Location Map */}
-              {hotelDetails?.Map && (
+              {/* Location */}
+              {hotelDetails?.location && (
                 <section className="details-section">
                   <h3>Location</h3>
                   <div className="map-info">
-                    <p>
-                      <strong>Coordinates:</strong> {hotelDetails.Map.Latitude}, {hotelDetails.Map.Longitude}
-                    </p>
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${hotelDetails.location.latitude}&mlon=${hotelDetails.location.longitude}#map=16/${hotelDetails.location.latitude}/${hotelDetails.location.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View on map ({hotelDetails.location.latitude.toFixed(4)}, {hotelDetails.location.longitude.toFixed(4)})
+                    </a>
                   </div>
                 </section>
               )}
             </>
           )}
 
+            {/* Rooms (from the search — available even if details fail to load) */}
+            <section className="details-section">
+              <h3>Choose a Room</h3>
+              <div className="offer-list" role="radiogroup" aria-label="Available rooms">
+                {offers.map(o => (
+                  <label key={o.offerId} className={`offer-option ${o.offerId === selected?.offerId ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="offer"
+                      value={o.offerId}
+                      checked={o.offerId === selected?.offerId}
+                      onChange={() => setOfferId(o.offerId)}
+                    />
+                    <span className="offer-main">
+                      <strong>{o.roomName}</strong>
+                      <span>{o.boardName}</span>
+                      <span className={o.refundable ? 'refundable' : 'non-refundable'}>{o.cancellation}</span>
+                    </span>
+                    <span className="offer-price">{o.currency} {o.price.toFixed(2)}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+
           {/* Pricing and Booking */}
           <div className="modal-footer">
             <div className="price-section">
               <div className="price-details">
-                {hotel.price.discount > 0 && (
-                  <span className="original-price">
-                    {hotel.price.currency} {hotel.price.publishedPrice.toFixed(2)}
-                  </span>
-                )}
                 <div className="current-price">
-                  <span className="currency">{hotel.price.currency}</span>
-                  <span className="amount">{hotel.price.offeredPrice.toFixed(2)}</span>
+                  <span className="currency">{price.currency}</span>
+                  <span className="amount">{price.amount.toFixed(2)}</span>
                 </div>
-                <span className="price-label">per night</span>
+                <span className="price-label">total for {hotel.nights} night{hotel.nights === 1 ? '' : 's'}</span>
               </div>
             </div>
-            
-            <button className="btn-book-now" onClick={handleBookNow}>
+
+            <button className="btn-book-now" onClick={handleBookNow} disabled={!selected}>
               Book Now
             </button>
           </div>

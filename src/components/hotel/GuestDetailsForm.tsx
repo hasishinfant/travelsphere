@@ -102,7 +102,7 @@ export const GuestDetailsForm: React.FC<GuestDetailsFormProps> = ({
     // Validate phone
     if (!phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (!/^\+?[\d\s-()]{10,}$/.test(phone)) {
+    } else if (!/^\+?[\d\s()-]{10,20}$/.test(phone)) {
       newErrors.phone = 'Please enter a valid phone number';
     }
 

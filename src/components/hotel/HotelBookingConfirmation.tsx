@@ -1,14 +1,8 @@
 /**
- * Hotel Booking Confirmation Component
- * 
- * Displays booking confirmation with all details.
- * Provides options to download or email voucher.
- * Shows integration with TravelSphere itinerary.
- * 
- * Requirements: 4.2, 4.3, 4.5, 4.6
+ * Booking confirmation: reference, hotel, stay, guests, price, cancellation terms and a downloadable voucher.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import Icon from '@/components/shared/Icon';
 import { HotelBookingConfirmation as BookingConfirmation } from '../../services/hotelBookingService';
 import './HotelBookingConfirmation.css';
@@ -32,35 +26,16 @@ export const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> =
   onViewItinerary,
   onNewBooking,
 }) => {
-  const [emailSent, setEmailSent] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
-
   const handleDownloadVoucher = () => {
-    if (confirmation.voucherUrl) {
-      window.open(confirmation.voucherUrl, '_blank');
-    } else {
-      // Generate a simple voucher download
-      const voucherContent = generateVoucherText(confirmation);
-      const blob = new Blob([voucherContent], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `hotel-voucher-${confirmation.confirmationNumber}.txt`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
-  };
-
-  const handleEmailVoucher = async () => {
-    setSendingEmail(true);
-    
-    // Simulate email sending (in real app, would call API)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setEmailSent(true);
-    setSendingEmail(false);
+    const blob = new Blob([generateVoucherText(confirmation)], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `hotel-voucher-${confirmation.confirmationNumber}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const calculateNights = () => {
@@ -82,15 +57,17 @@ export const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> =
         <p>Your hotel reservation has been successfully completed</p>
       </div>
 
+      {confirmation.sandbox && (
+        <div className="sandbox-notice" role="note">
+          <Icon name="info" size="sm" /> Test booking (provider sandbox): no reservation was made at the hotel and nothing was charged.
+        </div>
+      )}
+
       {/* Confirmation Number */}
       <div className="confirmation-number-section">
         <div className="confirmation-number-card">
           <span className="label">Confirmation Number</span>
           <span className="number">{confirmation.confirmationNumber}</span>
-        </div>
-        <div className="confirmation-number-card">
-          <span className="label">Booking Reference</span>
-          <span className="number">{confirmation.bookingReferenceId}</span>
         </div>
       </div>
 
@@ -98,14 +75,14 @@ export const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> =
       <div className="confirmation-section">
         <h3>Hotel Details</h3>
         <div className="hotel-info-card">
-          <div className="hotel-name">{confirmation.hotel.HotelName}</div>
+          <div className="hotel-name">{confirmation.hotelName}</div>
           <div className="hotel-rating">
-            {'★'.repeat(confirmation.hotel.StarRating)}
-            {'☆'.repeat(5 - confirmation.hotel.StarRating)}
+            {'★'.repeat(confirmation.hotel.starRating)}
+            {'☆'.repeat(5 - confirmation.hotel.starRating)}
           </div>
-          <div className="hotel-address">{confirmation.hotel.HotelAddress}</div>
+          <div className="hotel-address">{confirmation.hotel.address}</div>
           <div className="hotel-location">
-            {confirmation.hotel.CityName}, {confirmation.hotel.CountryName}
+            {confirmation.hotel.cityName}, {confirmation.hotel.countryName}
           </div>
         </div>
       </div>
@@ -176,7 +153,7 @@ export const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> =
         <h3>Payment Summary</h3>
         <div className="payment-summary-card">
           <div className="payment-row">
-            <span className="payment-label">Total Amount Paid</span>
+            <span className="payment-label">{confirmation.sandbox ? 'Total Amount' : 'Total Amount Paid'}</span>
             <span className="payment-value">
               {confirmation.currency} {confirmation.totalFare.toFixed(2)}
             </span>
@@ -204,20 +181,12 @@ export const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> =
       <div className="voucher-actions">
         <h3>Booking Voucher</h3>
         <p className="voucher-description">
-          Download or email your booking voucher for your records
+          Download your booking voucher for your records
         </p>
         <div className="voucher-buttons">
           <button onClick={handleDownloadVoucher} className="btn-download">
             <span className="btn-icon">⬇</span>
             Download Voucher
-          </button>
-          <button 
-            onClick={handleEmailVoucher} 
-            className="btn-email"
-            disabled={sendingEmail || emailSent}
-          >
-            <span className="btn-icon"><Icon name="mail" size="sm" /></span>
-            {sendingEmail ? 'Sending...' : emailSent ? 'Email Sent!' : 'Email Voucher'}
           </button>
         </div>
       </div>
@@ -243,10 +212,9 @@ export const HotelBookingConfirmation: React.FC<HotelBookingConfirmationProps> =
       <div className="next-steps">
         <h3>What's Next?</h3>
         <ul className="steps-list">
-          <li>You'll receive a confirmation email shortly</li>
           <li>Present your confirmation number at hotel check-in</li>
-          <li>Check-in time is typically 3:00 PM (verify with hotel)</li>
-          <li>Check-out time is typically 11:00 AM (verify with hotel)</li>
+          <li>Cancellation: {confirmation.cancellationPolicy || 'see your booking details'}</li>
+          <li>Manage or cancel this booking under “Your hotel bookings” on the Hotels page</li>
         </ul>
       </div>
 
@@ -271,15 +239,14 @@ function generateVoucherText(confirmation: BookingConfirmation): string {
 HOTEL BOOKING VOUCHER
 =====================
 
-Confirmation Number: ${confirmation.confirmationNumber}
-Booking Reference: ${confirmation.bookingReferenceId}
+Confirmation Number: ${confirmation.confirmationNumber}${confirmation.sandbox ? '\nTEST BOOKING (sandbox) — not a real reservation' : ''}
 
 HOTEL DETAILS
 -------------
-${confirmation.hotel.HotelName}
-${confirmation.hotel.HotelAddress}
-${confirmation.hotel.CityName}, ${confirmation.hotel.CountryName}
-Rating: ${'★'.repeat(confirmation.hotel.StarRating)}
+${confirmation.hotelName}
+${confirmation.hotel.address}
+${confirmation.hotel.cityName}, ${confirmation.hotel.countryName}
+Rating: ${'★'.repeat(confirmation.hotel.starRating)}
 
 STAY DETAILS
 ------------
@@ -298,6 +265,7 @@ PAYMENT SUMMARY
 ---------------
 Total Amount: ${confirmation.currency} ${confirmation.totalFare.toFixed(2)}
 Status: ${confirmation.status}
+Cancellation: ${confirmation.cancellationPolicy}
 Booked On: ${confirmation.bookedAt.toLocaleString()}
 
 Please present this voucher at check-in.

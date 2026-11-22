@@ -1,284 +1,68 @@
-/**
- * Hotel Details Modal Component Tests
- * 
- * Tests for HotelDetailsModal component:
- * - Modal display and closing
- * - Hotel details loading
- * - Image gallery navigation
- * - Policy display
- */
-
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import HotelDetailsModal from './HotelDetailsModal';
-import type { HotelResult } from '../../services/hotelSearchService';
-import type { HotelDetail } from '../../types/tboHotelApi';
+import { hotelResult } from '../../tests/hotelFixtures';
+import type { HotelDetailsResult } from '../../services/hotelDetailsService';
 
-// Mock hotel details service
-const mockGetHotelDetails = vi.fn();
+const getHotelDetails = vi.fn();
+vi.mock('../../services/hotelDetailsService', () => ({ getHotelDetailsService: () => ({ getHotelDetails }) }));
 
-vi.mock('../../services/hotelDetailsService', () => ({
-  getHotelDetailsService: () => ({
-    getHotelDetails: mockGetHotelDetails,
-  }),
-}));
+const details: HotelDetailsResult = {
+  hotelCode: 'lp1897', hotelName: 'Hotel Lumière', starRating: 4, description: 'Steps from the Louvre.',
+  facilities: ['Free Wi-Fi', 'Lift'], policy: { checkInTime: '15:00', checkOutTime: '11:00' },
+  importantInformation: 'City tax payable at the hotel.', images: ['a.jpg', 'b.jpg'], address: '12 Rue de Rivoli',
+  cityName: 'Paris', countryName: 'FR', location: { latitude: 48.8606, longitude: 2.3376 },
+};
+
+beforeEach(() => { getHotelDetails.mockReset(); });
 
 describe('HotelDetailsModal', () => {
-  const mockHotel: HotelResult = {
-    bookingCode: 'TEST-123',
-    hotelCode: 'HTL001',
-    hotelName: 'Test Hotel',
-    starRating: 4,
-    address: '123 Test St',
-    contactNumber: '+1-555-1234',
-    cityName: 'Test City',
-    countryName: 'Test Country',
-    price: {
-      currency: 'USD',
-      roomPrice: 100,
-      tax: 15,
-      extraGuestCharge: 0,
-      childCharge: 0,
-      otherCharges: 0,
-      discount: 10,
-      publishedPrice: 115,
-      offeredPrice: 105,
-      agentCommission: 0,
-      agentMarkUp: 0,
-    },
-    refundable: true,
-    mealType: 'Breakfast Included',
-    roomType: 'Deluxe Room',
-    availableRooms: 5,
-    amenities: ['WiFi', 'Pool', 'Gym'],
-    hotelPicture: 'https://example.com/hotel.jpg',
-    hotelImages: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
-  };
-
-  const mockHotelDetails: HotelDetail = {
-    HotelCode: 'HTL001',
-    HotelName: 'Test Hotel',
-    StarRating: 4,
-    Description: 'A wonderful hotel in the heart of the city.',
-    HotelFacilities: ['WiFi', 'Pool', 'Gym', 'Spa', 'Restaurant'],
-    Attractions: [
-      { Key: 'Central Park', Value: '0.5 km' },
-      { Key: 'Museum', Value: '1 km' },
-    ],
-    HotelPolicy: {
-      CheckInTime: '3:00 PM',
-      CheckOutTime: '11:00 AM',
-      CancellationPolicy: 'Free cancellation up to 24 hours before check-in.',
-    },
-    Images: ['https://example.com/img1.jpg', 'https://example.com/img2.jpg', 'https://example.com/img3.jpg'],
-    Address: '123 Test St',
-    PinCode: '12345',
-    CityName: 'Test City',
-    CountryName: 'Test Country',
-    PhoneNumber: '+1-555-1234',
-    FaxNumber: '+1-555-5678',
-    Map: {
-      Latitude: 40.7128,
-      Longitude: -74.0060,
-    },
-  };
-
-  beforeEach(() => {
-    mockGetHotelDetails.mockReset();
+  it('renders nothing when closed', () => {
+    const { container } = render(<HotelDetailsModal hotel={hotelResult()} isOpen={false} onClose={vi.fn()} />);
+    expect(container).toBeEmptyDOMElement();
   });
 
-  it('does not render when isOpen is false', () => {
-    const { container } = render(
-      <HotelDetailsModal hotel={mockHotel} isOpen={false} onClose={() => {}} />
-    );
-    
-    expect(container.firstChild).toBeNull();
+  it('shows the provider details, policies and location', async () => {
+    getHotelDetails.mockResolvedValue(details);
+    render(<HotelDetailsModal hotel={hotelResult()} isOpen onClose={vi.fn()} />);
+    expect(await screen.findByText('Steps from the Louvre.')).toBeInTheDocument();
+    expect(getHotelDetails).toHaveBeenCalledWith('lp1897');
+    expect(screen.getByText('Free Wi-Fi')).toBeInTheDocument();
+    expect(screen.getByText('15:00')).toBeInTheDocument();
+    expect(screen.getByText('City tax payable at the hotel.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /view on map/i })).toHaveAttribute('href', expect.stringContaining('mlat=48.8606'));
+    expect(screen.getByText('total for 2 nights')).toBeInTheDocument();
   });
 
-  it('renders modal when isOpen is true', () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    expect(screen.getByText('Test Hotel')).toBeInTheDocument();
-  });
-
-  it('calls onClose when close button is clicked', () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    const onClose = vi.fn();
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={onClose} />);
-    
-    const closeButton = screen.getByLabelText('Close');
-    fireEvent.click(closeButton);
-    
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it('calls onClose when backdrop is clicked', () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    const onClose = vi.fn();
-    
-    const { container } = render(
-      <HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={onClose} />
-    );
-    
-    const overlay = container.querySelector('.hotel-details-modal-overlay');
-    fireEvent.click(overlay!);
-    
-    expect(onClose).toHaveBeenCalled();
-  });
-
-  it('loads hotel details when modal opens', async () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(mockGetHotelDetails).toHaveBeenCalledWith('HTL001');
-    });
-  });
-
-  it('displays loading state while fetching details', () => {
-    mockGetHotelDetails.mockImplementation(() => new Promise(() => {}));
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    expect(screen.getByText('Loading hotel details...')).toBeInTheDocument();
-  });
-
-  it('displays hotel details after loading', async () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('A wonderful hotel in the heart of the city.')).toBeInTheDocument();
-    });
-  });
-
-  it('displays error message when loading fails', async () => {
-    mockGetHotelDetails.mockRejectedValue(new Error('API Error'));
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Unable to load hotel details. Please try again.')).toBeInTheDocument();
-    });
-  });
-
-  it('displays hotel amenities', async () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Spa')).toBeInTheDocument();
-      expect(screen.getByText('Restaurant')).toBeInTheDocument();
-    });
-  });
-
-  it('displays hotel policies', async () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('3:00 PM')).toBeInTheDocument();
-      expect(screen.getByText('11:00 AM')).toBeInTheDocument();
-      expect(screen.getByText('Free cancellation up to 24 hours before check-in.')).toBeInTheDocument();
-    });
-  });
-
-  it('displays nearby attractions', async () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Central Park')).toBeInTheDocument();
-      expect(screen.getByText('0.5 km')).toBeInTheDocument();
-    });
-  });
-
-  it('navigates through image gallery', async () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(screen.getByAltText('Test Hotel')).toHaveAttribute('src', 'https://example.com/img1.jpg');
-    });
-    
-    const nextButton = screen.getByLabelText('Next image');
-    fireEvent.click(nextButton);
-    
-    await waitFor(() => {
-      expect(screen.getByAltText('Test Hotel')).toHaveAttribute('src', 'https://example.com/img2.jpg');
-    });
-    
-    const prevButton = screen.getByLabelText('Previous image');
-    fireEvent.click(prevButton);
-    
-    await waitFor(() => {
-      expect(screen.getByAltText('Test Hotel')).toHaveAttribute('src', 'https://example.com/img1.jpg');
-    });
-  });
-
-  it('displays room details', async () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Room Details')).toBeInTheDocument();
-    });
-    
-    expect(screen.getByText('Deluxe Room')).toBeInTheDocument();
-    expect(screen.getByText('Breakfast Included')).toBeInTheDocument();
-    expect(screen.getByText('Free Cancellation')).toBeInTheDocument();
-  });
-
-  it('displays pricing information', () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    expect(screen.getByText(/USD 115\.00/)).toBeInTheDocument(); // Original price
-    expect(screen.getByText('105.00')).toBeInTheDocument(); // Offered price
-  });
-
-  it('calls onBookNow when Book Now button is clicked', () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
+  it('books the room the traveller chose', async () => {
+    getHotelDetails.mockResolvedValue(details);
     const onBookNow = vi.fn();
-    
-    render(
-      <HotelDetailsModal
-        hotel={mockHotel}
-        isOpen={true}
-        onClose={() => {}}
-        onBookNow={onBookNow}
-      />
-    );
-    
-    const bookButton = screen.getByText('Book Now');
-    fireEvent.click(bookButton);
-    
-    expect(onBookNow).toHaveBeenCalledWith(mockHotel);
+    render(<HotelDetailsModal hotel={hotelResult()} isOpen onClose={vi.fn()} onBookNow={onBookNow} />);
+    await screen.findByText('Steps from the Louvre.');
+    fireEvent.click(screen.getByRole('radio', { name: /deluxe room/i }));
+    expect(screen.getByText('240.00', { selector: '.current-price .amount' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Book Now' }));
+    expect(onBookNow).toHaveBeenCalledWith(expect.objectContaining({
+      bookingCode: 'offer-flex', roomType: 'Deluxe Room', mealType: 'Breakfast Included', refundable: true,
+      price: expect.objectContaining({ offeredPrice: 240 }),
+    }));
   });
 
-  it('displays location coordinates', async () => {
-    mockGetHotelDetails.mockResolvedValue(mockHotelDetails);
-    
-    render(<HotelDetailsModal hotel={mockHotel} isOpen={true} onClose={() => {}} />);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Location')).toBeInTheDocument();
-    });
-    
-    const mapInfo = screen.getByText(/Coordinates:/);
-    expect(mapInfo).toBeInTheDocument();
+  it('shows an error when details cannot be loaded, and still offers the rooms', async () => {
+    getHotelDetails.mockRejectedValue(new Error('down'));
+    render(<HotelDetailsModal hotel={hotelResult()} isOpen onClose={vi.fn()} />);
+    expect(await screen.findByText('Unable to load hotel details. Please try again.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Book Now' })).toBeEnabled();
+  });
+
+  it('closes from the close button and the backdrop', async () => {
+    getHotelDetails.mockResolvedValue(details);
+    const onClose = vi.fn();
+    const { container } = render(<HotelDetailsModal hotel={hotelResult()} isOpen onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(container.querySelector('.hotel-details-modal-overlay')!);
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 });
