@@ -13,6 +13,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite",
+    "dev:backend": "bash scripts/dev-backend.sh",
     "build": "vite build",
     "build:check": "tsc && vite build",
     "build:analyze": "tsc && vite build --mode analyze",

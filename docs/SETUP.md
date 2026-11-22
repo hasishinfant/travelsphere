@@ -30,12 +30,19 @@ npm run dev                     # (repo root) app on http://127.0.0.1:3000, prox
 If the API is not running, sign-in still works but the session is **offline**: trips stay on that device
 and the sidebar shows "On this device only".
 
+### Risk-intelligence service (Python)
+
+See `risk-service/README.md`. Without it, `/api/places/*` falls back to the labelled `rules-v1` engine and
+`/api/v1/*` assessment endpoints return 503 (never a "safe" result).
+
 ## 4. Tests
 
 ```bash
 npm test                                   # frontend (Vitest) — baseline 646 pass / 82 pre-existing failures
 cd server && npm test                      # API integration tests against a throwaway Postgres database
-psql -v ON_ERROR_STOP=1 -d <db> -f supabase/tests/rls_test.sql   # Row Level Security acceptance tests
+psql -v ON_ERROR_STOP=1 -d <db> -f supabase/tests/rls_test.sql        # Row Level Security acceptance tests
+psql -v ON_ERROR_STOP=1 -d <db> -f supabase/tests/rls_risk_test.sql   # RLS for the risk-intelligence tables
+cd risk-service && .venv/bin/python -m pytest -q                      # risk engine (creates travelsphere_risk_test)
 ```
 
 `server` tests create and drop `travelsphere_api_test`; set `TEST_ADMIN_DATABASE_URL` if Postgres is not at
@@ -72,7 +79,13 @@ database role with the caller's id, so Row Level Security applies in addition to
 | GET | `/api/places/conditions` | Safety meter for every place: risk level, factors backed by data (n/8), headline, weather |
 | GET | `/api/places/:id/assessment` | Full 8-factor assessment (value, source, explanation per factor), recommended action, freshness, model version. Recorded in `risk_assessments` (deduplicated for 15 min). |
 
-### 8-factor safety assessment (rule baseline `rules-v1`)
+### Risk intelligence (`/api/v1`)
+
+The versioned API and the eight-factor engine (`scoring-v1`) are documented in
+[BACKEND_IMPLEMENTATION.md](BACKEND_IMPLEMENTATION.md). `/api/places/*` keeps its response shape but is now computed by
+that engine; the section below describes the earlier rule baseline, which remains as the fallback.
+
+### 8-factor safety assessment (rule baseline `rules-v1`, fallback)
 
 Factors: hazard intensity, tourist exposure, location risk, time context, weather & environment,
 accessibility & remoteness, historical incidents, journey context. Each is 0–1 with a provenance:

@@ -42,3 +42,15 @@ dist-ssr
 # Cache
 .cache
 .parcel-cache
+
+# Python risk service
+risk-service/.venv/
+risk-service/.env
+__pycache__/
+*.pyc
+.pytest_cache/
+# Raw provider downloads and the derived dataset are reproducible (app/ml/datasets/build_dataset.py)
+risk-service/data/era5/
+risk-service/data/ml/*.csv.gz
+# Binary model artefacts are rebuilt by the training pipeline; metadata + evaluation reports are committed
+risk-service/models/*.joblib
