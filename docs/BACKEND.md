@@ -184,6 +184,10 @@ missing information, status, and the disclaimer that the category/index is not a
   recall 0.056, precision 0.106, FPR 0.011. Better than the rule baseline on ranking, **not good enough for decisions**.
 * **Use:** withheld by the evaluation gate (needs ≥ 3× prevalence PR-AUC and ≥ 0.5 recall). Registered in
   `model_versions` as `experimental`. The risk engine is rule-based. Full table: `docs/ML.md`.
+* **Cyclone exposure (IBTrACS, 2026-11-23):** 46 years of NOAA best tracks on a 3,240-cell coastal grid
+  (7.9 M place-weeks). Historical frequency is calibrated on unseen years 2018–2026 from 0.2 % to 6 % per week
+  (ROC-AUC 0.935); gradient boosting does not beat it (Brier skill ≤ 0) and is withheld. Not yet used by the engine.
+  Details: `docs/ML.md#cyclone-exposure-model-ibtracs`.
 
 ## 11. Test results (executed 2026-11-22)
 

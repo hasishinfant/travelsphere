@@ -85,3 +85,113 @@ python -m app.ml.training.train                                               # 
 Likely improvements: historical GDACS polygons (exact footprints) instead of centroids; antecedent-rainfall
 climatology anomalies computed on training years only; river-discharge features (GloFAS via Open-Meteo flood API) for
 floods; cyclone track proximity for cyclones; more years.
+
+---
+
+# Cyclone exposure model (IBTrACS)
+
+**Status (built 2026-11-23): dataset and evaluation complete. The learned models do not beat historical frequency and
+are withheld by their gate. The historical-frequency (climatology) model is calibrated on years it never saw and is the
+candidate for use. It is not yet wired into the risk engine.**
+
+## Question
+
+*If I am at this place for this 7-day window, what is the chance that a cyclone with tropical-storm-force winds
+(≥ 34 kt, 1-minute sustained) passes within 100 km?* This is a planning question asked weeks or months ahead, so only
+information available before the trip is used. It is a hazard probability, not a probability of harm.
+
+## Data (all free, public; downloads are git-ignored under `risk-service/data/`)
+
+| Source | Use | Licence |
+|---|---|---|
+| IBTrACS v04r01 since-1980 CSV (NOAA NCEI, 145 MB) | every agency's best tracks, 4,860 storms, 274,832 fixes, 1980-01 → 2026-11-22 | US Government, free; cite Knapp et al. (2010) |
+| Natural Earth 1:50m land | coastal grid, signed distance to coast | public domain |
+| NOAA CPC Oceanic Niño Index | ENSO state | public domain |
+
+Winds: `USA_WIND` (1-minute) when present, otherwise the agency's 10-minute `WMO_WIND` ÷ 0.88 (NHC/CPHC values are
+already 1-minute). Spur tracks are dropped; recent *provisional* tracks are kept. Tracks are interpolated to hourly
+fixes, unwrapping longitude across the dateline, so a fast storm cannot skip over a place between 3- or 6-hourly fixes.
+
+## Dataset (`python -m app.ml.datasets.cyclones`, ~45 s)
+
+* **Places:** 2° grid between 45° S and 45° N, cell centre within 200 km of land: 3,240 cells (2,099 on land). Chosen
+  without looking at where storms went, unlike the GDACS experiment, so prevalence reflects ordinary places.
+* **Windows:** consecutive 7-day windows from Monday 1980-01-07: 2,445 complete windows.
+* **Labels:** 7.92 M cell-windows; 12,196 positive (0.154 %), 4,460 with ≥ 64 kt (hurricane/typhoon force).
+  Yearly positives are steady (188–354, median 254) and include 2026.
+* **Checks against known storms:** Andrew (Miami, 145 kt), Katrina (New Orleans, 110 kt) and Fani (Odisha, 128 kt) are
+  labelled. Haiyan crossed Leyte midway between the 10° N and 12° N cell centres, 111 km from each. It is not a positive
+  for those two cells, but it labels 12 other cells with winds up to 170 kt. Cell centres are sample points; the model
+  is queried at any coordinate.
+
+## Features (`preprocessing/cyclone_features.py`, shared with inference)
+
+Latitude, longitude (sin/cos), signed distance to coast, time of year (sin/cos), ONI of the 3-month season centred two
+months before the window (already published at planning time; missing is left missing, not guessed). Also historical
+frequency of positive windows at that week of year (±2-week circular smoothing), kernel-weighted over grid cells at
+σ = 75 km (the place) and σ = 150 km (the region).
+
+## Leakage controls
+
+* Split by time only: train 1980–2012, validation 2013–2017 (every choice), test 2018–2026 (reported once). Every place
+  on Earth has a track history, so "future years at known places" is the deployed situation; a spatial hold-out would
+  test a case that never occurs.
+* Historical-frequency features for a training row leave out that row's own year (tested); validation and test rows
+  use training years only.
+
+## Results (`reports/cyclone_evaluation.json`)
+
+Test = 2018–2026, 1,500,120 cell-windows, 2,549 positive (prevalence 0.170 %).
+
+| Model | PR-AUC | ROC-AUC | Brier | Brier skill vs climatology | ECE |
+|---|---|---|---|---|---|
+| **Climatology** (historical frequency at place and week) | **0.035** | 0.935 | 0.00166 | 0 (reference) | 0.00020 |
+| Logistic regression | 0.032 | 0.902 | 0.00171 | −0.028 | 0.00048 |
+| Gradient boosting | 0.034 | **0.958** | 0.00166 | −0.000 | 0.00026 |
+| Gradient boosting + isotonic (selected on validation Brier) | 0.033 | 0.957 | 0.00167 | −0.003 | 0.00023 |
+
+Permutation importance (validation, Brier): the two historical-frequency features dominate, then latitude, longitude,
+coast distance and season. ENSO adds almost nothing at this resolution.
+
+**Gate** (`train_cyclone.py`): a learned model is used only if, on the test years, it beats climatology on Brier score
+and PR-AUC, and its ECE is below 0.002. Gradient boosting ranks a little better (ROC-AUC 0.958 vs 0.935) but has no
+Brier skill and a lower PR-AUC, so it **fails and is withheld**.
+
+**Climatology calibration on the test years** (fixed bands of predicted probability per week):
+
+| Predicted | Windows | Mean predicted | Observed | Observed ≥ 64 kt |
+|---|---|---|---|---|
+| 0 | 1,287,417 | 0 | 0.0001 | 0.0000 |
+| (0, 0.2 %) | 80,083 | 0.0002 | 0.0034 | 0.0007 |
+| 0.2–1 % | 61,753 | 0.0060 | 0.0062 | 0.0015 |
+| 1–3 % | 49,870 | 0.0177 | 0.0174 | 0.0061 |
+| 3–6 % | 17,255 | 0.0415 | 0.0378 | 0.0167 |
+| 6–10 % | 3,517 | 0.0718 | 0.0577 | 0.0287 |
+| ≥ 10 % | 225 | 0.1301 | 0.0978 | 0.0311 |
+
+Calibrated from 0.2 % to 6 %. It overestimates the highest bands somewhat. It badly underestimates places with almost
+no history: a near-zero history did not mean near-zero risk in 2018–2026. A floor or regional smoothing for those
+places is needed before use. Examples, week of 2 September: Okinawa 7.0 %, Miami 3.6 %, Manila 1.0 %, Cancún 0.7 %,
+Mumbai and Bali ≈ 0.
+
+## Interpretation
+
+Forty-six years of real tracks give a cyclone probability that is calibrated on unseen future years over most of its
+range. Machine learning on top of it adds nothing measurable for planning ahead. For a storm that already exists,
+official advisories (GDACS, NHC, JTWC; factor 2) are far better than any climatology and take precedence.
+
+## Reproduce
+
+```bash
+cd risk-service
+mkdir -p data/ibtracs data/naturalearth data/enso
+curl -C - -o data/ibtracs/ibtracs.since1980.csv \
+  https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.since1980.list.v04r01.csv
+curl -L -o data/naturalearth/ne_50m_land.zip https://naciscdn.org/naturalearth/50m/physical/ne_50m_land.zip
+curl -o data/enso/oni.ascii.txt https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt
+.venv/bin/python -m app.ml.datasets.cyclones       # ~45 s
+.venv/bin/python -m app.ml.training.train_cyclone  # ~5 min; writes models/cyclone_exposure_model.*, reports/
+```
+
+Next: a floor for places with sparse history, then use the climatology for factors 5 and 6 (cyclone season and
+history). Floods (GloFAS river discharge) are the next dataset.
