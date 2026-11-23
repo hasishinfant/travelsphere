@@ -136,7 +136,7 @@ timestamps and data quality (sources, age, staleness, cache, missing fields, pre
 | 3 | Distance to hazard | subject geometry vs hazard geometries | min geodesic/AEQD distance (0 inside); proximity = 1 − min(d,R)/R, R = assessment radius (scope parameter) |
 | 4 | Route exposure | OSRM route vs footprints | GeoPandas overlay in local AEQD CRS; exposed m, fraction, minutes; overlaps counted once; destination ⇒ not applicable |
 | 5 | Time factor | window, timezone, NOAA solar elevation, basin seasons, hazard validity, lead time | darkness share; NHC/JMA/IMD/Météo-France/BoM/Fiji cyclone seasons; ≥50 % dark during outdoor activity ⇒ moderate, any darkness or in season ⇒ minor |
-| 6 | Historical incident risk | GDACS Orange/Red archive (10 y), USGS M ≥ 6, verified TravelSphere incidents, 150 km | Pandas clean/dedupe/classify; λ events/yr; P(≥1) = 1−e^(−λt) per year and per trip; class by return period (≤1/5/20/100 y). Frequency, not accident probability; incidents not normalised (no visitor denominators) |
+| 6 | Historical incident risk | GDACS Orange/Red archive (10 y), USGS M ≥ 6, verified TravelSphere incidents, 150 km | Pandas clean/dedupe/classify; λ events/yr; P(≥1) = 1−e^(−λt) per year and per trip; class by return period (≤1/5/20/100 y). Frequency, not accident probability; incidents not normalised (no visitor denominators). Also reports the IBTrACS cyclone probability for the period (≥ 34 kt within 100 km; calibrated, not used for the class) |
 | 7 | Population exposure | GeoNames locality population (Open-Meteo geocoding), affecting hazards, party size | exposed residents (locality inside an affecting hazard ≥ moderate) banded at 1k/100k/1M (GDACS exposure tiers); density unavailable (reported, not guessed); travellers exposed and traveller-hours reported separately |
 | 8 | Data reliability | all of the above | mean of credibility (tier), freshness (per-source max age), completeness, precision (grid distance, footprint share, routed vs straight line), agreement (USGS vs GDACS magnitude ±0.3; weather code vs precipitation). Evidence quality; never part of the hazard score |
 
@@ -186,7 +186,9 @@ missing information, status, and the disclaimer that the category/index is not a
   `model_versions` as `experimental`. The risk engine is rule-based. Full table: `docs/ML.md`.
 * **Cyclone exposure (IBTrACS, 2026-11-23):** 46 years of NOAA best tracks on a 3,240-cell coastal grid
   (7.9 M place-weeks). Historical frequency is calibrated on unseen years 2018–2026 from 0.2 % to 6 % per week
-  (ROC-AUC 0.935); gradient boosting does not beat it (Brier skill ≤ 0) and is withheld. Not yet used by the engine.
+  (ROC-AUC 0.935); gradient boosting does not beat it (Brier skill ≤ 0) and is withheld. With regional shrinkage
+  (m = 64, σ = 400 km, chosen on validation) test log loss improves 9 % and storm-free places are no longer
+  underestimated. Factors 5 and 6 report it; it does not change classes or the category.
   Details: `docs/ML.md#cyclone-exposure-model-ibtracs`.
 
 ## 11. Test results (executed 2026-11-22)

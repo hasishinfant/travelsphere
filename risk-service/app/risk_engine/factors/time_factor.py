@@ -25,6 +25,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.geospatial.solar import darkness_fraction
 from app.risk_engine.context import AssessmentContext, affecting_hazards
+from app.risk_engine.factors.historical_incident_risk import _pct, cyclone_outlook
 from app.schemas.factors import FACTOR_LABELS, SEVERITY_VALUE, DataQuality, FactorResult, max_class
 
 KEY = "time_factor"
@@ -87,9 +88,14 @@ def compute(ctx: AssessmentContext) -> FactorResult:
     elif dark > 0:
         cls = "minor"
         reasons.append(f"{dark:.0%} of the period is after dark")
+    cyclone, _ = cyclone_outlook(ctx)
     if season:
         cls = max_class(cls, "minor")
-        reasons.append(f"Inside the {season[0]} tropical-cyclone season ({season[1]})")
+        reason = f"Inside the {season[0]} tropical-cyclone season ({season[1]})"
+        if cyclone:
+            reason += (f"; here a tropical storm passed within 100 km in {_pct(cyclone['p_week'])} of weeks "
+                       f"at this time of year (1980–{(cyclone.get('years') or [None, 'now'])[1]})")
+        reasons.append(reason)
     if ongoing:
         reasons.append(f"{len(ongoing)} affecting hazard(s) are ongoing with no announced end")
     if lead_h > FORECAST_HORIZON_H:
@@ -102,7 +108,8 @@ def compute(ctx: AssessmentContext) -> FactorResult:
         value=SEVERITY_VALUE[cls], severity_class=cls, raw_value=round(dark, 3), unit="darkness share",
         inputs={"window_start": start.isoformat(), "window_end": end.isoformat(), "timezone": str(tz) if tz else None,
                 "darkness_fraction": round(dark, 3), "cyclone_season": season[0] if season else None,
-                "season_authority": season[1] if season else None, "lead_time_hours": round(lead_h, 1),
+                "season_authority": season[1] if season else None,
+                "cyclone_p_week": None if cyclone is None else round(cyclone["p_week"], 5), "lead_time_hours": round(lead_h, 1),
                 "beyond_forecast_horizon": lead_h > FORECAST_HORIZON_H, "activity": ctx.activity,
                 "ongoing_hazards": len(ongoing)},
         methodology=METHOD, explanation=text, computed_at=now,

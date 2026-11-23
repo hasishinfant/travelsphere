@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from shapely.geometry import Point
 from shapely.geometry.base import BaseGeometry
@@ -22,6 +22,7 @@ class HistoricalRecord:
     sources_ok: list[str]
     sources_failed: list[str]
     verified_incidents: int | None = None      # TravelSphere verified incident reports in the window
+    cyclone_climatology: Any = None            # app.ml.cyclone_climatology.Climatology (None = artefact not built)
 
 
 @dataclass

@@ -6,7 +6,9 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
+from app.core.config import get_settings
 from app.database import repository as repo
+from app.ml import cyclone_climatology
 from app.geospatial.geometry import geodesic_m
 from app.ingestion import gdacs, open_meteo, osrm, overpass, usgs
 from app.ingestion.http import ProviderError
@@ -139,7 +141,8 @@ async def history_for(lat: float, lon: float, cfg: dict, now: datetime) -> Histo
     incidents = _safe_repo(repo.verified_incident_count, lat, lon, radius, start)
     return HistoricalRecord(window_start=start, window_end=now, radius_m=radius, events=events if ok else None,
                             sources_ok=ok + (["travelsphere-incidents"] if incidents is not None else []),
-                            sources_failed=failed, verified_incidents=incidents)
+                            sources_failed=failed, verified_incidents=incidents,
+                            cyclone_climatology=cyclone_climatology.load(str(get_settings().model_dir)))
 
 
 async def place_info(dest: Destination) -> tuple[PlaceInfo | None, str | None]:

@@ -90,9 +90,10 @@ floods; cyclone track proximity for cyclones; more years.
 
 # Cyclone exposure model (IBTrACS)
 
-**Status (built 2026-11-23): dataset and evaluation complete. The learned models do not beat historical frequency and
-are withheld by their gate. The historical-frequency (climatology) model is calibrated on years it never saw and is the
-candidate for use. It is not yet wired into the risk engine.**
+**Status (2026-11-23): in use.** The learned models do not beat historical frequency and are withheld by their gate.
+The historical-frequency (climatology) model, pulled towards each place's region (see *Regional shrinkage*), is
+calibrated on years it never saw. Factor 6 reports its probability, and factor 5 quotes it in the cyclone-season text.
+It does not change any factor's class or the risk category.
 
 ## Question
 
@@ -170,9 +171,53 @@ Brier skill and a lower PR-AUC, so it **fails and is withheld**.
 | ≥ 10 % | 225 | 0.1301 | 0.0978 | 0.0311 |
 
 Calibrated from 0.2 % to 6 %. It overestimates the highest bands somewhat. It badly underestimates places with almost
-no history: a near-zero history did not mean near-zero risk in 2018–2026. A floor or regional smoothing for those
-places is needed before use. Examples, week of 2 September: Okinawa 7.0 %, Miami 3.6 %, Manila 1.0 %, Cancún 0.7 %,
-Mumbai and Bali ≈ 0.
+no history: a near-zero history did not mean near-zero risk in 2018–2026 (17 times more storms than predicted).
+
+## Regional shrinkage (`app/ml/cyclone_climatology.py`, `training/tune_cyclone_climatology.py`)
+
+A place's own record is pulled towards its region's (empirical Bayes):
+p = (k + m · prior) / (n + m), where k = storm weeks near the place (σ = 75 km), n = weeks observed, prior = regional
+frequency (kernel σ). m (in years) and σ were chosen on validation log loss (fit 1980–2012, validate 2013–2017). Log
+loss, unlike Brier, punishes a near-zero probability where a storm then happens.
+
+Searched m ∈ {0 … 512} × σ ∈ {150 … 1000 km}. Chosen **m = 64, σ = 400 km**, an interior optimum on a flat ridge
+(σ 300 km with m 128–256 is equal to 4 decimal places). The data favour mostly regional estimates: 33 years at one
+place are too few, and cyclone exposure within 100 km varies smoothly in space.
+
+Test years 2018–2026 (used once):
+
+| | Log loss | Brier | ECE |
+|---|---|---|---|
+| Unshrunk climatology | 0.009774 | 0.0016619 | 0.00036 |
+| **Shrunk (in use)** | **0.008906** | **0.0016583** | **0.00023** |
+
+| Predicted | Windows | Mean predicted | Observed |
+|---|---|---|---|
+| 0 | 969,202 | 0 | 0.00002 |
+| (0, 0.2 %) | 351,055 | 0.00039 | 0.00053 |
+| 0.2–1 % | 111,359 | 0.0049 | 0.0053 |
+| 1–3 % | 54,432 | 0.0170 | 0.0195 |
+| 3–6 % | 12,866 | 0.0404 | 0.0466 |
+| 6–10 % | 1,179 | 0.0678 | 0.0755 |
+| ≥ 10 % | 27 | 0.103 | 0.037 (too few to judge) |
+
+Places with almost no history are now about right (0.039 % vs 0.053 %, previously 0.02 % vs 0.34 %). Mid bands are
+slightly low (about 0.85× observed). The artefact for use is rebuilt from all years 1980–2026 with the chosen setting.
+
+Annual rate of a tropical storm or stronger within 100 km, and peak week: Okinawa 1.16 (late Aug), Manila 0.90
+(Oct), Hong Kong 0.74 (late Aug), Tokyo 0.68 (Aug), Tacloban 0.65 (Dec), Miami 0.33 (Aug), Mumbai 0.04 (Nov),
+Bali 0.01. Paris: outside the area (no estimate, not 0).
+
+## Use in the engine
+
+* **Factor 6 (historical):** `inputs.cyclone` holds the probability for the assessed period (journey window, or the
+  next 7 days for a destination), the weekly probability, annual rate and peak week. The explanation states it, e.g.
+  *"Cyclone history 1980–2026: 0.3% chance of a tropical storm or stronger passing within 100 km during the next 7
+  days; about 0.33 per year here, most likely around 20 Aug"* (Miami, live run 2026-11-23).
+* **Factor 5 (time):** inside an official basin season, the text adds how often a storm passed at this place in that
+  week of the year. Basin boxes are broad: Tokyo in late November is "in season" at < 0.1 % per week.
+* **Classes unchanged.** Without harm data, turning a probability into minor/moderate/severe would be a judgement.
+  Missing artefact or outside the area → no probability, stated in the factor's notes, never 0.
 
 ## Interpretation
 
@@ -190,8 +235,11 @@ curl -C - -o data/ibtracs/ibtracs.since1980.csv \
 curl -L -o data/naturalearth/ne_50m_land.zip https://naciscdn.org/naturalearth/50m/physical/ne_50m_land.zip
 curl -o data/enso/oni.ascii.txt https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt
 .venv/bin/python -m app.ml.datasets.cyclones       # ~45 s
-.venv/bin/python -m app.ml.training.train_cyclone  # ~5 min; writes models/cyclone_exposure_model.*, reports/
+.venv/bin/python -m app.ml.training.train_cyclone  # ~5 min; learned models vs climatology (evaluation only)
+.venv/bin/python -m app.ml.training.tune_cyclone_climatology   # ~10 s; writes models/cyclone_climatology.* (used by the engine)
 ```
 
-Next: a floor for places with sparse history, then use the climatology for factors 5 and 6 (cyclone season and
-history). Floods (GloFAS river discharge) are the next dataset.
+Models are git-ignored, so a deployed risk service must run these steps (or receive the 26 KB `cyclone_climatology.npz`
+and its `.json`). Without them the engine still works and says the cyclone probability is unavailable.
+
+Next: floods (GloFAS river discharge).
