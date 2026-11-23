@@ -1,0 +1,67 @@
+/* Hotel results map */
+.hotel-map {
+  height: 380px;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  background: var(--surface-3);
+  z-index: 0; /* keep Leaflet panes under the app's header and modals */
+}
+@media (max-width: 640px) { .hotel-map { height: 280px; } }
+/* Soften the OpenStreetMap palette so the price pins stand out and it sits with the app's colours */
+.hotel-map .leaflet-tile-pane { filter: saturate(0.45) brightness(1.04); }
+
+/* Price pins: the icon is a 0×0 anchor at the hotel; the pill sits centred above it */
+.hotel-pin-anchor { background: none; border: 0; }
+.hotel-pin {
+  position: absolute; left: 0; bottom: 6px;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 500; line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(27, 29, 42, 0.22);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.hotel-pin::after {
+  content: ''; position: absolute; left: 50%; bottom: -5px;
+  width: 8px; height: 8px; transform: translateX(-50%) rotate(45deg);
+  background: inherit; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.hotel-pin.is-active,
+.leaflet-marker-icon:hover .hotel-pin,
+.leaflet-marker-icon:focus-visible .hotel-pin {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+  transform: translateX(-50%) scale(1.08);
+}
+.leaflet-marker-icon:focus-visible { outline: none; }
+
+/* Popup */
+.hotel-map .leaflet-popup-content-wrapper { border-radius: var(--r-lg); box-shadow: var(--shadow-md); }
+.hotel-map .leaflet-popup-content { margin: 12px; }
+.hotel-map-popup { display: flex; flex-direction: column; gap: 4px; font-family: inherit; color: var(--ink); }
+.hotel-map-popup-img { width: 100%; height: 110px; object-fit: cover; border-radius: var(--r-md); margin-bottom: 4px; }
+.hotel-map-popup-name { font-size: 14px; font-weight: 600; }
+.hotel-map-popup-meta { color: var(--warning); font-size: 12px; }
+.hotel-map-popup-price { color: var(--ink-2); font-size: 13px; }
+.hotel-map-popup-btn {
+  margin-top: 6px; height: 34px; border-radius: var(--r-pill);
+  background: var(--accent); color: #fff; font-weight: 500; font-size: 13px;
+}
+.hotel-map-popup-btn:hover { background: var(--accent-hover); }
+
+/* Results header controls */
+.results-map-toggle {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+  height: 36px; padding: 0 var(--space-4); border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font-size: var(--fs-sm); font-weight: var(--fw-medium);
+}
+.results-map-toggle:hover { background: var(--accent-soft); color: var(--accent); }
+.hotel-map-note { margin-top: calc(var(--space-2) * -1); color: var(--muted); font-size: var(--fs-xs); }
+.hotel-card.is-active { box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }

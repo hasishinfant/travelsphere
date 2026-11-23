@@ -29,11 +29,12 @@ if (typeof window !== 'undefined') {
     }));
   }
   if (!window.ResizeObserver) {
-    window.ResizeObserver = vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      unobserve: vi.fn(),
-      disconnect: vi.fn(),
-    }));
+    // A class, so `new ResizeObserver(cb)` works (an arrow-function mock is not constructible)
+    window.ResizeObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
   }
   if (!window.IntersectionObserver) {
     window.IntersectionObserver = vi.fn().mockImplementation(() => ({

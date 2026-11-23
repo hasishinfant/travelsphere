@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import HotelSearchResults from './HotelSearchResults';
@@ -62,6 +62,39 @@ describe('HotelSearchResults', () => {
     const card = screen.getByText('Breakfast Inn').closest('.hotel-card') as HTMLElement;
     fireEvent.click(within(card).getByRole('button', { name: 'View Details' }));
     expect(onHotelSelect).toHaveBeenCalledWith(expect.objectContaining({ hotelCode: 'b' }));
+  });
+
+  it('shows the hotels on a map that can be hidden, and remembers the choice', async () => {
+    localStorage.clear();
+    const { container, unmount } = render(<HotelSearchResults searchResult={results()} />);
+    expect(await screen.findByRole('region', { name: 'Map of hotels' })).toBeInTheDocument();
+    await waitFor(() => expect(container.querySelectorAll('.hotel-pin')).toHaveLength(3));
+
+    fireEvent.change(screen.getByLabelText('Star Rating'), { target: { value: '5' } });   // map follows the filters
+    await waitFor(() => expect(container.querySelectorAll('.hotel-pin')).toHaveLength(1));
+
+    fireEvent.click(screen.getByRole('button', { name: /hide map/i }));
+    expect(screen.queryByRole('region', { name: 'Map of hotels' })).not.toBeInTheDocument();
+    unmount();
+    render(<HotelSearchResults searchResult={results()} />);
+    expect(screen.getByRole('button', { name: /show map/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByRole('region', { name: 'Map of hotels' })).not.toBeInTheDocument();
+    localStorage.clear();
+  });
+
+  it('links a hovered card to its pin and says when hotels have no location', async () => {
+    localStorage.clear();
+    const r = results();
+    r.hotels[2] = { ...r.hotels[2], latitude: null, longitude: null };
+    const { container } = render(<HotelSearchResults searchResult={r} />);
+    await waitFor(() => expect(container.querySelectorAll('.hotel-pin')).toHaveLength(2));
+    expect(screen.getByText(/2 of 3 hotels shown on the map/)).toBeInTheDocument();
+    const card = screen.getByText('Breakfast Inn').closest('.hotel-card') as HTMLElement;
+    fireEvent.mouseEnter(card);
+    expect(card).toHaveClass('is-active');
+    await waitFor(() => expect(container.querySelector('.hotel-pin.is-active')).toHaveTextContent('€120'));
+    fireEvent.mouseLeave(card);
+    expect(card).not.toHaveClass('is-active');
   });
 
   it('explains when nothing matches', () => {

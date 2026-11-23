@@ -71,6 +71,10 @@ LiteAPI account, so live bookings stay disabled unless `LITEAPI_ENV=production` 
 book are refused (403 `live_booking_disabled`) unless the key is a sandbox key (`sand_…`), so a production key left in a
 sandbox configuration cannot create a billed reservation. The key is only ever used by the server.
 
+Search results include a map (Leaflet with OpenStreetMap tiles, no key needed) with a price pin per hotel; hovering
+a card highlights its pin, and a pin's popup opens the hotel. OpenStreetMap's public tiles are meant for light use —
+for real traffic switch the tile URL in `src/components/hotel/HotelMap.tsx` to a tile provider.
+
 ## 7. API
 
 All responses are JSON. Errors: `{ "error": { "code", "message", "details?" } }`.

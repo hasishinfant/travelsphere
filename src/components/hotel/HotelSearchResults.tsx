@@ -10,11 +10,16 @@
  * Requirements: 1.3, 1.4, 8.3
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { Suspense, lazy, useState, useMemo } from 'react';
 import Icon from '@/components/shared/Icon';
 import { getHotelSearchService } from '../../services/hotelSearchService';
 import type { HotelResult, HotelSearchFilters, HotelSearchResult, MealPlan } from '../../services/hotelSearchService';
 import './HotelSearchResults.css';
+import './HotelMap.css';
+
+const HotelMap = lazy(() => import('./HotelMap'));
+const MAP_PREF = 'hotel_results_map';
+const readMapPref = () => { try { return localStorage.getItem(MAP_PREF) !== 'hidden'; } catch { return true; } };
 
 interface HotelSearchResultsProps {
   searchResult: HotelSearchResult;
@@ -30,6 +35,12 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
   // Filter state
   const [filters, setFilters] = useState<HotelSearchFilters>({});
   const [sortBy, setSortBy] = useState<'price' | 'rating' | 'name'>('price');
+  const [showMap, setShowMap] = useState(readMapPref);
+  const [activeCode, setActiveCode] = useState<string | null>(null);
+  const toggleMap = () => setShowMap(v => {
+    try { localStorage.setItem(MAP_PREF, v ? 'hidden' : 'shown'); } catch { /* preference only */ }
+    return !v;
+  });
 
   // Apply filters and sorting
   const filteredAndSortedHotels = useMemo(() => {
@@ -67,6 +78,7 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
   const hasActiveFilters = Object.keys(filters).some(
     key => filters[key as keyof HotelSearchFilters] !== undefined
   );
+  const onMap = filteredAndSortedHotels.filter(h => h.latitude != null && h.longitude != null).length;
 
   return (
     <div className="hotel-search-results">
@@ -88,7 +100,26 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
         <p className="search-summary">
           in {searchResult.searchCriteria.city}, {searchResult.searchCriteria.countryCode}
         </p>
+        {searchResult.hotels.length > 0 && (
+          <button type="button" className="results-map-toggle" onClick={toggleMap} aria-pressed={showMap}>
+            <Icon name="map" size="sm" /> {showMap ? 'Hide map' : 'Show map'}
+          </button>
+        )}
       </div>
+
+      {showMap && searchResult.hotels.length > 0 && (
+        <>
+          <Suspense fallback={<div className="hotel-map" aria-busy="true" />}>
+            <HotelMap hotels={filteredAndSortedHotels} activeCode={activeCode}
+              onActiveChange={setActiveCode} onSelect={h => onHotelSelect?.(h)} />
+          </Suspense>
+          {onMap < filteredAndSortedHotels.length && (
+            <p className="hotel-map-note">
+              {onMap} of {filteredAndSortedHotels.length} hotels shown on the map; the others have no location from the provider.
+            </p>
+          )}
+        </>
+      )}
 
       {/* Filters and Sort */}
       <div className="filters-section">
@@ -168,6 +199,8 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
             <HotelCard
               key={hotel.bookingCode}
               hotel={hotel}
+              active={showMap && activeCode === hotel.hotelCode}
+              onHover={on => setActiveCode(on ? hotel.hotelCode : null)}
               onSelect={() => onHotelSelect?.(hotel)}
             />
           ))}
@@ -191,12 +224,16 @@ const HotelSearchResults: React.FC<HotelSearchResultsProps> = ({
 // Hotel Card Component
 interface HotelCardProps {
   hotel: HotelResult;
+  active?: boolean;
+  onHover?: (on: boolean) => void;
   onSelect: () => void;
 }
 
-const HotelCard: React.FC<HotelCardProps> = ({ hotel, onSelect }) => {
+const HotelCard: React.FC<HotelCardProps> = ({ hotel, active, onHover, onSelect }) => {
   return (
-    <div className="hotel-card">
+    <div className={`hotel-card${active ? ' is-active' : ''}`}
+      onMouseEnter={() => onHover?.(true)} onMouseLeave={() => onHover?.(false)}
+      onFocus={() => onHover?.(true)} onBlur={() => onHover?.(false)}>
       {/* Hotel Image */}
       <div className="hotel-image">
         {hotel.hotelPicture
