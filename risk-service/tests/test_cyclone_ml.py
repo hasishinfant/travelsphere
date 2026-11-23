@@ -78,7 +78,7 @@ def test_training_climatology_never_contains_the_rows_own_year(monkeypatch):
 
 
 def flat_climatology(p=0.02, cells=((34.9986, 135.785),), m=0.0, sigma=300.0, k=None):
-    from app.ml.cyclone_climatology import Climatology
+    from app.ml.hazard_climatology import Climatology
     grid = pd.DataFrame({"lat": [a for a, _ in cells], "lon": [b for _, b in cells]})
     n = np.full(52, 40.0)
     k_cells = np.tile(n * p, (len(cells), 1)) if k is None else np.asarray(k, float)
@@ -86,7 +86,7 @@ def flat_climatology(p=0.02, cells=((34.9986, 135.785),), m=0.0, sigma=300.0, k=
 
 
 def test_climatology_shrinks_a_storm_free_place_towards_its_region():
-    from app.ml.cyclone_climatology import estimate
+    from app.ml.hazard_climatology import estimate
     # cell A (no storms on record) next to cell B (storms in 10 % of weeks), 220 km apart
     grid = pd.DataFrame({"lat": [20.0, 22.0], "lon": [120.0, 120.0]})
     n = np.full(52, 40.0)

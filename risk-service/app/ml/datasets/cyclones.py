@@ -93,12 +93,18 @@ def coast_distance_km(lat: np.ndarray, lon: np.ndarray, land) -> np.ndarray:
 
 
 def build_grid(land) -> pd.DataFrame:
-    half = GRID_DEG / 2
-    lats = np.arange(-MAX_LAT + half, MAX_LAT, GRID_DEG)
-    lons = np.arange(-180 + half, 180, GRID_DEG)
+    return grid_cells(land, -MAX_LAT, MAX_LAT, -COAST_KM)
+
+
+def grid_cells(land, lat_min: float, lat_max: float, min_coast_km: float, deg: float = GRID_DEG) -> pd.DataFrame:
+    """Regular grid cells between the latitudes whose signed coast distance is above min_coast_km
+    (negative = that far out to sea is still kept)."""
+    half = deg / 2
+    lats = np.arange(lat_min + half, lat_max, deg)
+    lons = np.arange(-180 + half, 180, deg)
     la, lo = (a.ravel() for a in np.meshgrid(lats, lons, indexing="ij"))
     dist = coast_distance_km(la, lo, land)
-    keep = dist > -COAST_KM
+    keep = dist > min_coast_km
     g = pd.DataFrame({"lat": la[keep], "lon": lo[keep], "coast_km": dist[keep].round(1)})
     g.insert(0, "cell", np.arange(len(g)))
     return g

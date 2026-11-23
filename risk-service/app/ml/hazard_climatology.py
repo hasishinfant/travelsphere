@@ -1,4 +1,8 @@
-"""Cyclone climatology: P(>= 34 kt cyclone within 100 km of a place during a 7-day window), from IBTrACS.
+"""Hazard climatology: P(hazard within 100 km of a place during a 7-day window) from a long event record.
+
+Artefacts (models/<name>.npz + .json):
+  cyclone_climatology  tropical storm or stronger (>= 34 kt) within 100 km — IBTrACS, 45 S - 45 N land and coast
+  flood_climatology    a large flood's mapped affected area within 100 km — Dartmouth Flood Observatory, 56 S - 72 N land
 
 Estimate at a point for week-of-year w (all smoothed +-2 weeks):
     k = kernel-weighted count of positive windows near the point (sigma LOCAL_SIGMA_KM)
@@ -6,11 +10,11 @@ Estimate at a point for week-of-year w (all smoothed +-2 weeks):
     prior = regional frequency (sigma = prior_sigma_km)
     p = (k + m * prior) / (n + m)           empirical-Bayes shrinkage towards the region, m in years
 A place with no storms on record but storms in its region gets a small, non-zero probability; a place with a long
-record keeps its own. `m` and `prior_sigma_km` are chosen on validation years (training/tune_cyclone_climatology.py)
-and the result was then tested once on later years (docs/ML.md).
+record keeps its own. `m` and `prior_sigma_km` are chosen on validation years (training/tune_climatology.py) and the
+result was then tested once on later years (docs/ML.md).
 
-Domain: within 3 * LOCAL_SIGMA_KM of a grid cell (45 S - 45 N, land and 200 km of coast). Outside it the estimate is
-None, never 0, because no data were used there.
+Domain: within 3 * LOCAL_SIGMA_KM of a grid cell of that hazard's grid. Outside it the estimate is None, never 0,
+because no data were used there.
 """
 from __future__ import annotations
 
@@ -27,10 +31,9 @@ import pandas as pd
 
 from app.ml.preprocessing.cyclone_features import WEEKS, apply_kernel, kernel_weights, smooth_weeks, week_of_year
 
-log = logging.getLogger("risk.cyclone")
+log = logging.getLogger("risk.climatology")
 LOCAL_SIGMA_KM = 75.0
-ARTEFACT = "cyclone_climatology.npz"
-META = "cyclone_climatology.json"
+CYCLONE, FLOOD = "cyclone_climatology", "flood_climatology"
 
 
 def tables(counts: np.ndarray, nwin: np.ndarray, year_idx) -> tuple[np.ndarray, np.ndarray]:
@@ -86,24 +89,25 @@ class Climatology:
                 "p_peak_week": float(p[peak])}
 
 
-def save(path: Path, grid: pd.DataFrame, k_cells, n_weeks, m: float, prior_sigma_km: float, meta: dict) -> None:
+def save(path: Path, name: str, grid: pd.DataFrame, k_cells, n_weeks, m: float, prior_sigma_km: float,
+         meta: dict) -> None:
     path.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(path / ARTEFACT, lat=grid["lat"].to_numpy(), lon=grid["lon"].to_numpy(),
+    np.savez_compressed(path / f"{name}.npz", lat=grid["lat"].to_numpy(), lon=grid["lon"].to_numpy(),
                         k_cells=k_cells, n_weeks=n_weeks)
-    (path / META).write_text(json.dumps({**meta, "m": m, "prior_sigma_km": prior_sigma_km,
-                                         "local_sigma_km": LOCAL_SIGMA_KM}, indent=1, default=str))
+    (path / f"{name}.json").write_text(json.dumps({**meta, "m": m, "prior_sigma_km": prior_sigma_km,
+                                                   "local_sigma_km": LOCAL_SIGMA_KM}, indent=1, default=str))
 
 
 @lru_cache
-def load(model_dir: str) -> Climatology | None:
+def load(model_dir: str, name: str = CYCLONE) -> Climatology | None:
     d = Path(model_dir)
-    if not (d / ARTEFACT).exists() or not (d / META).exists():
+    if not (d / f"{name}.npz").exists() or not (d / f"{name}.json").exists():
         return None
     try:
-        z = np.load(d / ARTEFACT)
-        meta = json.loads((d / META).read_text())
+        z = np.load(d / f"{name}.npz")
+        meta = json.loads((d / f"{name}.json").read_text())
         grid = pd.DataFrame({"lat": z["lat"], "lon": z["lon"]})
         return Climatology(grid, z["k_cells"], z["n_weeks"], meta["m"], meta["prior_sigma_km"], meta)
     except Exception as e:  # noqa: BLE001
-        log.warning("could not load cyclone climatology: %s", e)
+        log.warning("could not load %s: %s", name, e)
         return None

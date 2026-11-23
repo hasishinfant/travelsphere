@@ -136,7 +136,7 @@ timestamps and data quality (sources, age, staleness, cache, missing fields, pre
 | 3 | Distance to hazard | subject geometry vs hazard geometries | min geodesic/AEQD distance (0 inside); proximity = 1 − min(d,R)/R, R = assessment radius (scope parameter) |
 | 4 | Route exposure | OSRM route vs footprints | GeoPandas overlay in local AEQD CRS; exposed m, fraction, minutes; overlaps counted once; destination ⇒ not applicable |
 | 5 | Time factor | window, timezone, NOAA solar elevation, basin seasons, hazard validity, lead time | darkness share; NHC/JMA/IMD/Météo-France/BoM/Fiji cyclone seasons; ≥50 % dark during outdoor activity ⇒ moderate, any darkness or in season ⇒ minor |
-| 6 | Historical incident risk | GDACS Orange/Red archive (10 y), USGS M ≥ 6, verified TravelSphere incidents, 150 km | Pandas clean/dedupe/classify; λ events/yr; P(≥1) = 1−e^(−λt) per year and per trip; class by return period (≤1/5/20/100 y). Frequency, not accident probability; incidents not normalised (no visitor denominators). Also reports the IBTrACS cyclone probability for the period (≥ 34 kt within 100 km; calibrated, not used for the class) |
+| 6 | Historical incident risk | GDACS Orange/Red archive (10 y), USGS M ≥ 6, verified TravelSphere incidents, 150 km | Pandas clean/dedupe/classify; λ events/yr; P(≥1) = 1−e^(−λt) per year and per trip; class by return period (≤1/5/20/100 y). Frequency, not accident probability; incidents not normalised (no visitor denominators). Also reports climatological probabilities for the period: cyclone (IBTrACS, ≥ 34 kt within 100 km) and large flood (Dartmouth Flood Observatory, affected area within 100 km; non-commercial data); not used for the class |
 | 7 | Population exposure | GeoNames locality population (Open-Meteo geocoding), affecting hazards, party size | exposed residents (locality inside an affecting hazard ≥ moderate) banded at 1k/100k/1M (GDACS exposure tiers); density unavailable (reported, not guessed); travellers exposed and traveller-hours reported separately |
 | 8 | Data reliability | all of the above | mean of credibility (tier), freshness (per-source max age), completeness, precision (grid distance, footprint share, routed vs straight line), agreement (USGS vs GDACS magnitude ±0.3; weather code vs precipitation). Evidence quality; never part of the hazard score |
 
@@ -189,6 +189,10 @@ missing information, status, and the disclaimer that the category/index is not a
   (ROC-AUC 0.935); gradient boosting does not beat it (Brier skill ≤ 0) and is withheld. With regional shrinkage
   (m = 64, σ = 400 km, chosen on validation) test log loss improves 9 % and storm-free places are no longer
   underestimated. Factors 5 and 6 report it; it does not change classes or the category.
+* **Flood exposure (Dartmouth Flood Observatory, 2026-11-23):** 5,129 large floods 1985–2021 on a 4,164-cell land grid.
+  Shrunk climatology (m = 32, σ = 1000 km) improves test log loss 18 % (2015–2021); calibrated below 1 % per week,
+  15–30 % high above it (reporting fell in the test years). Factor 6 reports it. **Data licence is non-commercial.**
+  Details: `docs/ML.md#flood-exposure-model-dartmouth-flood-observatory`.
   Details: `docs/ML.md#cyclone-exposure-model-ibtracs`.
 
 ## 11. Test results (executed 2026-11-22)

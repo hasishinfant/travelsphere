@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 from app.core.config import get_settings
 from app.database import repository as repo
-from app.ml import cyclone_climatology
+from app.ml import hazard_climatology
 from app.geospatial.geometry import geodesic_m
 from app.ingestion import gdacs, open_meteo, osrm, overpass, usgs
 from app.ingestion.http import ProviderError
@@ -142,7 +142,8 @@ async def history_for(lat: float, lon: float, cfg: dict, now: datetime) -> Histo
     return HistoricalRecord(window_start=start, window_end=now, radius_m=radius, events=events if ok else None,
                             sources_ok=ok + (["travelsphere-incidents"] if incidents is not None else []),
                             sources_failed=failed, verified_incidents=incidents,
-                            cyclone_climatology=cyclone_climatology.load(str(get_settings().model_dir)))
+                            cyclone_climatology=hazard_climatology.load(str(get_settings().model_dir), hazard_climatology.CYCLONE),
+                            flood_climatology=hazard_climatology.load(str(get_settings().model_dir), hazard_climatology.FLOOD))
 
 
 async def place_info(dest: Destination) -> tuple[PlaceInfo | None, str | None]:

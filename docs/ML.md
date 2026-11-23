@@ -173,7 +173,7 @@ Brier skill and a lower PR-AUC, so it **fails and is withheld**.
 Calibrated from 0.2 % to 6 %. It overestimates the highest bands somewhat. It badly underestimates places with almost
 no history: a near-zero history did not mean near-zero risk in 2018–2026 (17 times more storms than predicted).
 
-## Regional shrinkage (`app/ml/cyclone_climatology.py`, `training/tune_cyclone_climatology.py`)
+## Regional shrinkage (`app/ml/hazard_climatology.py`, `training/tune_climatology.py`)
 
 A place's own record is pulled towards its region's (empirical Bayes):
 p = (k + m · prior) / (n + m), where k = storm weeks near the place (σ = 75 km), n = weeks observed, prior = regional
@@ -236,10 +236,111 @@ curl -L -o data/naturalearth/ne_50m_land.zip https://naciscdn.org/naturalearth/5
 curl -o data/enso/oni.ascii.txt https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt
 .venv/bin/python -m app.ml.datasets.cyclones       # ~45 s
 .venv/bin/python -m app.ml.training.train_cyclone  # ~5 min; learned models vs climatology (evaluation only)
-.venv/bin/python -m app.ml.training.tune_cyclone_climatology   # ~10 s; writes models/cyclone_climatology.* (used by the engine)
+.venv/bin/python -m app.ml.training.tune_climatology --hazard cyclone   # ~10 s; writes models/cyclone_climatology.* (used by the engine)
 ```
 
 Models are git-ignored, so a deployed risk service must run these steps (or receive the 26 KB `cyclone_climatology.npz`
 and its `.json`). Without them the engine still works and says the cyclone probability is unavailable.
 
-Next: floods (GloFAS river discharge).
+---
+
+# Flood exposure model (Dartmouth Flood Observatory)
+
+**Status (2026-11-23): in use, with caveats.** Same method as the cyclone climatology (grid, weekly windows, regional
+shrinkage, time split). Factor 6 reports it; it does not change any class or the risk category. **The source data are
+licensed for non-commercial use only**: replace or license them before a commercial launch.
+
+## Question
+
+*Will the mapped affected area of a large flood come within 100 km of this place during this window?* A large flood in
+the region, not that the point itself floods.
+
+## Data
+
+| Source | Use | Licence |
+|---|---|---|
+| Dartmouth Flood Observatory, Global Active Archive of Large Flood Events, via its public ArcGIS mirror | 5,129 events (2 duplicate IDs removed), 1985-01-01 → 2021-10-06: affected-area outline, began/ended, severity (1 / 1.5 / 2), deaths, displaced | free for scholarly and educational use; DFO states CC BY-NC-SA 4.0 (**non-commercial**) |
+| Natural Earth 1:50m land | land grid | public domain |
+
+The DFO site itself returned 404 on 2026-11-23; the mirror was last edited in 2022 and ends in October 2021.
+
+Considered and not used: **GloFAS river discharge via Open-Meteo** — a point query snaps to the nearest 5 km model
+cell, so Guwahati returned a stream peaking at 39 m³/s instead of the Brahmaputra; 30 % of days were missing; and the
+free API is non-commercial. **Global Flood Database** (satellite extents): only 913 events, 2000–2018.
+
+Data quality, found while checking known floods:
+
+* Outlines are approximate regions (median ≈ 35,000 km², 90th percentile ≈ 267,000 km²), and 26 needed repair.
+* Some are misplaced or incomplete in this mirror: Pakistan 2010 is outlined in the north, not Sindh; Thailand 2011
+  stops about 190 km short of Bangkok.
+* End dates are often early: Harvey (Houston, 2017) ends 26 August; Kerala 2018 ends 10 August, before the peak.
+* Reporting effort changed: share of place-weeks positive was 0.25–0.9 % in 1985–91, 2–3.5 % in 2003–07, and
+  about 1 % after 2016. Mean 1.25 % in the training years, 1.26 % in validation, **1.06 % in the test years**.
+
+## Dataset (`python -m app.ml.datasets.floods`, ~1 min)
+
+* **Places:** 2° grid over land (centre on land or within 50 km of it), 56° S – 72° N: 4,164 cells.
+* **Windows:** 7-day windows from Monday 1985-01-07: 1,918. A flood counts in every week its began–ended period
+  overlaps.
+* **Labels:** an outline within 100 km of the cell centre (point-in-polygon missed small floods between centres: the
+  Ahr flood of July 2021 was 6 km from the nearest one). 7.99 M place-weeks; 97,155 positive (1.22 %), 46,623 with
+  severity ≥ 1.5.
+* **Checks:** labelled: Germany 2021, Kerala 2018, Chennai 2015, Brisbane 2011, Mozambique 2000, Paris 2016,
+  Houston 2017 (in the week the record gives).
+
+## Selection and test (`python -m app.ml.training.tune_climatology --hazard flood`)
+
+Fit 1985–2008, choose on 2009–2014 log loss, test once on 2015–2021. Searched m ∈ {0 … 512} × σ ∈ {150 … 2000 km}
+× activity adjustment (scale each year by the global rate of the previous 5 years / training years, past data only).
+Chosen **m = 32, σ = 1000 km, no activity adjustment** (σ 1500 and 2000 km are worse). The adjustment lost on
+validation: the 5 years before 2009–2014 contain the 2003–07 reporting peak.
+
+| Test 2015–2021 | Log loss | Brier | ECE |
+|---|---|---|---|
+| Unshrunk climatology | 0.059923 | 0.010436 | 0.0070 |
+| **Shrunk (in use)** | **0.049195** | **0.010200** | **0.0022** |
+
+| Predicted | Windows | Mean predicted | Observed | Unshrunk: predicted → observed |
+|---|---|---|---|---|
+| 0 | 20,537 | 0 | 0.0001 | 895,052 windows: 0 → 0.0018 |
+| (0, 0.2 %) | 566,966 | 0.0006 | 0.0008 | 0.0005 → 0.0090 |
+| 0.2–1 % | 444,115 | 0.0051 | 0.0052 | 0.0053 → 0.0122 |
+| 1–3 % | 265,179 | 0.0177 | 0.0145 | 0.0194 → 0.0161 |
+| 3–6 % | 109,426 | 0.0417 | 0.0352 | 0.0427 → 0.0281 |
+| 6–10 % | 38,614 | 0.0758 | 0.0625 | 0.0765 → 0.0488 |
+| 10–20 % | 21,124 | 0.1353 | 0.0962 | 0.1371 → 0.0816 |
+| ≥ 20 % | 3,931 | 0.2467 | 0.2025 | 0.2902 → 0.1487 |
+
+Calibrated below 1 %; above it, about 15–30 % high. That matches the lower reporting in the test years, which nothing
+available before 2015 could have anticipated.
+
+Examples (a 7-day trip; annual figure = weeks a year with a large flood nearby): Dhaka 1 Aug 28 % (5.5 weeks/yr,
+peak mid-July), Bangkok 1 Oct 16 % (peak early Oct), Mumbai 15 Jul 12 %, Houston 1 Jun 7 % (peak late May), Tokyo
+1 Sep 5.5 %, Paris 15 Jan 2.3 % (peak late Jan), Cairo 1 Aug 0.7 %, Reykjavík 0.1 %.
+
+**Limitation of σ = 1000 km:** neighbouring places share a regional rate. Bengaluru peaks in July because the
+Kerala/Western Ghats monsoon floods dominate its region, while its own floods come mostly in September–October.
+
+## Use in the engine
+
+Factor 6 adds `inputs.flood` (same fields as `inputs.cyclone`) and, e.g. for Paris on 2026-11-23: *"Flood history
+1985–2021: 0.6% chance of a large flood affecting the area within 100 km during the next 7 days; affected in about 0.6
+weeks a year here, most likely around 29 Jan"*. Its note states the test bias and the licence. Reported also when
+GDACS/USGS history fails; outside the land grid or without the artefact it says why, never 0.
+
+## Reproduce
+
+```bash
+cd risk-service && mkdir -p data/dfo
+B="https://services1.arcgis.com/AXaYBvnJsB5Q7sDF/ArcGIS/rest/services/Global_Archive_of_large_flood_events/FeatureServer/0"
+for off in 0 1000 2000 3000 4000 5000; do
+  curl -s "$B/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&orderByFields=FID&resultOffset=$off&resultRecordCount=1000&f=geojson" \
+    -o data/dfo/part_$off.geojson
+done
+.venv/bin/python -m app.ml.datasets.floods                        # ~1 min (needs data/naturalearth, see cyclones)
+.venv/bin/python -m app.ml.training.tune_climatology --hazard flood   # writes models/flood_climatology.* (80 KB)
+```
+
+Better sources for later: a licensed or commercial flood-event record, GloFAS reanalysis from the Copernicus EWDS
+(free including commercial use; needs an account and river-cell matching), and the DFO archive itself once its site
+is back (records after 2021).

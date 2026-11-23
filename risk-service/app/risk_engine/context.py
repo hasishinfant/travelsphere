@@ -22,7 +22,8 @@ class HistoricalRecord:
     sources_ok: list[str]
     sources_failed: list[str]
     verified_incidents: int | None = None      # TravelSphere verified incident reports in the window
-    cyclone_climatology: Any = None            # app.ml.cyclone_climatology.Climatology (None = artefact not built)
+    cyclone_climatology: Any = None            # app.ml.hazard_climatology.Climatology (None = artefact not built)
+    flood_climatology: Any = None              # same, for large floods
 
 
 @dataclass

@@ -50,9 +50,10 @@ def load():
     return grid, pos, meta
 
 
-def count_tables(grid, pos, n_windows):
-    """counts[cell, week_of_year, year] of positive windows and windows[week_of_year, year] (how many exist)."""
-    starts = window_start(np.arange(n_windows))
+def count_tables(grid, pos, n_windows, starts_of=window_start):
+    """counts[cell, week_of_year, year] of positive windows and windows[week_of_year, year] (how many exist).
+    `starts_of` maps window indices to start dates (each dataset has its own origin)."""
+    starts = starts_of(np.arange(n_windows))
     years = starts.year.to_numpy()
     y0, y1 = years.min(), years.max()
     woy = week_of_year(starts)
