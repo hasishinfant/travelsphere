@@ -5,6 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import Photo from '@/components/ui/Photo';
 import MapModal from '@/components/ui/MapModal';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import HazardOutlook from '@/components/ui/HazardOutlook';
 import { getDestination } from '@/data/destinations';
 import { PANORAMAS } from '@/data/panoramas';
 import { ensureSession, ApiError } from '@/services/apiClient';
@@ -164,6 +165,8 @@ const PlacePage: React.FC = () => {
                 </p>
               </div>
             </div>
+
+            <HazardOutlook outlook={assessment.hazard_outlook} />
 
             <div className="factor-grid">
               {assessment.factors.map(f => <FactorCard key={f.key} f={f} />)}

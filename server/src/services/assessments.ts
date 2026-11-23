@@ -1,7 +1,35 @@
 // Destination assessments: served from the database while fresh, recomputed by the risk service when stale.
 // Also maps the 8-factor result onto the shape the existing place UI already renders (no frontend change needed).
+import { z } from 'zod';
 import type { Db } from '../db.js';
 import type { DestinationAssessment, RiskService } from '../integrations/riskService.js';
+
+// Climatological hazard probabilities reported by Factor 6 (risk-service docs/ML.md). Hazard probabilities, not harm.
+const Outlook = z.object({
+  p_period: z.number().min(0).max(1), period_days: z.number(), scope: z.enum(['destination', 'journey']),
+  p_week: z.number().min(0).max(1), annual_rate: z.number().min(0), peak_week_start: z.string(),
+  p_peak_week: z.number().min(0).max(1), monthly_p_week: z.array(z.number().min(0).max(1)).length(12),
+  years: z.tuple([z.number(), z.number()]), definition: z.string(),
+});
+export type HazardOutlook = {
+  cyclone: z.infer<typeof Outlook> | null;
+  flood: z.infer<typeof Outlook> | null;
+  unavailable: Record<string, string>;
+};
+
+/** The cyclone and flood outlook from Factor 6's inputs; a malformed entry is dropped, never guessed. */
+export function hazardOutlook(factors: { key: string; inputs?: unknown }[]): HazardOutlook | null {
+  const inputs = factors.find(f => f.key === 'historical_incident_risk')?.inputs as Record<string, unknown> | undefined;
+  if (!inputs) return null;
+  const pick = (k: string) => {
+    if (inputs[k] == null) return null;
+    const r = Outlook.safeParse(inputs[k]);
+    return r.success ? r.data : null;
+  };
+  const unavailable = z.record(z.string(), z.string()).safeParse(inputs.climatology_unavailable ?? {});
+  const out = { cyclone: pick('cyclone'), flood: pick('flood'), unavailable: unavailable.success ? unavailable.data : {} };
+  return out.cyclone || out.flood || Object.keys(out.unavailable).length ? out : null;
+}
 
 export const FACTOR_LABELS: Record<string, string> = {
   weather_severity: 'Weather severity',
@@ -68,7 +96,7 @@ export async function getOrAssessDestination(db: Db, risk: RiskService, id: stri
 // ------------------------------------------------------------------ legacy place-card mapping
 type AnyAssessment = Pick<DestinationAssessment, 'destination_id' | 'risk_category' | 'assessment_status' |
   'scoring_version' | 'engine_version' | 'data_reliability' | 'assessed_at'> & {
-  factors: { key: string; label?: string; status: string; value: number | null; explanation: string;
+  factors: { key: string; label?: string; status: string; value: number | null; explanation: string; inputs?: unknown;
     data_quality: { is_stale?: boolean } | Record<string, unknown>; observed_at?: string | null }[];
   explanation: { summary: string; recommended_action: string; rules_applied: string[]; contributing_inputs: { explanation: string }[] };
   weather?: unknown;
@@ -115,6 +143,7 @@ export function toPlaceShape(x: AnyAssessment, weather: unknown) {
     uncertainty: `Rule-based and not calibrated against incidents; evidence quality ${x.data_reliability === null ? 'unknown'
       : `${Math.round(x.data_reliability * 100)}/100`}`,
     notice: 'Travel safety information only. Always follow official warnings and local emergency services.',
+    hazard_outlook: hazardOutlook(x.factors),
   };
 }
 

@@ -23,6 +23,26 @@ export interface Factor {
   detail: string;
 }
 
+/** Historical frequency of a hazard near a place (risk-service climatology): a hazard probability, not harm. */
+export interface HazardClimate {
+  p_period: number;            // chance over the assessed period (next 7 days for a place)
+  period_days: number;
+  scope: 'destination' | 'journey';
+  p_week: number;
+  annual_rate: number;         // cyclones: passes per year; floods: weeks per year with a large flood nearby
+  peak_week_start: string;     // e.g. "20 Aug"
+  p_peak_week: number;
+  monthly_p_week: number[];    // 12 values, Jan..Dec: chance in a typical week of that month
+  years: [number, number];
+  definition: string;
+}
+
+export interface HazardOutlook {
+  cyclone: HazardClimate | null;
+  flood: HazardClimate | null;
+  unavailable: Record<string, string>;   // hazard -> why it has no figure
+}
+
 export interface PlaceAssessment extends PlaceConditions {
   factors: Factor[];
   reasons: string[];
@@ -31,6 +51,7 @@ export interface PlaceAssessment extends PlaceConditions {
   model_version: string;
   uncertainty: string;
   notice: string;
+  hazard_outlook?: HazardOutlook | null;
 }
 
 export type ConditionsState =

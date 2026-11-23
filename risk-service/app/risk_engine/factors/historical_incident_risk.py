@@ -122,6 +122,7 @@ def outlook_inputs(o: dict | None) -> dict | None:
             "period_start": o["period_start"].isoformat(), "period_end": o["period_end"].isoformat(),
             "p_week": round(o["p_week"], 5), "annual_rate": round(o["annual_rate"], 3),
             "peak_week_start": o["peak_week_start"], "p_peak_week": round(o["p_peak_week"], 4),
+            "monthly_p_week": [round(v, 5) for v in o.get("monthly_p_week", [])],
             "years": o["years"], "model": o["model"], "definition": o["definition"]}
 
 
@@ -137,6 +138,9 @@ def compute(ctx: AssessmentContext) -> FactorResult:
     outlooks = {k: outlook(ctx, k) for k in CLIMATOLOGIES}
     climate_text = [outlook_text(o) for o, _ in outlooks.values() if o]
     climate_inputs = {k: outlook_inputs(o) for k, (o, _) in outlooks.items()}
+    missing = {k: r for k, (o, r) in outlooks.items() if o is None and r}
+    if missing:
+        climate_inputs["climatology_unavailable"] = missing     # why a hazard has no probability (for the UI)
     climate_notes = [n for k, (o, r) in outlooks.items() if (n := outlook_note(k, o, r))]
     if h is None or h.events is None:
         why = "Historical hazard records unavailable (GDACS/USGS history did not respond)"

@@ -131,7 +131,7 @@ export function placesRouter(db: Db, weather: WeatherService, risk?: RiskService
     const places = PLACES.map((p, i) => {
       if (results[i]) {
         const { factors: _f, reasons: _r, recommended_action: _a, observation_age_min: _o, model_version: _m,
-          uncertainty: _u, notice: _n, ...summaryOnly } = results[i]!;
+          uncertainty: _u, notice: _n, hazard_outlook: _h, ...summaryOnly } = results[i]!;
         return summaryOnly;
       }
       return summary(fallback[missing.indexOf(p)]);

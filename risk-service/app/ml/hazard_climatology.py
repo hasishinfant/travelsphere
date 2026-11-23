@@ -83,10 +83,13 @@ class Climatology:
             remaining -= step
         annual_rate = float(-np.log1p(-np.minimum(p, 0.999999)).sum() * 365.25 / 7 / WEEKS)
         peak = int(np.argmax(p))
+        # Seasonal profile: mean weekly probability of the weeks starting in each calendar month
+        months = (datetime(2001, 1, 1) + np.arange(WEEKS) * timedelta(weeks=1)).astype("datetime64[M]").astype(int) % 12
+        monthly = [float(p[months == m].mean()) for m in range(12)]
         return {"p_period": 1 - math.exp(log_none), "period_days": round(days, 2),
                 "p_week": float(p[int(week_of_year(pd.DatetimeIndex([start]))[0])]),
                 "annual_rate": annual_rate, "peak_week_start": (datetime(2001, 1, 1) + timedelta(weeks=peak)).strftime("%d %b"),
-                "p_peak_week": float(p[peak])}
+                "p_peak_week": float(p[peak]), "monthly_p_week": monthly}
 
 
 def save(path: Path, name: str, grid: pd.DataFrame, k_cells, n_weeks, m: float, prior_sigma_km: float,

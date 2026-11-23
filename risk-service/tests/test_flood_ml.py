@@ -78,5 +78,19 @@ def test_flood_probability_survives_failed_history_providers_and_missing_artefac
     h.flood_climatology = flat_climatology(0.05)
     f = f6.compute(ctx(history=h))
     assert f.status == "unavailable" and f.value is None
-    assert set(f.inputs) == {"flood"} and "Flood history" in f.explanation
+    assert set(f.inputs) == {"flood", "climatology_unavailable"} and "Flood history" in f.explanation
+    assert f.inputs["climatology_unavailable"] == {"cyclone": "cyclone climatology not built (see docs/ML.md)"}
     assert any("No cyclone probability: cyclone climatology not built" in n for n in f.data_quality.notes)
+
+
+def test_outlook_carries_a_monthly_profile_for_the_season_chart():
+    from app.risk_engine.factors import historical_incident_risk as f6
+    h = history()
+    k = np.tile(np.zeros(52), (1, 1))
+    k[0, 26:31] = 40 * 0.3                                          # storms only in weeks 26-30 (July)
+    h.flood_climatology = flat_climatology(cells=((34.9986, 135.785),), k=k)
+    f = f6.compute(ctx(history=h))
+    monthly = f.inputs["flood"]["monthly_p_week"]
+    assert len(monthly) == 12
+    assert monthly.index(max(monthly)) == 6                        # July is the peak month
+    assert monthly[0] == pytest.approx(0, abs=1e-3)                # January quiet

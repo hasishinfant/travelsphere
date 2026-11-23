@@ -269,6 +269,21 @@ describe('place-card mapping', () => {
     expect(shaped.factors.find(f => f.key === 'data_reliability')).toMatchObject({ value: null });
     expect(shaped.factors.find(f => f.key === 'route_exposure')).toMatchObject({ value: null, status: 'unavailable' });
     expect(shaped.model_version).toMatch(/^scoring-v1/);
+    expect(shaped.hazard_outlook).toBeNull();                 // assessments from before the climatologies
+  });
+  it('passes the cyclone and flood outlook through, dropping malformed entries', () => {
+    const outlook = (p: number) => ({ p_period: p, period_days: 7, scope: 'destination', period_start: '2026-11-23T00:00:00Z',
+      period_end: '2026-11-30T00:00:00Z', p_week: p, annual_rate: 0.5, peak_week_start: '20 Aug', p_peak_week: 0.05,
+      monthly_p_week: Array(12).fill(0.01), years: [1985, 2021], model: 'dfo-climatology', definition: 'x' });
+    const withInputs = (inputs: Record<string, unknown>) => ({ ...FIXTURE, factors: FIXTURE.factors.map((f: any) =>
+      f.key === 'historical_incident_risk' ? { ...f, inputs: { ...f.inputs, ...inputs } } : f) });
+    const shaped = toPlaceShape(withInputs({ flood: outlook(0.02), cyclone: null,
+      climatology_unavailable: { cyclone: 'outside the cyclone climatology\'s area' } }), null);
+    expect(shaped.hazard_outlook).toMatchObject({ flood: { p_period: 0.02, peak_week_start: '20 Aug' }, cyclone: null,
+      unavailable: { cyclone: expect.stringContaining('outside') } });
+    // a probability above 1 or a short monthly profile is not shown
+    const bad = toPlaceShape(withInputs({ flood: { ...outlook(1.5) }, cyclone: { ...outlook(0.1), monthly_p_week: [0.1] } }), null);
+    expect(bad.hazard_outlook).toBeNull();
   });
   it('/api/places serves the engine result when available', async () => {
     const { token } = await signIn('places@example.test');
