@@ -72,7 +72,8 @@ book are refused (403 `live_booking_disabled`) unless the key is a sandbox key (
 sandbox configuration cannot create a billed reservation. The key is only ever used by the server.
 
 Search results include a map (Leaflet with OpenStreetMap tiles, no key needed) with a price pin per hotel; hovering
-a card highlights its pin, and a pin's popup opens the hotel. OpenStreetMap's public tiles are meant for light use —
+a card highlights its pin, and a pin's popup opens the hotel. Pins that would overlap merge into a cluster pin
+("6 hotels · from €146"); clicking it zooms in until they separate, and hotels at the same address open as a list. OpenStreetMap's public tiles are meant for light use —
 for real traffic switch the tile URL in `src/components/hotel/HotelMap.tsx` to a tile provider.
 
 ## 7. API

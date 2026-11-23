@@ -41,6 +41,21 @@
 }
 .leaflet-marker-icon:focus-visible { outline: none; }
 
+/* Cluster pin: several hotels whose pins would overlap */
+.hotel-pin-cluster { background: var(--ink); color: #fff; border-color: var(--ink); }
+.hotel-pin-cluster b { font-weight: 600; }
+.hotel-pin-cluster.is-active,
+.leaflet-marker-icon:hover .hotel-pin-cluster { background: var(--accent); border-color: var(--accent); }
+
+/* List popup for hotels at the same spot */
+.hotel-map-popup-list { list-style: none; margin: 4px 0 0; padding: 0; max-height: 220px; overflow-y: auto; }
+.hotel-map-popup-row {
+  display: flex; justify-content: space-between; gap: 12px; width: 100%;
+  padding: 8px 6px; border-radius: var(--r-sm); text-align: left; font-size: 13px; color: var(--ink);
+}
+.hotel-map-popup-row:hover, .hotel-map-popup-row:focus-visible { background: var(--accent-soft); }
+.hotel-map-popup-row-price { font-weight: 600; white-space: nowrap; }
+
 /* Popup */
 .hotel-map .leaflet-popup-content-wrapper { border-radius: var(--r-lg); box-shadow: var(--shadow-md); }
 .hotel-map .leaflet-popup-content { margin: 12px; }

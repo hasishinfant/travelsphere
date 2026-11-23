@@ -4,14 +4,18 @@ import { describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import HotelSearchResults from './HotelSearchResults';
 import type { HotelSearchResult } from '../../services/hotelSearchService';
-import { criteria, hotelResult } from '../../tests/hotelFixtures';
+import { criteria, hotelResult, sizeHotelMaps } from '../../tests/hotelFixtures';
+
+sizeHotelMaps();
 
 const results = (over: Partial<HotelSearchResult> = {}): HotelSearchResult => {
   const hotels = [
     hotelResult(),
     hotelResult({ bookingCode: 'b', hotelCode: 'b', hotelName: 'Breakfast Inn', starRating: 3, refundable: true,
+      latitude: 48.89, longitude: 2.30,
       mealType: 'Breakfast Included', price: { currency: 'EUR', offeredPrice: 120, publishedPrice: 120, discount: 0 } }),
     hotelResult({ bookingCode: 'c', hotelCode: 'c', hotelName: 'Aurora Palace', starRating: 5, mealType: 'Half Board',
+      latitude: 48.83, longitude: 2.39,
       price: { currency: 'EUR', offeredPrice: 410, publishedPrice: 410, discount: 0 }, hotelPicture: '' }),
   ];
   return { hotels, searchCriteria: criteria(), totalResults: hotels.length, sandbox: false, ...over };

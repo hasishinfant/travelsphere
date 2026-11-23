@@ -94,3 +94,13 @@ export const session = (over: Partial<HotelBookingSession> = {}): HotelBookingSe
   expiresAt: new Date(Date.now() + 30 * 60_000),
   ...over,
 });
+
+/**
+ * jsdom has no layout, so a Leaflet map is 0×0 and every pin lands on the same pixel (and clusters).
+ * Give `.hotel-map` elements a real size so zoom and clustering behave as in a browser.
+ */
+export const sizeHotelMaps = (width = 800, height = 400) => {
+  const size = (dim: number) => ({ configurable: true, get(this: HTMLElement) { return this.classList?.contains('hotel-map') ? dim : 0; } });
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', size(width));
+  Object.defineProperty(HTMLElement.prototype, 'clientHeight', size(height));
+};
