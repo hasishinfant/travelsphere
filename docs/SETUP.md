@@ -67,7 +67,9 @@ cd risk-service && .venv/bin/python -m pytest -q                      # risk eng
 
 Sandbox searches return real hotels and prices; bookings are simulated and nothing is charged. A production key bills the
 LiteAPI account, so live bookings stay disabled unless `LITEAPI_ENV=production` **and**
-`LITEAPI_ALLOW_LIVE_BOOKINGS=true` are both set. The key is only ever used by the server.
+`LITEAPI_ALLOW_LIVE_BOOKINGS=true` are both set. In sandbox mode the server also checks the key itself: prebook and
+book are refused (403 `live_booking_disabled`) unless the key is a sandbox key (`sand_…`), so a production key left in a
+sandbox configuration cannot create a billed reservation. The key is only ever used by the server.
 
 ## 7. API
 

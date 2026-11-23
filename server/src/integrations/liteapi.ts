@@ -116,6 +116,8 @@ export interface CancelResult {
 
 export interface HotelProvider {
   readonly env: 'sandbox' | 'production';
+  /** Whether the API key itself is a sandbox key (LiteAPI prefixes them `sand_`); anything else can bill the account. */
+  readonly sandboxKey: boolean;
   search(input: HotelSearchInput): Promise<{ hotels: HotelSearchHit[]; sandbox: boolean | null }>;
   details(hotelId: string): Promise<HotelDetails>;
   prebook(offerId: string): Promise<PrebookResult>;
@@ -226,6 +228,7 @@ export function createLiteApi(opts: { apiKey: string; env: 'sandbox' | 'producti
 
   return {
     env: opts.env,
+    sandboxKey: opts.apiKey.startsWith('sand_'),
 
     async search(input) {
       const location = input.cityName && input.countryCode

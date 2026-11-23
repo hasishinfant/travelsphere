@@ -90,6 +90,15 @@ export function hotelsRouter(db: Db, provider: HotelProvider | null, opts: { all
     return provider;
   };
   const liveAllowed = () => opts.allowLiveBookings;
+  // Live bookings need LITEAPI_ENV=production AND LITEAPI_ALLOW_LIVE_BOOKINGS=true. In sandbox mode only a sandbox key may
+  // reach prebook/book, so a production key put in a sandbox configuration can never create a billed reservation.
+  const assertMayBook = (p: HotelProvider) => {
+    if (p.env === 'production' ? !liveAllowed() : !p.sandboxKey) {
+      throw new HttpError(403, 'live_booking_disabled', p.env === 'production'
+        ? 'Live hotel bookings are disabled on this server'
+        : 'LITEAPI_ENV is sandbox but LITEAPI_API_KEY is not a sandbox key; bookings are blocked');
+    }
+  };
 
   r.get('/status', (_req, res) => {
     res.json({ configured: !!provider, environment: provider?.env ?? null,
@@ -110,6 +119,7 @@ export function hotelsRouter(db: Db, provider: HotelProvider | null, opts: { all
   r.post('/prebook', searchLimiter, route(async (req, res) => {
     const { offer_id } = parse(Prebook, req.body);
     const p = need();
+    assertMayBook(p);
     const result = await p.prebook(offer_id);
     // A production account used in sandbox mode would create real reservations — stop before booking
     if (result.sandbox === false && !liveAllowed()) {
@@ -122,9 +132,7 @@ export function hotelsRouter(db: Db, provider: HotelProvider | null, opts: { all
   r.post('/book', bookLimiter, route(async (req, res) => {
     const b = parse(Book, req.body);
     const p = need();
-    if (p.env === 'production' && !liveAllowed()) {
-      throw new HttpError(403, 'live_booking_disabled', 'Live hotel bookings are disabled on this server');
-    }
+    assertMayBook(p);
     const holder = { firstName: b.holder.first_name, lastName: b.holder.last_name, email: b.holder.email, phone: b.holder.phone };
     const clientReference = `ts-${randomUUID()}`;
     const booking = await p.book({

@@ -118,15 +118,16 @@ describe('LiteAPI client', () => {
 let db: Db;
 const calls: string[] = [];
 let prebookSandbox: boolean | null = true;
-const fakeProvider = (env: 'sandbox' | 'production'): HotelProvider => ({
+const fakeProvider = (env: 'sandbox' | 'production', sandboxKey = env === 'sandbox'): HotelProvider => ({
   env,
+  sandboxKey,
   search: async () => ({ hotels: [], sandbox: env === 'sandbox' }),
   details: async id => ({ hotelId: id, name: 'Hotel Lumière', description: '', address: '', city: 'Paris', countryCode: 'FR',
     starRating: 4, images: [], facilities: [], latitude: null, longitude: null, checkinTime: null, checkoutTime: null,
     importantInformation: null }),
-  prebook: async offerId => ({ prebookId: `pb-${offerId}`, offerId, hotelId: 'lp1897', price: 240, currency: 'USD',
-    priceDifferencePercent: 0, cancellationChanged: false, boardChanged: false, refundable: true, cancellation: 'Free cancellation',
-    sandbox: prebookSandbox }),
+  prebook: async offerId => { calls.push(`prebook:${offerId}`); return { prebookId: `pb-${offerId}`, offerId, hotelId: 'lp1897',
+    price: 240, currency: 'USD', priceDifferencePercent: 0, cancellationChanged: false, boardChanged: false, refundable: true,
+    cancellation: 'Free cancellation', sandbox: prebookSandbox }; },
   book: async input => { calls.push(`book:${input.prebookId}`); return { bookingId: `bk-${input.prebookId}`, status: 'CONFIRMED',
     price: 240, currency: 'USD', checkin: inDays(30), checkout: inDays(32), hotelName: 'Hotel Lumière', sandbox: env === 'sandbox' }; },
   getBooking: async id => ({ bookingId: id, status: 'CONFIRMED', price: 240, currency: 'USD', checkin: inDays(30),
@@ -231,7 +232,20 @@ describe('hotel routes', () => {
     const mixed = appWith(fakeProvider('sandbox'));
     const pre = await request(mixed).post('/api/v1/hotels/prebook').set(as(t)).send({ offer_id: 'o1' });
     expect(pre.status).toBe(403);
+    expect(calls).toEqual(['prebook:o1']);           // this check needs the provider's answer, so prebook does run
     prebookSandbox = true;
+    calls.length = 0;
+
+    // A production key in a sandbox configuration never reaches the provider, even if the client skips prebook
+    // and even with LITEAPI_ALLOW_LIVE_BOOKINGS=true (live bookings also need LITEAPI_ENV=production)
+    for (const allow of [false, true]) {
+      const prodKey = appWith(fakeProvider('sandbox', false), allow);
+      const bk = await request(prodKey).post('/api/v1/hotels/book').set(as(t)).send(bookBody('pb-prodkey'));
+      expect(bk.status).toBe(403);
+      expect(bk.body.error.code).toBe('live_booking_disabled');
+      expect((await request(prodKey).post('/api/v1/hotels/prebook').set(as(t)).send({ offer_id: 'o2' })).status).toBe(403);
+    }
+    expect(calls).toEqual([]);
 
     const allowed = appWith(fakeProvider('production'), true);
     expect((await request(allowed).post('/api/v1/hotels/book').set(as(t)).send(bookBody('pb-live-ok'))).status).toBe(201);
