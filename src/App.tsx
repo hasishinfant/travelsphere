@@ -61,7 +61,7 @@ const App: React.FC = () => {
   const [authReady, setAuthReady] = React.useState(false);
 
   // Use basename only in production
-  const basename = import.meta.env.PROD ? '/TravelSphere' : '/';
+  const basename = import.meta.env.PROD ? '/travelsphere' : '/';
 
   React.useEffect(() => {
     // Guest / offline mode: no auth backend configured.

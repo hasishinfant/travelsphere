@@ -85,7 +85,7 @@ export function persistLocalUser(profile: AuthProfile) {
 
 export async function sendPasswordReset(email: string): Promise<void> {
   const { error } = await requireSupabase().auth.resetPasswordForEmail(email, {
-    // Respect the deploy base path (e.g. /TravelSphere/ on GitHub Pages)
+    // Respect the deploy base path (e.g. /travelsphere/ on GitHub Pages)
     redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
   });
   if (error) throw new Error(error.message);

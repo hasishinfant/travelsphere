@@ -5,7 +5,7 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  base: mode === 'production' ? '/TravelSphere/' : '/', // GitHub Pages project path
+  base: mode === 'production' ? '/travelsphere/' : '/', // GitHub Pages serves the project at the lowercase repo path
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
