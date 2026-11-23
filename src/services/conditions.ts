@@ -29,7 +29,8 @@ export interface HazardClimate {
   period_days: number;
   scope: 'destination' | 'journey';
   p_week: number;
-  annual_rate: number;         // cyclones: passes per year; floods: weeks per year with a large flood nearby
+  annual_rate: number;         // occurrences per year (Poisson rate, -ln(1-p) summed): used for cyclone passes
+  expected_weeks_per_year?: number;  // sum of weekly probabilities: used for flood-affected weeks (absent in older data)
   peak_week_start: string;     // e.g. "20 Aug"
   p_peak_week: number;
   monthly_p_week: number[];    // 12 values, Jan..Dec: chance in a typical week of that month

@@ -8,6 +8,8 @@ import type { DestinationAssessment, RiskService } from '../integrations/riskSer
 const Outlook = z.object({
   p_period: z.number().min(0).max(1), period_days: z.number(), scope: z.enum(['destination', 'journey']),
   p_week: z.number().min(0).max(1), annual_rate: z.number().min(0), peak_week_start: z.string(),
+  // expected affected weeks per year (floods); absent in assessments stored before it existed
+  expected_weeks_per_year: z.number().min(0).optional(),
   p_peak_week: z.number().min(0).max(1), monthly_p_week: z.array(z.number().min(0).max(1)).length(12),
   years: z.tuple([z.number(), z.number()]), definition: z.string(),
 });

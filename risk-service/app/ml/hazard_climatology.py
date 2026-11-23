@@ -81,14 +81,18 @@ class Climatology:
             log_none += (step / 7) * math.log1p(-min(float(p[w]), 0.999999))
             t += timedelta(days=step)
             remaining -= step
+        # Poisson rate of occurrences per year (cyclone passes): -ln(1-p) summed over the year
         annual_rate = float(-np.log1p(-np.minimum(p, 0.999999)).sum() * 365.25 / 7 / WEEKS)
+        # Expected number of affected weeks per year: the weekly probabilities summed. Not the same as the rate —
+        # with p = 0.5 every week this is ~26.1, while the rate is ~36.2
+        expected_weeks = float(p.sum() * 365.25 / 7 / WEEKS)
         peak = int(np.argmax(p))
         # Seasonal profile: mean weekly probability of the weeks starting in each calendar month
         months = (datetime(2001, 1, 1) + np.arange(WEEKS) * timedelta(weeks=1)).astype("datetime64[M]").astype(int) % 12
         monthly = [float(p[months == m].mean()) for m in range(12)]
         return {"p_period": 1 - math.exp(log_none), "period_days": round(days, 2),
                 "p_week": float(p[int(week_of_year(pd.DatetimeIndex([start]))[0])]),
-                "annual_rate": annual_rate, "peak_week_start": (datetime(2001, 1, 1) + timedelta(weeks=peak)).strftime("%d %b"),
+                "annual_rate": annual_rate, "expected_weeks_per_year": expected_weeks, "peak_week_start": (datetime(2001, 1, 1) + timedelta(weeks=peak)).strftime("%d %b"),
                 "p_peak_week": float(p[peak]), "monthly_p_week": monthly}
 
 

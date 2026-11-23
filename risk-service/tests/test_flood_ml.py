@@ -94,3 +94,19 @@ def test_outlook_carries_a_monthly_profile_for_the_season_chart():
     assert len(monthly) == 12
     assert monthly.index(max(monthly)) == 6                        # July is the peak month
     assert monthly[0] == pytest.approx(0, abs=1e-3)                # January quiet
+
+
+def test_flood_weeks_are_expected_weeks_and_cyclone_keeps_the_poisson_rate():
+    from app.risk_engine.factors import historical_incident_risk as f6
+    from tests.conftest import NOW
+    c = flat_climatology(0.5)
+    o = c.period(34.9986, 135.785, NOW, NOW + timedelta(days=7))
+    assert o["expected_weeks_per_year"] == pytest.approx(0.5 * 365.25 / 7, rel=1e-6)     # ~26.1
+    assert o["annual_rate"] == pytest.approx(-np.log(0.5) * 365.25 / 7, rel=1e-6)          # ~36.2
+    h = history()
+    h.flood_climatology = flat_climatology(0.5)
+    h.cyclone_climatology = flat_climatology(0.5)
+    f = f6.compute(ctx(history=h))
+    assert "affected in about 26.1 weeks a year here" in f.explanation
+    assert "about 36.17 per year here" in f.explanation                                  # cyclone: rate, unchanged
+    assert f.inputs["flood"]["expected_weeks_per_year"] == pytest.approx(26.089, abs=1e-3)

@@ -16,7 +16,8 @@ const NOV = new Date(2026, 10, 23);
 describe('HazardOutlook', () => {
   it('shows the 7-day chance, yearly rate, peak and source for each hazard', () => {
     render(<HazardOutlook now={NOV} outlook={{ cyclone: climate(),
-      flood: climate({ p_period: 0.0063, annual_rate: 0.56, peak_week_start: '29 Jan', years: [1985, 2021] }), unavailable: {} }} />);
+      flood: climate({ p_period: 0.0063, annual_rate: 0.57, expected_weeks_per_year: 0.56, peak_week_start: '29 Jan',
+        years: [1985, 2021] }), unavailable: {} }} />);
     const cyclone = screen.getByRole('article', { name: 'Tropical cyclone' });
     expect(within(cyclone).getByText('0.3%')).toBeInTheDocument();
     expect(within(cyclone).getByText(/a tropical storm or stronger passing within 100 km in the next 7 days/)).toBeInTheDocument();
@@ -57,9 +58,25 @@ describe('HazardOutlook', () => {
     expect(screen.getByText(/About less than 0\.05 a year/)).toBeInTheDocument();
   });
 
-  it('renders nothing without an outlook (older assessments)', () => {
-    const { container } = render(<HazardOutlook outlook={null} />);
-    expect(container).toBeEmptyDOMElement();
+  it('counts flood weeks as expected weeks, not the occurrence rate, and keeps the rate for cyclones', () => {
+    // every week at 0.5: expected weeks 0.5 × 52.18 ≈ 26.1, occurrence rate −ln(0.5) × 52.18 ≈ 36.2
+    const half = { p_period: 0.5, p_week: 0.5, annual_rate: 36.17, expected_weeks_per_year: 26.09 };
+    render(<HazardOutlook now={NOV} outlook={{ cyclone: climate(half), flood: climate(half), unavailable: {} }} />);
+    expect(within(screen.getByRole('article', { name: 'Large flood' })).getByText(/^About 26\.1 weeks a year/)).toBeInTheDocument();
+    expect(screen.queryByText(/36\.2 weeks/)).not.toBeInTheDocument();
+    expect(within(screen.getByRole('article', { name: 'Tropical cyclone' })).getByText(/^About 36\.17 a year/)).toBeInTheDocument();
+  });
+
+  it('leaves out the weeks figure for floods when older data lack it', () => {
+    render(<HazardOutlook now={NOV} outlook={{ cyclone: null, flood: climate({ annual_rate: 0.57 }), unavailable: {} }} />);
+    const flood = screen.getByRole('article', { name: 'Large flood' });
+    expect(within(flood).getByText('Most likely around 20 Aug')).toBeInTheDocument();
+    expect(within(flood).queryByText(/weeks a year/)).not.toBeInTheDocument();
+  });
+
+  it('renders nothing without an outlook (older assessments: null or the property missing)', () => {
+    expect(render(<HazardOutlook outlook={null} />).container).toBeEmptyDOMElement();
+    expect(render(<HazardOutlook outlook={undefined} />).container).toBeEmptyDOMElement();
   });
 
   it('rounds like the risk service', () => {

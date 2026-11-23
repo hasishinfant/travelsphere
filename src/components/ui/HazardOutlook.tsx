@@ -17,7 +17,8 @@ export function formatChance(p: number): string {
 const HAZARDS = {
   cyclone: {
     title: 'Tropical cyclone', Icon: Tornado,
-    rate: (r: number) => `About ${r < 0.05 ? 'less than 0.05' : r.toFixed(2)} a year`,
+    // occurrences per year (Poisson rate)
+    rate: (d: HazardClimate) => `About ${d.annual_rate < 0.05 ? 'less than 0.05' : d.annual_rate.toFixed(2)} a year`,
     event: 'a tropical storm or stronger passing within 100 km',
     source: 'NOAA IBTrACS storm tracks',
     caveat: null as string | null,
@@ -25,7 +26,9 @@ const HAZARDS = {
   },
   flood: {
     title: 'Large flood', Icon: Waves,
-    rate: (r: number) => `About ${r < 0.05 ? 'less than 0.05' : r.toFixed(1)} weeks a year`,
+    // expected affected weeks (sum of weekly chances), not the Poisson rate; omitted when older data lack it
+    rate: (d: HazardClimate) => d.expected_weeks_per_year === undefined ? null
+      : `About ${d.expected_weeks_per_year < 0.05 ? 'less than 0.05' : d.expected_weeks_per_year.toFixed(1)} weeks a year`,
     event: 'a large flood affecting the area within 100 km',
     source: 'Dartmouth Flood Observatory records',
     caveat: 'Tends to run about 20% high.',
@@ -70,7 +73,9 @@ const HazardCard: React.FC<{ hazardKey: Key; data: HazardClimate | null; reason?
           <p className="hz-figure-label">
             chance of {h.event} {data.scope === 'journey' ? `during the trip (${Math.round(data.period_days)} days)` : 'in the next 7 days'}
           </p>
-          <p className="hz-rate">{h.rate(data.annual_rate)} · most likely around {data.peak_week_start}</p>
+          <p className="hz-rate">
+            {[h.rate(data), `${h.rate(data) ? 'most' : 'Most'} likely around ${data.peak_week_start}`].filter(Boolean).join(' · ')}
+          </p>
           <MonthStrip values={data.monthly_p_week} current={month} />
           <p className="hz-source">
             From {h.source}, {data.years[0]}–{data.years[1]}.{h.caveat ? ` ${h.caveat}` : ''}

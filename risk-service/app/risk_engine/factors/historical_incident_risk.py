@@ -69,13 +69,13 @@ CLIMATOLOGIES = {
     "cyclone": {"attr": "cyclone_climatology", "label": "Cyclone", "model": "ibtracs-climatology",
                 "area": "45° S – 45° N, land and coast",
                 "event": "a tropical storm or stronger passing within 100 km",
-                "rate": "about {r:.2f} per year here",
+                "rate": "about {r:.2f} per year here", "rate_field": "annual_rate",
                 "definition": "tropical storm or stronger (≥ 34 kt) passing within 100 km",
                 "note": "IBTrACS climatology, calibrated on 2018–2026"},
     "flood": {"attr": "flood_climatology", "label": "Flood", "model": "dfo-climatology",
               "area": "56° S – 72° N, land",
               "event": "a large flood affecting the area within 100 km",
-              "rate": "affected in about {r:.1f} weeks a year here",
+              "rate": "affected in about {r:.1f} weeks a year here", "rate_field": "expected_weeks_per_year",
               "definition": "a large flood's mapped affected area within 100 km (Dartmouth Flood Observatory)",
               "note": ("Dartmouth Flood Observatory record 1985–2021, tested on 2015–2021 (about 20% high); "
                        "data licensed for non-commercial use")},
@@ -112,7 +112,7 @@ def outlook_text(o: dict) -> str:
         span = "the next 7 days"
     y0, y1 = (o.get("years") or ["?", "now"])
     return (f"{spec['label']} history {y0}–{y1}: {_pct(o['p_period'])} chance of {spec['event']} during {span}; "
-            f"{spec['rate'].format(r=o['annual_rate'])}, most likely around {o['peak_week_start']}")
+            f"{spec['rate'].format(r=o[spec['rate_field']])}, most likely around {o['peak_week_start']}")
 
 
 def outlook_inputs(o: dict | None) -> dict | None:
@@ -121,6 +121,7 @@ def outlook_inputs(o: dict | None) -> dict | None:
     return {"p_period": round(o["p_period"], 5), "period_days": o["period_days"], "scope": o["scope"],
             "period_start": o["period_start"].isoformat(), "period_end": o["period_end"].isoformat(),
             "p_week": round(o["p_week"], 5), "annual_rate": round(o["annual_rate"], 3),
+            "expected_weeks_per_year": round(o["expected_weeks_per_year"], 3),
             "peak_week_start": o["peak_week_start"], "p_peak_week": round(o["p_peak_week"], 4),
             "monthly_p_week": [round(v, 5) for v in o.get("monthly_p_week", [])],
             "years": o["years"], "model": o["model"], "definition": o["definition"]}
