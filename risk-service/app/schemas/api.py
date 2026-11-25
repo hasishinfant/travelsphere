@@ -23,6 +23,19 @@ class Coordinate(BaseModel):
         return self
 
 
+class CountryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
+class FacilitiesRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    radius_m: Literal[2000, 5000, 10000, 25000] = 5000
+
+
 class DestinationAssessmentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     destination_id: str = Field(pattern=r"^[a-z0-9-]{2,40}$")

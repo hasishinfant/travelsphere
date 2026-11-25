@@ -45,30 +45,45 @@ export function createFcmSender(projectId: string, serviceAccountJson: string, f
   };
 }
 
-/** Deliver pending risk warnings to users who enabled push and registered an FCM token. */
+/**
+ * Deliver pending notifications by push:
+ *   - risk warnings to users who enabled push, at or above their minimum level;
+ *   - incident alerts (new SOS / urgent incidents, to responders) and incident updates (to the reporter) to anyone
+ *     with a registered device — registering a device is the opt-in.
+ * 'sent' records that FCM ACCEPTED the message for delivery. It does not mean the device showed it or a person saw it.
+ * Without a sender or a device token the notification stays 'pending' and remains visible in-app.
+ */
 export async function dispatchPending(db: Db, sender: PushSender | null, limit = 50): Promise<{ sent: number; failed: number }> {
+  if (!sender) return { sent: 0, failed: 0 };
   const { rows } = await db.query(
-    `select n.id, n.user_id, n.title, n.body, n.risk_level, n.safety_alert_id
+    `select n.id, n.user_id, n.kind, n.title, n.body, n.risk_level, n.safety_alert_id, n.incident_id
      from public.notifications n join public.profiles p on p.id = n.user_id
-     where n.delivery_status = 'pending' and n.kind = 'risk_warning' and (n.expires_at is null or n.expires_at > now())
-       and coalesce((p.notification_preferences ->> 'web_push')::boolean, false)
-       and array_position(array['LOW','MODERATE','HIGH','CRITICAL'], n.risk_level)
-           >= array_position(array['LOW','MODERATE','HIGH','CRITICAL'], coalesce(p.notification_preferences ->> 'min_risk_level', 'MODERATE'))
-     order by n.created_at limit $1`, [limit]);
+     where n.delivery_status = 'pending' and (n.expires_at is null or n.expires_at > now())
+       and exists (select 1 from public.device_tokens t where t.user_id = n.user_id and t.platform = 'fcm')
+       and (n.kind in ('incident_alert', 'incident_update') or (n.kind = 'risk_warning'
+         and coalesce((p.notification_preferences ->> 'web_push')::boolean, false)
+         and array_position(array['LOW','MODERATE','HIGH','CRITICAL'], n.risk_level)
+             >= array_position(array['LOW','MODERATE','HIGH','CRITICAL'], coalesce(p.notification_preferences ->> 'min_risk_level', 'MODERATE'))))
+     order by case n.kind when 'incident_alert' then 0 when 'incident_update' then 1 else 2 end, n.created_at limit $1`, [limit]);
   let sent = 0;
   let failed = 0;
   for (const n of rows) {
     const { rows: tokens } = await db.query(
       `select id, token from public.device_tokens where user_id = $1 and platform = 'fcm'`, [n.user_id]);
-    if (!sender || !tokens.length) continue; // stays pending → visible in-app; delivered once push is available
+    const data: Record<string, string> = { kind: n.kind, alert_id: String(n.safety_alert_id ?? ''), level: n.risk_level ?? '',
+      incident_id: String(n.incident_id ?? '') };
     let ok = false;
+    const errors: string[] = [];
     for (const t of tokens) {
-      const r = await sender.send(t.token, n.title, n.body, { alert_id: String(n.safety_alert_id ?? ''), level: n.risk_level ?? '' })
-        .catch(() => 'failed' as const);
+      const r = await sender.send(t.token, n.title, n.body, data).catch(() => 'failed' as const);
       if (r === 'sent') ok = true;
+      else errors.push(r);
       if (r === 'invalid_token') await db.query('delete from public.device_tokens where id = $1', [t.id]);
     }
-    await db.query(`update public.notifications set delivery_status = $2, channel = 'fcm' where id = $1`, [n.id, ok ? 'sent' : 'failed']);
+    const error = ok ? null : errors.length ? `push not accepted: ${[...new Set(errors)].join(', ')}` : 'no device token';
+    await db.query(
+      `update public.notifications set delivery_status = $2, channel = 'fcm', delivery_error = $3, delivery_attempted_at = now()
+       where id = $1`, [n.id, ok ? 'sent' : 'failed', error]);
     if (ok) sent++; else failed++;
   }
   return { sent, failed };

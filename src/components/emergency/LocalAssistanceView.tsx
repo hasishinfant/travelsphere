@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   Compass, ArrowLeft, CheckCircle2, MapPin, 
   Phone, ShieldCheck, Clock, Navigation, Check, 
   HelpCircle, MessageSquare, AlertCircle, Car, Languages
 } from 'lucide-react';
-import { 
-  complaintService, 
-  LocalAssistanceRecord 
-} from '@/services/complaintService';
+import {
+  newRequestId, registerIncident, SubmitError, FAILURE_MESSAGE, type Registration,
+} from '@/services/emergency';
+import { IncidentNotRegistered, IncidentRegistered } from './IncidentOutcome';
+
+type AssistanceType = 'directions' | 'transportation' | 'translation' | 'safety' | 'lost_item' | 'other';
+type Urgency = 'high' | 'medium' | 'standard';
+const ASSISTANCE_LABEL: Record<AssistanceType, string> = {
+  transportation: 'transport', directions: 'directions', translation: 'translation', safety: 'local safety',
+  lost_item: 'lost belongings', other: 'general question',
+};
 
 interface LocalAssistanceViewProps {
   onBack: () => void;
@@ -18,13 +25,13 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
   onBack,
   onSuccessTrack,
 }) => {
-  const [assistanceType, setAssistanceType] = useState<LocalAssistanceRecord['assistanceType']>('transportation');
+  const [assistanceType, setAssistanceType] = useState<AssistanceType>('transportation');
   const [location, setLocation] = useState<string>('');
   const [latitude, setLatitude] = useState<number | undefined>();
   const [longitude, setLongitude] = useState<number | undefined>();
   const [description, setDescription] = useState<string>('');
-  const [urgency, setUrgency] = useState<LocalAssistanceRecord['urgency']>('standard');
-  const [contactNumber, setContactNumber] = useState<string>('+1 (555) 234-5678');
+  const [urgency, setUrgency] = useState<Urgency>('standard');
+  const [contactNumber, setContactNumber] = useState<string>('');
   const [contactPreference, setContactPreference] = useState<'phone' | 'email' | 'whatsapp'>('whatsapp');
 
   // UI state
@@ -32,12 +39,14 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
   const [locationSuccessMsg, setLocationSuccessMsg] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submittedRecord, setSubmittedRecord] = useState<LocalAssistanceRecord | null>(null);
+  const [registration, setRegistration] = useState<Registration | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const requestId = useRef(newRequestId());
 
   // Browser Geolocation
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
+      setFormErrors(prev => ({ ...prev, location: 'This browser cannot share a location. Type your location instead.' }));
       return;
     }
 
@@ -56,9 +65,10 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
         setIsLocating(false);
       },
       (error) => {
-        console.warn('Geolocation error:', error.message);
         setIsLocating(false);
-        alert('Could not detect position. Please type your location manually.');
+        setFormErrors(prev => ({ ...prev, location: error.code === 1
+          ? 'Location permission is blocked. Type your location instead.'
+          : 'Your device could not find a location. Type your location instead.' }));
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
@@ -79,103 +89,49 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
 
     if (!contactNumber.trim()) {
       errors.contactNumber = 'Contact phone number is required.';
+    } else if (!/^[+()\d\s.-]{7,32}$/.test(contactNumber.trim())) {
+      errors.contactNumber = 'Use digits, spaces and + ( ) - only, at least 7 characters.';
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!validate() || isSubmitting) return;
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      const record = await complaintService.submitLocalAssistance({
-        assistanceType,
-        location: location.trim(),
-        latitude,
-        longitude,
+      const gps = latitude !== undefined && longitude !== undefined;
+      setRegistration(await registerIncident({
+        category: 'assistance',
+        title: `Local help: ${ASSISTANCE_LABEL[assistanceType]}`,
         description: description.trim(),
-        urgency,
-        contactNumber: contactNumber.trim(),
-        contactPreference,
-      });
-
-      setSubmittedRecord(record);
+        client_request_id: requestId.current,
+        ...(gps ? { latitude, longitude } : {}),
+        details: {
+          assistance_type: assistanceType,
+          urgency,
+          location_text: location.trim(),
+          location_status: gps ? 'captured' : 'manual',
+          contact_number: contactNumber.trim(),
+          contact_preference: contactPreference,
+        },
+      }));
     } catch (err) {
-      console.error('Failed to submit local assistance request:', err);
-      alert('Failed to log local assistance request. Please try again.');
+      setSubmitError(err instanceof SubmitError ? err.message : FAILURE_MESSAGE.server);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // SUCCESS CONFIRMATION VIEW
-  if (submittedRecord) {
+  if (registration) {
     return (
       <div className="emergency-form-container">
-        <div className="success-confirmation-card">
-          <div className="success-icon-badge badge-local">
-            <CheckCircle2 size={40} className="text-amber-500" />
-          </div>
-
-          <span className="success-pretitle">Concierge Request Queued</span>
-          <h2 className="success-title">Local Assistance Initiated</h2>
-          <p className="success-desc">
-            Your request for on-the-ground support in <strong>{submittedRecord.location}</strong> has been received. 
-            Our regional concierge team is matching your case with local travel guides and operators.
-          </p>
-
-          <div className="reference-code-box">
-            <span className="ref-label">Local Request Reference ID</span>
-            <div className="ref-code">{submittedRecord.id}</div>
-            <span className="ref-hint">Keep this reference handy for quick lookup with our support agents.</span>
-          </div>
-
-          <div className="success-details-summary">
-            <div className="summary-row">
-              <span className="sum-label">Assistance Type</span>
-              <span className="sum-val capitalize">{submittedRecord.assistanceType.replace('_', ' ')}</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Current Location</span>
-              <span className="sum-val">{submittedRecord.location}</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Urgency</span>
-              <span className="sum-val capitalize font-medium">{submittedRecord.urgency}</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Contact</span>
-              <span className="sum-val">{submittedRecord.contactNumber} ({submittedRecord.contactPreference})</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Status</span>
-              <span className="status-pill status-submitted">
-                <span className="status-dot"></span> Under Review
-              </span>
-            </div>
-          </div>
-
-          <div className="success-actions">
-            <button 
-              type="button" 
-              className="btn-primary-green flex-1"
-              onClick={() => onSuccessTrack(submittedRecord.id)}
-            >
-              <Clock size={18} />
-              <span>Track Concierge Response</span>
-            </button>
-            <button 
-              type="button" 
-              className="btn-outline-neutral"
-              onClick={onBack}
-            >
-              Back to Support Hub
-            </button>
-          </div>
-        </div>
+        <IncidentRegistered registration={registration}
+          locationNote={latitude === undefined ? `Not included as GPS coordinates. You typed: “${location.trim()}”.` : null}
+          onTrack={() => onSuccessTrack(registration.incident.id)} onBack={onBack} />
       </div>
     );
   }
@@ -201,11 +157,13 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
           <div>
             <h1 className="form-title">Local Travel Assistance</h1>
             <p className="form-subtitle">
-              Get on-the-ground support for transit disruption, translations, lost baggage, or local safety advisories.
+              Record a request for local help with TravelSphere. TravelSphere responder accounts can see it; there is no guaranteed response time.
             </p>
           </div>
         </div>
       </div>
+
+      {submitError && <IncidentNotRegistered message={submitError} onRetry={() => handleSubmit()} retrying={isSubmitting} />}
 
       <form onSubmit={handleSubmit} className="complaint-card-form" noValidate>
         {/* Section 1: Request Category & Urgency */}
@@ -227,7 +185,7 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
                 id="assistanceType"
                 className="select-input"
                 value={assistanceType}
-                onChange={(e) => setAssistanceType(e.target.value as any)}
+                onChange={(e) => setAssistanceType(e.target.value as AssistanceType)}
               >
                 <option value="transportation">Transport Disruption / Stranded / Taxi Dispute</option>
                 <option value="directions">Directions / Navigation / Safe Neighborhood Routing</option>
@@ -252,7 +210,7 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
                     key={item.value}
                     type="button"
                     className={`urgency-chip ${urgency === item.value ? 'selected urgency-' + item.value : ''}`}
-                    onClick={() => setUrgency(item.value as any)}
+                    onClick={() => setUrgency(item.value as Urgency)}
                   >
                     <span className="urgency-title">{item.label}</span>
                     <span className="urgency-sub">{item.desc}</span>
@@ -269,7 +227,7 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
             <span className="section-step-num">2</span>
             <div className="section-title-content">
               <h3>Where Are You?</h3>
-              <p>Help us find local contacts nearest to your current spot</p>
+              <p>Where you are, so a responder knows where you need help</p>
             </div>
           </div>
 
@@ -340,7 +298,7 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
             <span className="section-step-num">3</span>
             <div className="section-title-content">
               <h3>Contact Information</h3>
-              <p>Where our local travel coordinator should send directions and answers</p>
+              <p>How a TravelSphere responder can reach you</p>
             </div>
           </div>
 
@@ -405,12 +363,12 @@ export const LocalAssistanceView: React.FC<LocalAssistanceViewProps> = ({
             {isSubmitting ? (
               <>
                 <span className="submit-spinner"></span>
-                <span>Submitting Request...</span>
+                <span>Creating incident…</span>
               </>
             ) : (
               <>
                 <ShieldCheck size={18} />
-                <span>Submit Local Assistance Request</span>
+                <span>Register local-help request</span>
               </>
             )}
           </button>

@@ -207,7 +207,8 @@ def cached_facilities(lat: float, lon: float, radius_m: int, max_age_days: int =
                                  where latitude between :lat0 and :lat1 and longitude between :lon0 and :lon1"""),
                          _bbox(lat, lon, radius_m)).all()
     return [Facility(osm_id=r.osm_id, kind=r.kind, name=r.name, latitude=r.latitude, longitude=r.longitude,
-                     has_emergency=r.has_emergency) for r in rows]
+                     has_emergency=r.has_emergency, phone=getattr(r, "phone", None),
+                     healthcare=getattr(r, "healthcare", None), retrieved_at=r.retrieved_at) for r in rows]
 
 
 def store_facilities(lat: float, lon: float, radius_m: int, facilities: list[Facility]) -> None:
@@ -215,16 +216,20 @@ def store_facilities(lat: float, lon: float, radius_m: int, facilities: list[Fac
         return
     with tx() as c:
         for f in facilities:
-            c.execute(text("""insert into public.emergency_facilities (osm_id, kind, name, latitude, longitude, has_emergency)
-                              values (:id, :k, :n, :lat, :lon, :e)
+            c.execute(text("""insert into public.emergency_facilities (osm_id, kind, name, latitude, longitude, has_emergency,
+                                phone, healthcare)
+                              values (:id, :k, :n, :lat, :lon, :e, :ph, :hc)
                               on conflict (osm_id) do update set kind = excluded.kind, name = excluded.name,
                                 latitude = excluded.latitude, longitude = excluded.longitude,
-                                has_emergency = excluded.has_emergency, retrieved_at = now()"""),
-                      {"id": f.osm_id, "k": f.kind, "n": f.name, "lat": f.latitude, "lon": f.longitude, "e": f.has_emergency})
+                                has_emergency = excluded.has_emergency, phone = excluded.phone,
+                                healthcare = excluded.healthcare, retrieved_at = now()"""),
+                      {"id": f.osm_id, "k": f.kind, "n": f.name, "lat": f.latitude, "lon": f.longitude, "e": f.has_emergency,
+                       "ph": f.phone, "hc": f.healthcare})
         c.execute(text("""insert into public.facility_searches (cell_key, latitude, longitude, radius_m, result_count)
                           values (:k, :lat, :lon, :r, :n) on conflict (cell_key) do update set
                           result_count = excluded.result_count, searched_at = now()"""),
-                  {"k": _cell(lat, lon, radius_m), "lat": lat, "lon": lon, "r": radius_m, "n": len(facilities)})
+                  {"k": _cell(lat, lon, radius_m), "lat": round(lat, 2), "lon": round(lon, 2), "r": radius_m,
+                   "n": len(facilities)})
 
 
 # ------------------------------------------------------------------ indicators

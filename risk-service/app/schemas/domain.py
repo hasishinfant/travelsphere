@@ -111,6 +111,9 @@ class Facility:
     latitude: float
     longitude: float
     has_emergency: bool | None = None
+    phone: str | None = None              # OSM phone / contact:phone, only when mapped
+    healthcare: str | None = None         # OSM healthcare=* (e.g. hospital, clinic, doctor)
+    retrieved_at: datetime | None = None  # when this record was fetched from OpenStreetMap
 
 
 @dataclass

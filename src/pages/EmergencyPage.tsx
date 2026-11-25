@@ -9,6 +9,12 @@ import {
   ComplaintHistoryView, 
   ComplaintDetailView 
 } from '../components/emergency';
+import { IncidentDetailView } from '../components/emergency/IncidentDetailView';
+import { IncidentList } from '../components/emergency/IncidentList';
+import { ResponderConsole } from '../components/emergency/ResponderConsole';
+
+// Server incidents have UUIDs; older requests saved only in this browser have TS-… references
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 import '../components/emergency/Emergency.css';
 
 const EmergencyPage: React.FC = () => {
@@ -46,7 +52,32 @@ const EmergencyPage: React.FC = () => {
     }
   };
 
-  // 1. Direct Ticket Details Route: /emergency-support/requests/:requestId
+  const responderView = new URLSearchParams(location.search).get('view') === 'responder';
+
+  // 1a. Server incident: /emergency-support/requests/:uuid (?view=responder for the responder controls)
+  if (requestId && UUID_RE.test(requestId)) {
+    return (
+      <div className="emergency-page-wrapper">
+        <div className="emergency-page-content page">
+          <IncidentDetailView incidentId={requestId} staff={responderView}
+            onBack={() => navigate(responderView ? '/emergency-support/responder' : '/emergency-support/tickets')} />
+        </div>
+      </div>
+    );
+  }
+
+  if (tab === 'responder') {
+    return (
+      <div className="emergency-page-wrapper">
+        <div className="emergency-page-content page">
+          <ResponderConsole onBack={handleBackToLanding}
+            onSelect={id => navigate(`/emergency-support/requests/${id}?view=responder`)} />
+        </div>
+      </div>
+    );
+  }
+
+  // 1b. Request saved only on this device: /emergency-support/requests/:requestId
   if (requestId) {
     return (
       <div className="emergency-page-wrapper">
@@ -117,6 +148,11 @@ const EmergencyPage: React.FC = () => {
     return (
       <div className="emergency-page-wrapper">
         <div className="emergency-page-content page">
+          <section className="recent-requests-preview-section" aria-labelledby="my-incidents-title">
+            <h2 id="my-incidents-title" className="preview-heading">Incidents registered with TravelSphere</h2>
+            <p className="preview-subtext">Stored on TravelSphere’s server. Statuses change only when a responder changes them.</p>
+            <IncidentList onSelect={handleViewRequestDetail} emptyText="You haven’t registered any incidents." />
+          </section>
           <ComplaintHistoryView 
             onBack={handleBackToLanding}
             onSelectRequest={handleViewRequestDetail}
@@ -135,6 +171,7 @@ const EmergencyPage: React.FC = () => {
           onSelectCategory={handleSelectCategory}
           onViewHistory={handleViewHistory}
           onViewRequestDetail={handleViewRequestDetail}
+          onOpenResponderConsole={() => navigate('/emergency-support/responder')}
         />
       </div>
     </div>

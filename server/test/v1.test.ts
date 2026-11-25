@@ -4,6 +4,7 @@ import request from 'supertest';
 import { loadConfig } from '../src/config.js';
 import { createPool, type Db } from '../src/db.js';
 import { createApp } from '../src/app.js';
+import { createVerifier } from '../src/auth.js';
 import { HttpError } from '../src/http.js';
 import { createRiskService, DestinationAssessmentSchema, type JourneyAssessmentInput, type RiskService }
   from '../src/integrations/riskService.js';
@@ -37,9 +38,13 @@ const fakeRisk: RiskService = {
   },
 };
 
+// Same account creation as POST /api/auth/dev-session, without its per-IP sign-in rate limit (20 per 15 min)
+const verifier = createVerifier(config);
 const signIn = async (email: string) => {
-  const res = await request(app).post('/api/auth/dev-session').send({ email });
-  return { token: res.body.token as string, id: res.body.user.id as string };
+  const { rows } = await db.query(
+    `insert into auth.users (email, raw_user_meta_data) values ($1, '{}') on conflict (email) do update set email = excluded.email
+     returning id`, [email]);
+  return { token: await verifier.issueLocal!({ id: rows[0].id, email }), id: rows[0].id as string };
 };
 const as = (t: string) => ({ Authorization: `Bearer ${t}` });
 const tomorrow = () => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
@@ -221,6 +226,141 @@ describe('incidents', () => {
   });
 });
 
+describe('emergency workflow', () => {
+  const uuid = () => crypto.randomUUID();
+
+  it('creates an SOS once per client request id, marks it critical and alerts responder accounts', async () => {
+    const u = await signIn('sos@example.test');
+    const r = await signIn('sos-responder@example.test');
+    await db.query(`update public.profiles set role = 'responder' where id = $1`, [r.id]);
+    const body = { category: 'other', title: 'SOS', is_sos: true, latitude: 48.8566, longitude: 2.3522,
+      location_accuracy_m: 25, client_request_id: uuid(), details: { location_status: 'captured' } };
+    const first = await request(app).post('/api/v1/incidents').set(as(u.token)).send(body);
+    expect(first.status).toBe(201);
+    expect(first.body).toMatchObject({ duplicate: false, incident: { status: 'open', priority: 'critical', is_sos: true } });
+    expect(first.body.incident.reference).toMatch(/^INC-/);
+    expect(first.body.responder_accounts).toBeGreaterThanOrEqual(1);
+    // A double tap / retry with the same key returns the same incident instead of a second one
+    const again = await request(app).post('/api/v1/incidents').set(as(u.token)).send(body);
+    expect(again.status).toBe(200);
+    expect(again.body).toMatchObject({ duplicate: true, incident: { id: first.body.incident.id } });
+    const { rows } = await db.query(`select count(*)::int as n from public.incidents where reporter_id = $1`, [u.id]);
+    expect(rows[0].n).toBe(1);
+    const alerts = await db.query(
+      `select title, body from public.notifications where user_id = $1 and kind = 'incident_alert' and incident_id = $2`,
+      [r.id, first.body.incident.id]);
+    expect(alerts.rows).toHaveLength(1); // not duplicated by the retry
+    expect(alerts.rows[0].title).toMatch(/^SOS INC-/);
+    expect(alerts.rows[0].body).not.toMatch(/48\.8|2\.35/); // no coordinates in push payloads
+  });
+
+  it('stores the medical, lost-document and local-help forms with validated details', async () => {
+    const u = await signIn('forms@example.test');
+    const med = await request(app).post('/api/v1/incidents').set(as(u.token)).send({
+      category: 'medical', title: 'Medical: injury', description: 'Twisted ankle on the stairs, cannot walk',
+      details: { assistance_type: 'injury', urgency: 'immediate', location_text: 'Hotel lobby', contact_number: '+33 6 12 34 56 78',
+        contact_preference: 'phone', conditions_or_allergies: 'Penicillin' } });
+    expect(med.status).toBe(201);
+    expect(med.body.incident).toMatchObject({ category: 'medical', priority: 'high',
+      details: { urgency: 'immediate', conditions_or_allergies: 'Penicillin' } });
+    const doc = await request(app).post('/api/v1/incidents').set(as(u.token)).send({
+      category: 'lost_documents', title: 'Lost passport', description: 'Stolen bag at the station',
+      details: { document_type: 'passport', issuing_country: 'India', incident_date: '2026-11-24', police_report_filed: false } });
+    expect(doc.status).toBe(201);
+    expect(doc.body.incident).toMatchObject({ category: 'lost_documents', priority: 'normal' });
+    const help = await request(app).post('/api/v1/incidents').set(as(u.token)).send({
+      category: 'assistance', title: 'Local help: translation', description: 'Need help explaining to a pharmacist',
+      details: { assistance_type: 'translation', urgency: 'medium' } });
+    expect(help.status).toBe(201);
+    const mine = await request(app).get('/api/v1/incidents').set(as(u.token));
+    expect(mine.body.incidents.map((i: any) => i.category).sort()).toEqual(['assistance', 'lost_documents', 'medical']);
+  });
+
+  it('rejects invalid form details', async () => {
+    const u = await signIn('forms-bad@example.test');
+    const post = (b: object) => request(app).post('/api/v1/incidents').set(as(u.token)).send(b);
+    expect((await post({ category: 'lost_documents', title: 'Lost passport', details: { issuing_country: 'India' } })).status).toBe(400);
+    expect((await post({ category: 'medical', title: 'Medical', details: { urgency: 'whenever' } })).status).toBe(400);
+    expect((await post({ category: 'medical', title: 'Medical', details: { unknown_field: 1 } })).status).toBe(400);
+    expect((await post({ category: 'medical', title: 'Medical', details: { contact_number: 'call me' } })).status).toBe(400);
+    expect((await post({ category: 'other', title: 'SOS', is_sos: true, client_request_id: 'not-a-uuid' })).status).toBe(400);
+    expect((await post({ category: 'helicopter', title: 'SOS' })).status).toBe(400);
+  });
+
+  it('lets only the reporter add a location to an active incident', async () => {
+    const u = await signIn('loc@example.test');
+    const other = await signIn('loc-other@example.test');
+    const r = await signIn('loc-responder@example.test');
+    await db.query(`update public.profiles set role = 'responder' where id = $1`, [r.id]);
+    const inc = (await request(app).post('/api/v1/incidents').set(as(u.token))
+      .send({ category: 'other', title: 'SOS', is_sos: true, details: { location_status: 'timeout' } })).body.incident;
+    expect(inc.latitude).toBeNull();
+    const loc = { latitude: 35.0116, longitude: 135.7681, location_accuracy_m: 40 };
+    expect((await request(app).post(`/api/v1/incidents/${inc.id}/location`).set(as(other.token)).send(loc)).status).toBe(404);
+    const ok = await request(app).post(`/api/v1/incidents/${inc.id}/location`).set(as(u.token)).send(loc);
+    expect(ok.status).toBe(200);
+    expect(ok.body.incident).toMatchObject({ latitude: 35.0116, longitude: 135.7681, details: { location_status: 'captured' } });
+    await request(app).patch(`/api/v1/incidents/${inc.id}/status`).set(as(r.token)).send({ status: 'resolved', note: 'Traveller safe' });
+    const detail = await request(app).get(`/api/v1/incidents/${inc.id}`).set(as(u.token));
+    expect(detail.body.incident.updates.map((x: any) => [x.note, x.by_responder]))
+      .toEqual([['Reporter updated the location', false], ['Traveller safe', true]]);
+    expect((await request(app).post(`/api/v1/incidents/${inc.id}/location`).set(as(u.token)).send(loc)).status).toBe(409);
+  });
+
+  it('only assigns incidents to responder accounts', async () => {
+    const u = await signIn('assign@example.test');
+    const r = await signIn('assign-responder@example.test');
+    await db.query(`update public.profiles set role = 'responder' where id = $1`, [r.id]);
+    const inc = (await request(app).post('/api/v1/incidents').set(as(u.token)).send({ category: 'other', title: 'Help' })).body.incident;
+    const bad = await request(app).patch(`/api/v1/incidents/${inc.id}/status`).set(as(r.token)).send({ status: 'acknowledged', assigned_to: u.id });
+    expect(bad.status).toBe(400);
+    const good = await request(app).patch(`/api/v1/incidents/${inc.id}/status`).set(as(r.token)).send({ status: 'acknowledged', assigned_to: r.id });
+    expect(good.body.incident).toMatchObject({ status: 'acknowledged', assigned_to: r.id });
+  });
+
+  it('coarsens precise locations of incidents finished more than 30 days ago', async () => {
+    const u = await signIn('retention@example.test');
+    const inc = (await request(app).post('/api/v1/incidents').set(as(u.token))
+      .send({ category: 'other', title: 'Old', latitude: 12.971599, longitude: 77.594566 })).body.incident;
+    await db.query(`update public.incidents set status = 'closed' where id = $1`, [inc.id]);
+    await db.query(`alter table public.incidents disable trigger incidents_updated_at`);
+    await db.query(`update public.incidents set updated_at = now() - interval '31 days' where id = $1`, [inc.id]);
+    await db.query(`alter table public.incidents enable trigger incidents_updated_at`);
+    await db.query('select public.coarsen_incident_locations()');
+    const { rows } = await db.query(`select latitude, longitude, location_accuracy_m::float as acc from public.incidents where id = $1`, [inc.id]);
+    expect(rows[0]).toEqual({ latitude: 12.97, longitude: 77.59, acc: 1000 });
+  });
+
+  it('reports capabilities honestly', async () => {
+    const u = await signIn('caps@example.test');
+    const res = await request(app).get('/api/v1/emergency/capabilities').set(as(u.token));
+    expect(res.body).toMatchObject({ incident_registration: true, push_notifications: 'not_configured', sms: 'not_configured',
+      emergency_service_dispatch: 'not_available' });
+    expect(typeof res.body.responder_accounts).toBe('number');
+  });
+
+  it('looks up nearby facilities through the risk service, with validation', async () => {
+    const seen: number[][] = [];
+    const risk: RiskService = { ...fakeRisk, facilitiesNear: async (lat, lon, r) => {
+      seen.push([lat, lon, r]);
+      return { facilities: [{ osm_id: 'n1', kind: 'hospital', name: 'A', latitude: 48.857, longitude: 2.352, distance_m: 50,
+        phone: null, healthcare: 'hospital', has_emergency: null, retrieved_at: new Date().toISOString() }],
+        radius_m: r, source: 'OpenStreetMap', licence: 'ODbL', cached: false, country_code: 'FR', error: null };
+    } };
+    const app2 = createApp(config, db, undefined, undefined, risk);
+    const u = await signIn('nearby@example.test');
+    const ok = await request(app2).post('/api/v1/emergency/resources').set(as(u.token)).send({ latitude: 48.8566, longitude: 2.3522 });
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ country_code: 'FR', facilities: [{ osm_id: 'n1', phone: null }] });
+    expect(seen).toEqual([[48.8566, 2.3522, 5000]]);
+    expect((await request(app2).post('/api/v1/emergency/resources').set(as(u.token)).send({ latitude: 48.8, longitude: 2.3, radius_m: 777 })).status).toBe(400);
+    expect((await request(app2).post('/api/v1/emergency/resources').set(as(u.token)).send({ latitude: 0, longitude: 0 })).status).toBe(400);
+    expect((await request(app2).post('/api/v1/emergency/resources').send({ latitude: 48.8, longitude: 2.3 })).status).toBe(401);
+    // The default fake risk service has no facility lookup → 503, not an empty "nothing nearby"
+    expect((await request(app).post('/api/v1/emergency/resources').set(as(u.token)).send({ latitude: 48.8, longitude: 2.3 })).status).toBe(503);
+  });
+});
+
 describe('alerts', () => {
   it('lists own and destination-wide alerts only; acknowledges own; deduplicates active alerts', async () => {
     const me = await signIn('alerts-me@example.test');
@@ -307,6 +447,36 @@ describe('push dispatch', () => {
     expect(sent).toEqual(['good-token-123', 'dead-token-456']); // MODERATE is below the user's minimum
     const { rows } = await db.query(`select token from public.device_tokens where user_id = $1`, [u.id]);
     expect(rows.map(x => x.token)).toEqual(['good-token-123']);
+  });
+});
+
+describe('incident push delivery', () => {
+  it('pushes incident alerts to responders with devices and logs failures; nothing is marked sent without FCM', async () => {
+    const r = await signIn('push-responder@example.test');
+    await db.query(`update public.profiles set role = 'responder' where id = $1`, [r.id]);
+    const u = await signIn('push-reporter@example.test');
+    await db.query(`insert into public.device_tokens (user_id, platform, token) values ($1, 'fcm', 'responder-token-1')`, [r.id]);
+    const inc = (await request(app).post('/api/v1/incidents').set(as(u.token)).send({ category: 'other', title: 'SOS', is_sos: true })).body.incident;
+    const state = async () => (await db.query(
+      `select delivery_status, delivery_error from public.notifications where user_id = $1 and incident_id = $2`, [r.id, inc.id])).rows[0];
+    // FCM not configured: stays pending (in-app only)
+    expect(await dispatchPending(db, null)).toEqual({ sent: 0, failed: 0 });
+    expect(await state()).toMatchObject({ delivery_status: 'pending' });
+    // FCM rejects: recorded as failed with the reason
+    await dispatchPending(db, { send: async () => 'failed' });
+    expect(await state()).toMatchObject({ delivery_status: 'failed', delivery_error: 'push not accepted: failed' });
+  });
+  it('delivers a pending incident alert when FCM accepts it', async () => {
+    const r = await signIn('push-responder2@example.test');
+    await db.query(`update public.profiles set role = 'responder' where id = $1`, [r.id]);
+    await db.query(`insert into public.device_tokens (user_id, platform, token) values ($1, 'fcm', 'responder-token-2')`, [r.id]);
+    const u = await signIn('push-reporter2@example.test');
+    const inc = (await request(app).post('/api/v1/incidents').set(as(u.token)).send({ category: 'other', title: 'SOS', is_sos: true })).body.incident;
+    const sent: Record<string, string>[] = [];
+    await dispatchPending(db, { send: async (token, _t, _b, data) => { if (token === 'responder-token-2') sent.push(data!); return 'sent'; } }, 500);
+    expect(sent.some(d => d.kind === 'incident_alert' && d.incident_id === inc.id)).toBe(true);
+    const { rows } = await db.query(`select delivery_status from public.notifications where user_id = $1 and incident_id = $2`, [r.id, inc.id]);
+    expect(rows[0].delivery_status).toBe('sent');
   });
 });
 

@@ -1,24 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Headphones,
-  HeartPulse, FileText, Hotel, Compass, AlertCircle, Phone, 
-  ShieldAlert, Clock, ArrowRight, CheckCircle2, ChevronRight,
-  ExternalLink, Siren
+import {
+  HeartPulse, FileText, Hotel, Compass, AlertCircle, Clock, ArrowRight, ChevronRight, Siren, ClipboardList, Ban, Activity,
 } from 'lucide-react';
 import { complaintService, EmergencyComplaintRecord } from '@/services/complaintService';
+import { getSession } from '@/services/apiClient';
+import { getMyRole } from '@/services/emergency';
 import { SOSButton } from './SOSButton';
+import { EmergencyCallPanel } from './EmergencyCallPanel';
+import { NearbyResources } from './NearbyResources';
+import { IncidentList } from './IncidentList';
 
 interface EmergencyLandingViewProps {
   onSelectCategory: (category: 'medical' | 'passport' | 'hotel' | 'local') => void;
   onViewHistory: () => void;
   onViewRequestDetail: (requestId: string) => void;
+  onOpenResponderConsole?: () => void;
 }
 
 export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
   onSelectCategory,
   onViewHistory,
   onViewRequestDetail,
+  onOpenResponderConsole,
 }) => {
   const [activeRequests, setActiveRequests] = useState<EmergencyComplaintRecord[]>([]);
+  const [isStaff, setIsStaff] = useState(false);
+
+  useEffect(() => {
+    if (!getSession()) return;
+    getMyRole().then(p => setIsStaff(p.role === 'responder' || p.role === 'admin')).catch(() => setIsStaff(false));
+  }, []);
 
   useEffect(() => {
     const loadRequests = () => {
@@ -31,26 +42,27 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
     return () => window.removeEventListener('emergency-requests-updated', loadRequests);
   }, []);
 
-  const openTickets = activeRequests.filter(r => r.status !== 'resolved' && r.status !== 'rejected');
+  // Hotel complaints are kept on this device only; everything else is stored on the server (IncidentList)
+  const deviceOnly = activeRequests;
 
   const categories = [
     {
       id: 'medical' as const,
       title: 'Medical Emergency',
       icon: HeartPulse,
-      badge: 'Rapid Priority',
+      badge: 'Registered incident',
       badgeClass: 'badge-medical',
-      description: 'Medical assistance, healthcare guidance, and relevant local resources.',
-      actionText: 'Request Medical Help',
+      description: 'Record a medical problem for TravelSphere responders. For emergencies, call the numbers above.',
+      actionText: 'Report a medical problem',
       accentColor: 'var(--danger)',
     },
     {
       id: 'passport' as const,
       title: 'Lost Passport & Documents',
       icon: FileText,
-      badge: 'Consular Assistance',
+      badge: 'Registered incident',
       badgeClass: 'badge-passport',
-      description: 'Guidance for lost or stolen travel documents and relevant consular assistance.',
+      description: 'Record lost or stolen documents and see what to do next. TravelSphere does not contact embassies.',
       actionText: 'Report Lost Documents',
       accentColor: 'var(--accent)',
     },
@@ -58,9 +70,9 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
       id: 'hotel' as const,
       title: 'Hotel & Accommodation Issue',
       icon: Hotel,
-      badge: 'Multi-Hotel Support',
+      badge: 'Saved on this device',
       badgeClass: 'badge-hotel-featured',
-      description: 'Report booking disputes, room cleanliness issues, billing discrepancies, or check-in problems.',
+      description: 'Keep a dated record of booking, cleanliness, billing or check-in problems. It is not sent to the hotel.',
       actionText: 'File Hotel Complaint',
       accentColor: 'var(--success)',
       isFeatured: true,
@@ -69,10 +81,10 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
       id: 'local' as const,
       title: 'Local Travel Assistance',
       icon: Compass,
-      badge: '24/7 Companion',
+      badge: 'Registered incident',
       badgeClass: 'badge-local',
-      description: 'Request travel-related assistance with transport, local navigation, and other relevant issues.',
-      actionText: 'Request Local Help',
+      description: 'Ask TravelSphere responders for help with transport, directions, translation or local safety.',
+      actionText: 'Request local help',
       accentColor: 'var(--pro)',
     },
   ];
@@ -85,7 +97,7 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
           <div>
             <h1 className="page-title">Emergency support</h1>
             <p className="page-subtitle">
-              Help with medical situations, lost documents, hotel disputes and travel disruptions — around the clock.
+              Local emergency numbers, nearby hospitals and police, and incident reports that TravelSphere responders can see.
             </p>
           </div>
         </header>
@@ -97,14 +109,9 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
           </div>
           <div className="notice-content">
             <p className="notice-headline">
-              <strong>Life-Threatening Emergency Notice:</strong> For immediate medical, fire, or police emergencies, please dial your local emergency services directly.
+              <strong>Life-threatening emergency?</strong> Call your local emergency services directly. TravelSphere does not contact police, ambulance or hospitals for you.
             </p>
-            <div className="emergency-numbers-chips">
-              <a className="number-chip" href="tel:911"><Phone size={13} /> US/Canada <strong>911</strong></a>
-              <a className="number-chip" href="tel:112"><Phone size={13} /> UK/Europe <strong>112 / 999</strong></a>
-              <a className="number-chip" href="tel:112"><Phone size={13} /> Asia <strong>112 / 100</strong></a>
-              <span className="number-chip hotline"><Headphones size={13} /> SOS Travel Desk <strong>+1-800-555-SAFE</strong></span>
-            </div>
+            <EmergencyCallPanel />
           </div>
         </div>
       </div>
@@ -116,11 +123,11 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
             <Siren size={22} strokeWidth={2.2} />
           </div>
           <div className="sos-banner-text">
-            <h3>Need Help Right Now?</h3>
-            <p>Tap SOS to send an instant emergency alert with your location to any phone number.</p>
+            <h3>Need help right now?</h3>
+            <p>SOS shows your local emergency numbers and can register a critical incident with your location for TravelSphere responders.</p>
           </div>
         </div>
-        <SOSButton />
+        <SOSButton onTrack={onViewRequestDetail} />
       </div>
 
       {/* Top Navigation Row / Switcher */}
@@ -134,20 +141,12 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
             className="emergency-nav-tab"
             onClick={onViewHistory}
           >
-            <span>My Requests & Complaints</span>
-            {activeRequests.length > 0 && (
-              <span className="ticket-count-badge">{activeRequests.length}</span>
-            )}
+            <span>My incidents & saved complaints</span>
           </button>
+          {isStaff && onOpenResponderConsole && (
+            <button type="button" className="emergency-nav-tab" onClick={onOpenResponderConsole}>Responder console</button>
+          )}
         </div>
-
-        {openTickets.length > 0 && (
-          <div className="active-ticket-indicator" onClick={onViewHistory}>
-            <span className="pulse-dot" />
-            <span>{openTickets.length} Active {openTickets.length === 1 ? 'ticket' : 'tickets'} in progress</span>
-            <ChevronRight size={14} />
-          </div>
-        )}
       </div>
 
       {/* 4 Assistance Categories Grid */}
@@ -197,54 +196,48 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
         })}
       </div>
 
-      {/* Recent Request Preview (if user has submitted tickets) */}
-      {activeRequests.length > 0 && (
+      <NearbyResources />
+
+      <div className="recent-requests-preview-section">
+        <div className="section-header-row">
+          <div>
+            <h3 className="preview-heading">Your incidents</h3>
+            <p className="preview-subtext">Registered with TravelSphere. Statuses change only when a responder changes them.</p>
+          </div>
+          <button type="button" className="btn-text-link" onClick={onViewHistory}>
+            <span>View all</span>
+            <ChevronRight size={16} />
+          </button>
+        </div>
+        <IncidentList onSelect={onViewRequestDetail} limit={3} emptyText="You haven’t registered any incidents." />
+      </div>
+
+      {deviceOnly.length > 0 && (
         <div className="recent-requests-preview-section">
           <div className="section-header-row">
             <div>
-              <h3 className="preview-heading">Recent Requests & Complaint Status</h3>
-              <p className="preview-subtext">Track updates, hotel responses, and liaison actions in real-time</p>
+              <h3 className="preview-heading">Saved on this device only</h3>
+              <p className="preview-subtext">These were never sent to TravelSphere, a hotel or anyone else.</p>
             </div>
-            <button type="button" className="btn-text-link" onClick={onViewHistory}>
-              <span>View All ({activeRequests.length})</span>
-              <ChevronRight size={16} />
-            </button>
           </div>
-
           <div className="recent-tickets-cards">
-            {activeRequests.slice(0, 2).map((req) => (
-              <div 
-                key={req.id} 
-                className="recent-ticket-row-card"
-                onClick={() => onViewRequestDetail(req.id)}
-              >
+            {deviceOnly.slice(0, 2).map((req) => (
+              <div key={req.id} className="recent-ticket-row-card" onClick={() => onViewRequestDetail(req.id)}>
                 <div className="ticket-row-left">
-                  <div className={`ticket-status-pill status-${req.status}`}>
-                    {req.status === 'in_progress' ? 'In Progress' : req.status === 'under_review' ? 'Under Review' : req.status === 'resolved' ? 'Resolved' : 'Submitted'}
-                  </div>
+                  <div className="ticket-status-pill status-submitted">Device only</div>
                   <div>
                     <h4 className="ticket-ref-title">
                       {req.id}
-                      {req.category === 'hotel' && (
-                        <span className="hotel-name-tag"> • {(req as any).hotelName}</span>
-                      )}
+                      {req.category === 'hotel' && <span className="hotel-name-tag"> • {(req as any).hotelName}</span>}
                     </h4>
                     <p className="ticket-subject-text">
-                      {req.category === 'hotel' 
-                        ? (req as any).complaintSubject 
-                        : (req as any).description?.slice(0, 80) + '...'}
+                      {req.category === 'hotel' ? (req as any).complaintSubject : (req as any).description?.slice(0, 80) + '...'}
                     </p>
                   </div>
                 </div>
-
                 <div className="ticket-row-right">
-                  <span className="ticket-date-text">
-                    <Clock size={13} /> {new Date(req.createdAt).toLocaleDateString()}
-                  </span>
-                  <button type="button" className="btn-track-ticket">
-                    <span>View Timeline</span>
-                    <ArrowRight size={14} />
-                  </button>
+                  <span className="ticket-date-text"><Clock size={13} /> {new Date(req.createdAt).toLocaleDateString()}</span>
+                  <button type="button" className="btn-track-ticket"><span>Open</span><ArrowRight size={14} /></button>
                 </div>
               </div>
             ))}
@@ -252,35 +245,27 @@ export const EmergencyLandingView: React.FC<EmergencyLandingViewProps> = ({
         </div>
       )}
 
-      {/* Protocol & Guarantee Guarantee Highlights */}
+      {/* What this service does and does not do */}
       <div className="emergency-protocols-row">
         <div className="protocol-item">
-          <div className="protocol-icon-circle">
-            <Clock size={18} />
-          </div>
+          <div className="protocol-icon-circle"><ClipboardList size={18} /></div>
           <div>
-            <h4>15-Minute Response Protocol</h4>
-            <p>Our 24/7 emergency dispatch verifies and initiates action on all high-severity requests in under 15 minutes.</p>
+            <h4>Registers incidents</h4>
+            <p>Medical, lost-document, local-help and SOS reports are stored on TravelSphere’s server with a reference number.</p>
           </div>
         </div>
-
         <div className="protocol-item">
-          <div className="protocol-icon-circle">
-            <Hotel size={18} />
-          </div>
+          <div className="protocol-icon-circle"><Ban size={18} /></div>
           <div>
-            <h4>Direct Hotel Escalation</h4>
-            <p>We work directly with hotel management to enforce room quality, rectify billing, or arrange immediate re-accommodations.</p>
+            <h4>Doesn’t dispatch help</h4>
+            <p>TravelSphere does not contact police, ambulance, hospitals, embassies or hotels, and has no guaranteed response time.</p>
           </div>
         </div>
-
         <div className="protocol-item">
-          <div className="protocol-icon-circle">
-            <CheckCircle2 size={18} />
-          </div>
+          <div className="protocol-icon-circle"><Activity size={18} /></div>
           <div>
-            <h4>Verified Case Tracking</h4>
-            <p>Every complaint receives an official reference code with timestamped status history and follow-up messaging.</p>
+            <h4>Shows real status</h4>
+            <p>“Acknowledged” or “resolved” appears only after a TravelSphere responder sets it.</p>
           </div>
         </div>
       </div>

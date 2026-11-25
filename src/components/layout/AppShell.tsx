@@ -174,7 +174,6 @@ const Sidebar: React.FC<{ user: UserProfile | null; onNavigate: () => void; onSi
           >
             <Icon size={22} strokeWidth={1.5} />
             <span>{label}</span>
-            {to === '/emergency-support' && <span className="side-link-badge">24/7</span>}
           </NavLink>
         ))}
       </nav>

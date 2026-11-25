@@ -14,10 +14,17 @@ const app = createApp(config, db);
 // Push delivery of risk warnings (FCM is credential-dependent; without it alerts remain in-app)
 const push = config.FCM_PROJECT_ID && config.FCM_SERVICE_ACCOUNT_JSON
   ? createFcmSender(config.FCM_PROJECT_ID, config.FCM_SERVICE_ACCOUNT_JSON) : null;
-if (!push) console.log('[push] FCM not configured — risk warnings are delivered in-app only');
+if (!push) console.log('[push] FCM not configured — risk warnings and incident alerts are delivered in-app only');
 const pushTimer = setInterval(() => {
   dispatchPending(db, push).catch(err => console.warn('[push] dispatch failed:', (err as Error).message));
 }, 60_000);
+
+// Minimal location retention: coarsen precise coordinates of incidents finished more than 30 days ago (hourly)
+const retentionTimer = setInterval(() => {
+  db.query('select public.coarsen_incident_locations() as n')
+    .then(r => { if (r.rows[0]?.n) console.log(`[retention] coarsened ${r.rows[0].n} incident locations`); })
+    .catch(err => console.warn('[retention] failed:', (err as Error).message));
+}, 3_600_000);
 
 const server = app.listen(config.PORT, () => {
   console.log(`TravelSphere API listening on :${config.PORT} (auth: ${config.AUTH_MODE}, env: ${config.NODE_ENV})`);
@@ -25,6 +32,7 @@ const server = app.listen(config.PORT, () => {
 
 const shutdown = () => {
   clearInterval(pushTimer);
+  clearInterval(retentionTimer);
   server.close(() => db.end().finally(() => process.exit(0)));
 };
 process.on('SIGTERM', shutdown);

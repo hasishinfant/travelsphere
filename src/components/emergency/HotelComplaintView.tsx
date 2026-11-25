@@ -40,7 +40,7 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
   const [description, setDescription] = useState<string>('');
   const [severity, setSeverity] = useState<SeverityLevel>('medium');
   const [preferredResolution, setPreferredResolution] = useState<HotelComplaintRecord['preferredResolution']>('room_change');
-  const [contactNumber, setContactNumber] = useState<string>('+1 (555) 234-5678');
+  const [contactNumber, setContactNumber] = useState<string>('');
   const [contactPreference, setContactPreference] = useState<'phone' | 'email' | 'whatsapp'>('phone');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [attachmentInput, setAttachmentInput] = useState<string>('');
@@ -115,12 +115,10 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
     if (!description.trim()) {
       errors.description = 'Please provide detailed description of the incident.';
     } else if (description.trim().length < 20) {
-      errors.description = 'Please write at least 20 characters so the hotel team can investigate.';
+      errors.description = 'Please write at least 20 characters so the record is useful later.';
     }
 
-    if (!contactNumber.trim()) {
-      errors.contactNumber = 'Please provide a valid contact number.';
-    }
+    // Contact number is optional: the record stays on this device and nobody uses it to call back
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -178,7 +176,7 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
       setSubmittedRecord(record);
     } catch (err: any) {
       console.error('Failed to submit hotel complaint:', err);
-      alert('Failed to submit complaint. Please try again.');
+      setFormErrors(prev => ({ ...prev, description: 'The complaint could not be saved on this device (browser storage unavailable).' }));
     } finally {
       setIsSubmitting(false);
     }
@@ -192,15 +190,16 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
           <CheckCircle2 size={44} className="text-green" />
         </div>
 
-        <h2 className="success-heading">Complaint Officially Registered</h2>
+        <h2 className="success-heading">Complaint saved on this device</h2>
         <p className="success-subtext">
-          Your complaint has been submitted to the TravelSphere Hospitality Liaison Desk and formally logged against <strong>{submittedRecord.hotelName}</strong>.
+          Your complaint about <strong>{submittedRecord.hotelName}</strong> is saved in this browser as a dated record you can
+          show the hotel or your booking provider. It has <strong>not</strong> been sent to the hotel or to TravelSphere.
         </p>
 
         <div className="success-reference-box">
-          <span className="ref-label">Official Reference Number</span>
+          <span className="ref-label">Your reference (this device only)</span>
           <span className="ref-code">{submittedRecord.id}</span>
-          <span className="ref-hint">Please save this reference for all communications</span>
+          <span className="ref-hint">Clearing this browser’s data deletes the record.</span>
         </div>
 
         <div className="complaint-summary-table">
@@ -232,7 +231,7 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
           </div>
           <div className="summary-row">
             <span>Initial Status:</span>
-            <span className="status-pill status-submitted">Submitted</span>
+            <span className="status-pill status-submitted">Saved on device</span>
           </div>
         </div>
 
@@ -242,7 +241,7 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
             className="btn-pill-green"
             onClick={() => onSuccessTrack(submittedRecord.id)}
           >
-            <span>Track Complaint & Live Updates</span>
+            <span>Open saved complaint</span>
             <ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} />
           </button>
 
@@ -274,8 +273,8 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
       <div className="form-header-area">
         <h1 className="form-main-title">File a Hotel Complaint</h1>
         <p className="form-description">
-          Select the specific hotel property, specify your booking or room details, and report your complaint. 
-          Our hospitality specialists liaise directly with hotel executives to seek prompt resolution.
+          Keep a dated record of a problem with your stay. It is saved on this device only — TravelSphere does not
+          forward complaints to hotels. Raise it with the hotel or your booking provider directly.
         </p>
       </div>
 
@@ -577,7 +576,7 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
             <span className="step-num">3</span>
             <div>
               <h3 className="section-block-title">Contact & Supporting Evidence</h3>
-              <p className="section-block-sub">How our liaison team can contact you with updates</p>
+              <p className="section-block-sub">Kept with your record on this device</p>
             </div>
           </div>
 
@@ -668,11 +667,11 @@ export const HotelComplaintView: React.FC<HotelComplaintViewProps> = ({
             disabled={isSubmitting}
           >
             {isSubmitting ? (
-              <span>Registering Complaint...</span>
+              <span>Saving…</span>
             ) : (
               <>
                 <ShieldCheck size={18} />
-                <span>Submit Official Complaint</span>
+                <span>Save complaint on this device</span>
               </>
             )}
           </button>

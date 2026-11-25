@@ -9,7 +9,8 @@ from app.database import repository as repo
 from app.database.session import healthy, postgis_enabled
 from app.ml.inference import predictor
 from app.risk_engine.aggregation.config import load_scoring
-from app.schemas.api import DestinationAssessmentRequest, JourneyAssessmentRequest
+from app.schemas.api import CountryRequest, DestinationAssessmentRequest, FacilitiesRequest, JourneyAssessmentRequest
+from app.services import data
 from app.services.destination_service import assess_destination
 from app.services.journey_service import assess_journey_request
 
@@ -66,3 +67,17 @@ async def journey(req: JourneyAssessmentRequest) -> dict:
         if owner != str(req.user_id):
             raise HTTPException(403, "journey belongs to another user")
     return await assess_journey_request(req, dest)
+
+
+@internal.post("/facilities")
+async def facilities(req: FacilitiesRequest) -> dict:
+    """Nearby hospitals, clinics, police and fire stations (OpenStreetMap). An unreachable Overpass returns an empty
+    list with `error` set, so the caller can say "lookup failed" rather than "nothing nearby"."""
+    return await data.nearby_facilities(req.latitude, req.longitude, req.radius_m)
+
+
+@internal.post("/country")
+def country(req: CountryRequest) -> dict:
+    """ISO country code at a point (Natural Earth admin-0), or null when unknown / boundary file not installed."""
+    from app.geospatial.countries import country_at
+    return {"country_code": country_at(req.latitude, req.longitude)}

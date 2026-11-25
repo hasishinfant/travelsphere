@@ -14,6 +14,7 @@ from app.ingestion import gdacs, open_meteo, osrm, overpass, usgs
 from app.ingestion.http import ProviderError
 from app.processing.data_quality import SOURCES, merge_duplicate_hazards
 from app.risk_engine.context import HistoricalRecord
+from app.geospatial.countries import country_at
 from app.schemas.domain import Destination, Facility, HazardEvent, PlaceInfo, Route, WeatherSnapshot
 
 log = logging.getLogger("risk.data")
@@ -162,6 +163,39 @@ async def facilities_near(lat: float, lon: float, radius_m: int) -> tuple[list[F
     if found is not None:
         _safe_repo(repo.store_facilities, lat, lon, radius_m, found)
     return found, err
+
+
+async def nearby_facilities(lat: float, lon: float, radius_m: int, limit: int = 60) -> dict:
+    """Emergency facilities around a traveller, nearest first.
+
+    Privacy: the Overpass query and the cache use a centre rounded to 0.01° (≤ ~0.8 km off) with a 1 km margin, so
+    neither OpenStreetMap's servers nor our database see the exact position. Distances use the exact position and the
+    result is cut back to the requested radius.
+    """
+    qlat, qlon = round(lat, 2), round(lon, 2)
+    qradius = radius_m + 1000
+    cached = _safe_repo(repo.cached_facilities, qlat, qlon, qradius)
+    err = None
+    if cached is not None:
+        found = cached
+    else:
+        found, err = await _source("overpass", overpass.fetch_facilities(qlat, qlon, qradius))
+        if found is not None:
+            _safe_repo(repo.store_facilities, qlat, qlon, qradius, found)
+    rows = []
+    for f in found or []:
+        d = geodesic_m(lat, lon, f.latitude, f.longitude)
+        if d <= radius_m:
+            rows.append({"osm_id": f.osm_id, "kind": f.kind, "name": f.name, "latitude": f.latitude,
+                         "longitude": f.longitude, "distance_m": round(d), "phone": f.phone, "healthcare": f.healthcare,
+                         "has_emergency": f.has_emergency,
+                         "retrieved_at": f.retrieved_at.isoformat() if f.retrieved_at else None})
+    rows.sort(key=lambda r: r["distance_m"])
+    return {"facilities": rows[:limit], "radius_m": radius_m, "cached": cached is not None,
+            "source": "OpenStreetMap contributors, via the Overpass API",
+            "licence": "ODbL 1.0 (https://www.openstreetmap.org/copyright)",
+            "country_code": country_at(lat, lon),
+            "error": None if found is not None else (err or "facility lookup failed")}
 
 
 async def routes_for(waypoints: list[tuple[float, float]], profile: str) -> tuple[Route, list[Route]]:

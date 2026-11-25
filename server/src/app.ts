@@ -16,6 +16,7 @@ import { createRiskService, type RiskService } from './integrations/riskService.
 import { destinationsRouter } from './routes/v1/destinations.js';
 import { assessmentsRouter, journeyAssessmentRouter } from './routes/v1/assessments.js';
 import { incidentsRouter } from './routes/v1/incidents.js';
+import { emergencyRouter } from './routes/v1/emergency.js';
 import { alertsRouter, devicesRouter } from './routes/v1/alerts.js';
 import { hotelsRouter } from './routes/v1/hotels.js';
 import { createLiteApi, type HotelProvider } from './integrations/liteapi.js';
@@ -38,6 +39,7 @@ export function createApp(
     : null,
 ) {
   const app = express();
+  const pushConfigured = Boolean(config.FCM_PROJECT_ID && config.FCM_SERVICE_ACCOUNT_JSON);
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
   app.use(helmet());
@@ -63,6 +65,7 @@ export function createApp(
       database,
       risk_service: riskHealth ? { status: riskHealth.status, engine_version: riskHealth.engine_version } : 'unavailable',
       hotels: hotels ? `configured (${hotels.env})` : 'not_configured',
+      push: pushConfigured ? 'configured' : 'not_configured',
     });
   });
   app.get('/api/health', health);
@@ -97,6 +100,7 @@ export function createApp(
     assessmentsRouter(db, risk, config.ASSESSMENT_MAX_AGE_MIN));
   app.use('/api/v1/journeys', auth, journeyAssessmentRouter(db));
   app.use('/api/v1/incidents', auth, incidentsRouter(db));
+  app.use('/api/v1/emergency', auth, emergencyRouter(db, risk, { pushConfigured }));
   app.use('/api/v1/alerts', auth, alertsRouter(db));
   app.use('/api/v1/devices', auth, devicesRouter(db));
   app.use('/api/v1/hotels', auth, hotelsRouter(db, hotels, { allowLiveBookings: config.LITEAPI_ALLOW_LIVE_BOOKINGS }));

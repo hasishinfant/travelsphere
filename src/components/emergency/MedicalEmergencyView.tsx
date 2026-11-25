@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   HeartPulse, ArrowLeft, CheckCircle2, AlertTriangle, 
   MapPin, Phone, ShieldCheck, Clock, Check, 
   AlertCircle, Navigation, Activity, Stethoscope, Pill
 } from 'lucide-react';
-import { 
-  complaintService, 
-  MedicalEmergencyRecord 
-} from '@/services/complaintService';
+import {
+  newRequestId, registerIncident, SubmitError, FAILURE_MESSAGE, type Registration,
+} from '@/services/emergency';
+import { EmergencyCallPanel } from './EmergencyCallPanel';
+import { IncidentNotRegistered, IncidentRegistered } from './IncidentOutcome';
+
+type AssistanceType = 'injury' | 'illness' | 'prescription' | 'dental' | 'hospital_referral' | 'other';
+type Urgency = 'immediate' | 'within_2_hours' | 'within_24_hours';
+const ASSISTANCE_LABEL: Record<AssistanceType, string> = {
+  illness: 'Illness', injury: 'Injury', prescription: 'Prescription or lost medication', dental: 'Dental',
+  hospital_referral: 'Hospital or specialist referral', other: 'Other medical problem',
+};
 
 interface MedicalEmergencyViewProps {
   onBack: () => void;
@@ -18,16 +26,15 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
   onBack,
   onSuccessTrack,
 }) => {
-  const [assistanceType, setAssistanceType] = useState<MedicalEmergencyRecord['assistanceType']>('illness');
+  const [assistanceType, setAssistanceType] = useState<AssistanceType>('illness');
   const [description, setDescription] = useState<string>('');
   const [location, setLocation] = useState<string>('');
   const [latitude, setLatitude] = useState<number | undefined>();
   const [longitude, setLongitude] = useState<number | undefined>();
-  const [urgency, setUrgency] = useState<MedicalEmergencyRecord['urgency']>('within_2_hours');
-  const [contactNumber, setContactNumber] = useState<string>('+1 (555) 234-5678');
+  const [urgency, setUrgency] = useState<Urgency>('within_2_hours');
+  const [contactNumber, setContactNumber] = useState<string>('');
   const [contactPreference, setContactPreference] = useState<'phone' | 'email' | 'whatsapp'>('phone');
-  const [hasTravelInsurance, setHasTravelInsurance] = useState<boolean>(true);
-  const [insuranceProvider, setInsuranceProvider] = useState<string>('Allianz Global Assistance');
+  const [insuranceProvider, setInsuranceProvider] = useState<string>('');
   const [medicalConditionsOrAllergies, setMedicalConditionsOrAllergies] = useState<string>('');
 
   // UI state
@@ -35,12 +42,14 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
   const [locationSuccessMsg, setLocationSuccessMsg] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submittedRecord, setSubmittedRecord] = useState<MedicalEmergencyRecord | null>(null);
+  const [registration, setRegistration] = useState<Registration | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const requestId = useRef(newRequestId()); // reused by retries: the server returns the same incident, never a second one
 
   // Browser Geolocation
   const handleDetectLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported by your browser');
+      setFormErrors(prev => ({ ...prev, location: 'This browser cannot share a location. Type your location instead.' }));
       return;
     }
 
@@ -53,15 +62,17 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
         const lng = position.coords.longitude;
         setLatitude(lat);
         setLongitude(lng);
-        const geoString = `GPS (${lat.toFixed(4)}, ${lng.toFixed(4)}) - Near current device position`;
+        const geoString = `GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         setLocation(geoString);
         setLocationSuccessMsg('Current GPS coordinates detected successfully');
         setIsLocating(false);
       },
       (error) => {
-        console.warn('Geolocation error:', error.message);
         setIsLocating(false);
-        alert('Could not access current location. Please enter your location manually.');
+        setLocationSuccessMsg(null);
+        setFormErrors(prev => ({ ...prev, location: error.code === 1
+          ? 'Location permission is blocked. Type your location instead.'
+          : 'Your device could not find a location. Type your location instead.' }));
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
@@ -82,118 +93,53 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
 
     if (!contactNumber.trim()) {
       errors.contactNumber = 'Contact phone number is required.';
-    } else if (contactNumber.trim().length < 7) {
-      errors.contactNumber = 'Please enter a valid phone number with country code.';
+    } else if (!/^[+()\d\s.-]{7,32}$/.test(contactNumber.trim())) {
+      errors.contactNumber = 'Use digits, spaces and + ( ) - only, at least 7 characters.';
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!validate()) return;
 
+    if (isSubmitting) return;
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      const record = await complaintService.submitMedicalEmergency({
-        assistanceType,
+      const gps = latitude !== undefined && longitude !== undefined;
+      setRegistration(await registerIncident({
+        category: 'medical',
+        title: `Medical: ${ASSISTANCE_LABEL[assistanceType]}`,
         description: description.trim(),
-        location: location.trim(),
-        latitude,
-        longitude,
-        urgency,
-        hasTravelInsurance,
-        insuranceProvider: hasTravelInsurance ? insuranceProvider : undefined,
-        medicalConditionsOrAllergies: medicalConditionsOrAllergies.trim() || undefined,
-        contactNumber: contactNumber.trim(),
-        contactPreference,
-      });
-
-      setSubmittedRecord(record);
+        client_request_id: requestId.current,
+        ...(gps ? { latitude, longitude } : {}),
+        details: {
+          assistance_type: assistanceType,
+          urgency,
+          location_text: location.trim(),
+          location_status: gps ? 'captured' : 'manual',
+          contact_number: contactNumber.trim(),
+          contact_preference: contactPreference,
+          ...(insuranceProvider.trim() ? { insurance_provider: insuranceProvider.trim() } : {}),
+          ...(medicalConditionsOrAllergies.trim() ? { conditions_or_allergies: medicalConditionsOrAllergies.trim() } : {}),
+        },
+      }));
     } catch (err) {
-      console.error('Failed to submit medical emergency:', err);
-      alert('Failed to log medical request. Please try again or call the emergency hotline.');
+      setSubmitError(err instanceof SubmitError ? err.message : FAILURE_MESSAGE.server);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // SUCCESS CONFIRMATION VIEW
-  if (submittedRecord) {
+  if (registration) {
     return (
       <div className="emergency-form-container">
-        <div className="success-confirmation-card">
-          <div className="success-icon-badge badge-medical">
-            <CheckCircle2 size={40} className="text-emerald-500" />
-          </div>
-
-          <span className="success-pretitle">Medical Request Registered</span>
-          <h2 className="success-title">Your Case Has Been Dispatched</h2>
-          <p className="success-desc">
-            A dedicated TravelSphere medical coordinator has received your case and is actively reviewing 
-            verified clinics, doctors, and hospital partners in your area.
-          </p>
-
-          <div className="reference-code-box">
-            <span className="ref-label">Medical Case Reference ID</span>
-            <div className="ref-code">{submittedRecord.id}</div>
-            <span className="ref-hint">Please save this reference for coordination with physicians and travel insurance.</span>
-          </div>
-
-          <div className="success-details-summary">
-            <div className="summary-row">
-              <span className="sum-label">Assistance Type</span>
-              <span className="sum-val capitalize">{submittedRecord.assistanceType.replace('_', ' ')}</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Location</span>
-              <span className="sum-val">{submittedRecord.location}</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Urgency</span>
-              <span className="sum-val font-semibold text-amber-600 capitalize">
-                {submittedRecord.urgency.replace(/_/g, ' ')}
-              </span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Contact Target</span>
-              <span className="sum-val">{submittedRecord.contactNumber} ({submittedRecord.contactPreference})</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Status</span>
-              <span className="status-pill status-submitted">
-                <span className="status-dot"></span> Under Review
-              </span>
-            </div>
-          </div>
-
-          <div className="emergency-notice-compact mb-6">
-            <AlertCircle size={18} className="notice-icon text-red-500" />
-            <div className="notice-text">
-              <strong>Need Immediate Hospitalization?</strong>
-              <p>This service does not replace municipal ambulances. Call local emergency (112 / 911) if acute life danger exists.</p>
-            </div>
-          </div>
-
-          <div className="success-actions">
-            <button 
-              type="button" 
-              className="btn-primary-green flex-1"
-              onClick={() => onSuccessTrack(submittedRecord.id)}
-            >
-              <Activity size={18} />
-              <span>Track Request & Live Timeline</span>
-            </button>
-            <button 
-              type="button" 
-              className="btn-outline-neutral"
-              onClick={onBack}
-            >
-              Back to Support Hub
-            </button>
-          </div>
-        </div>
+        <IncidentRegistered registration={registration}
+          locationNote={latitude === undefined ? `Not included as GPS coordinates. You typed: “${location.trim()}”.` : null}
+          onTrack={() => onSuccessTrack(registration.incident.id)} onBack={onBack} />
       </div>
     );
   }
@@ -219,7 +165,7 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
           <div>
             <h1 className="form-title">Medical Assistance Request</h1>
             <p className="form-subtitle">
-              Get assistance locating certified English-speaking clinics, physicians, or prescription replacements.
+              Record a medical problem with TravelSphere. TravelSphere responder accounts can see it; nobody is sent to you automatically.
             </p>
           </div>
         </div>
@@ -231,12 +177,14 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
         <div className="notice-text">
           <strong className="text-rose-900">Immediate Life-Threatening Emergency?</strong>
           <p className="text-rose-700">
-            If you or a travel companion are experiencing severe trauma, chest pain, or loss of consciousness, 
-            <strong> dial municipal emergency services (112 in Europe/India, 911 in North America) immediately.</strong> 
-            TravelSphere coordinates travel health support, English-speaking clinics, and insurance claims.
+            Severe injury, chest pain, difficulty breathing or loss of consciousness:
+            <strong> call emergency services now.</strong> This form does not contact them.
           </p>
         </div>
       </div>
+      <EmergencyCallPanel compact />
+
+      {submitError && <IncidentNotRegistered message={submitError} onRetry={() => handleSubmit()} retrying={isSubmitting} />}
 
       <form onSubmit={handleSubmit} className="complaint-card-form" noValidate>
         {/* Section 1: Type & Urgency */}
@@ -245,7 +193,7 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
             <span className="section-step-num">1</span>
             <div className="section-title-content">
               <h3>Medical Situation & Urgency</h3>
-              <p>Help us route your case to the appropriate healthcare specialist</p>
+              <p>So a responder can see what happened and how urgent it is</p>
             </div>
           </div>
 
@@ -258,7 +206,7 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
                 id="assistanceType"
                 className="select-input"
                 value={assistanceType}
-                onChange={(e) => setAssistanceType(e.target.value as any)}
+                onChange={(e) => setAssistanceType(e.target.value as AssistanceType)}
               >
                 <option value="illness">Illness / Infection / High Fever</option>
                 <option value="injury">Physical Injury / Fall / Sprain</option>
@@ -283,7 +231,7 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
                     key={item.value}
                     type="button"
                     className={`urgency-chip ${urgency === item.value ? 'selected urgency-' + item.value : ''}`}
-                    onClick={() => setUrgency(item.value as any)}
+                    onClick={() => setUrgency(item.value as Urgency)}
                   >
                     <span className="urgency-title">{item.label}</span>
                     <span className="urgency-sub">{item.desc}</span>
@@ -320,7 +268,7 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
             <span className="section-step-num">2</span>
             <div className="section-title-content">
               <h3>Current Location</h3>
-              <p>Where are you currently located so we can locate the nearest doctor or hospital?</p>
+              <p>Where you are, so a responder knows where the problem is</p>
             </div>
           </div>
 
@@ -371,7 +319,7 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
             <span className="section-step-num">3</span>
             <div className="section-title-content">
               <h3>Health Background & Insurance (Optional)</h3>
-              <p>Crucial for avoiding medication contraindications and expediting insurance approvals</p>
+              <p>Optional. Visible only to you and TravelSphere responder accounts.</p>
             </div>
           </div>
 
@@ -412,7 +360,7 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
             <span className="section-step-num">4</span>
             <div className="section-title-content">
               <h3>Emergency Contact Details</h3>
-              <p>How our medical response coordinator should reach you</p>
+              <p>How a TravelSphere responder can reach you</p>
             </div>
           </div>
 
@@ -477,12 +425,12 @@ export const MedicalEmergencyView: React.FC<MedicalEmergencyViewProps> = ({
             {isSubmitting ? (
               <>
                 <span className="submit-spinner"></span>
-                <span>Submitting Case...</span>
+                <span>Creating incident…</span>
               </>
             ) : (
               <>
                 <ShieldCheck size={18} />
-                <span>Submit Medical Assistance Request</span>
+                <span>Register medical request</span>
               </>
             )}
           </button>

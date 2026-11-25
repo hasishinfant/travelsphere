@@ -147,9 +147,9 @@ export const ComplaintHistoryView: React.FC<ComplaintHistoryViewProps> = ({
             <span>Support Hub</span>
           </button>
           <div className="history-title-block">
-            <h1 className="history-title">My Assistance & Complaint Tickets</h1>
+            <h1 className="history-title">Saved on this device</h1>
             <p className="history-subtitle">
-              Track real-time status updates, liaison messages, and hotel management responses.
+              Hotel complaints and older requests kept in this browser. They were never sent to TravelSphere, a hotel or anyone else.
             </p>
           </div>
         </div>

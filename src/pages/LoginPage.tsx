@@ -296,7 +296,7 @@ const LoginPage: React.FC = () => {
           <Photo src={hero.imageUrl} alt="" width={600} ratio="3 / 4" caption={`${hero.imageCaption} · ${hero.city}`} priority className="login-photo" />
           <div className="login-visual-card">
             <p className="eyebrow">Your next trip</p>
-            <p className="login-visual-title">Day-by-day plans, hotels and 24/7 help in one place.</p>
+            <p className="login-visual-title">Day-by-day plans, hotels and safety information in one place.</p>
           </div>
         </div>
       </div>

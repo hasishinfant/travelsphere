@@ -49,15 +49,14 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
       const updated = await complaintService.addFollowUpMessage(
         record.id,
         newReplyText.trim(),
-        record.userName || 'Demo Traveler'
+        'You'
       );
       setRecord(updated);
       setNewReplyText('');
-      setSendSuccessHint('Your message was sent to the support team.');
+      setSendSuccessHint('Note saved on this device. Nobody else can see it.');
       setTimeout(() => setSendSuccessHint(null), 4000);
     } catch (err) {
-      console.error('Failed to send follow-up message:', err);
-      alert('Failed to send message. Please try again.');
+      setSendSuccessHint('The note could not be saved on this device.');
     } finally {
       setIsSending(false);
     }
@@ -69,7 +68,7 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
       const updated = await complaintService.updateRequestStatus(
         record.id,
         newStatus,
-        `Status updated to ${newStatus.replace('_', ' ').toUpperCase()} by customer assistance portal.`
+        `You marked this ${newStatus.replace('_', ' ')} (your own record).`
       );
       setRecord(updated);
     } catch (err) {
@@ -103,24 +102,15 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
     );
   }
 
-  // Stepper steps
+  // Device-only records: these are the traveller's own markers; nobody else reviews them
   const steps: { key: RequestStatus; label: string }[] = [
-    { key: 'submitted', label: '1. Submitted' },
-    { key: 'under_review', label: '2. Under Review' },
-    { key: 'in_progress', label: '3. In Progress' },
-    { key: 'resolved', label: '4. Resolved' },
+    { key: 'submitted', label: '1. Saved' },
+    { key: 'in_progress', label: '2. You’re dealing with it' },
+    { key: 'resolved', label: '3. Resolved' },
   ];
 
-  const getStepIndex = (status: RequestStatus) => {
-    if (status === 'rejected') return 1;
-    switch (status) {
-      case 'submitted': return 0;
-      case 'under_review': return 1;
-      case 'in_progress': return 2;
-      case 'resolved': return 3;
-      default: return 0;
-    }
-  };
+  const getStepIndex = (status: RequestStatus) =>
+    status === 'resolved' ? 2 : status === 'in_progress' ? 1 : 0; // 'under_review' only exists in older records
 
   const currentStepIndex = getStepIndex(record.status);
 
@@ -155,6 +145,9 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
               ? `Lost Document: ${(record as any).documentType?.toUpperCase()}`
               : `Local Assistance: ${(record as any).assistanceType?.replace('_', ' ')}`}
           </h1>
+          <p className="device-only-banner" role="note">
+            Saved on this device only. It was never sent to TravelSphere, a hotel or anyone else.
+          </p>
           <p className="detail-created-date">
             Created on {new Date(record.createdAt).toLocaleDateString(undefined, { 
               weekday: 'long', 
@@ -407,12 +400,8 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
             <div className="chat-card-header">
               <div className="flex items-center gap-2">
                 <MessageSquare size={18} className="text-emerald-600" />
-                <h2 className="text-base font-semibold text-slate-900">Support & Hotel Liaison</h2>
+                <h2 className="text-base font-semibold text-slate-900">Your notes</h2>
               </div>
-              <span className="live-indicator">
-                <span className="live-pulse"></span>
-                <span>Live Channel</span>
-              </span>
             </div>
 
             {/* Messages Scroll Area */}
@@ -439,7 +428,7 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
                 ))
               ) : (
                 <div className="no-messages-placeholder">
-                  <p>No messages exchanged yet.</p>
+                  <p>No notes yet. Notes stay on this device.</p>
                 </div>
               )}
             </div>
@@ -456,7 +445,7 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
                 <input
                   type="text"
                   className="chat-reply-input"
-                  placeholder="Type an update or question for the liaison desk..."
+                  placeholder="Add a note for your own record…"
                   value={newReplyText}
                   onChange={(e) => setNewReplyText(e.target.value)}
                   disabled={isSending}
@@ -465,7 +454,7 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
                   type="submit"
                   className="btn-send-reply"
                   disabled={isSending || !newReplyText.trim()}
-                  title="Send message"
+                  title="Save note"
                 >
                   {isSending ? <span className="submit-spinner-sm"></span> : <Send size={16} />}
                 </button>
@@ -475,17 +464,17 @@ export const ComplaintDetailView: React.FC<ComplaintDetailViewProps> = ({
 
           {/* Quick Actions & Demo Status Controls */}
           <div className="detail-card mt-6">
-            <h3 className="text-sm font-semibold text-slate-800 mb-2">Ticket Actions</h3>
+            <h3 className="text-sm font-semibold text-slate-800 mb-2">Your own status</h3>
             <div className="ticket-actions-stack">
               <div className="status-update-row">
-                <span className="text-xs text-slate-500 block mb-1">Simulate Status Transition (Demo):</span>
+                <span className="text-xs text-slate-500 block mb-1">Only you see this. It doesn’t notify anyone.</span>
                 <div className="flex flex-wrap gap-1.5">
                   <button 
                     type="button" 
                     className="btn-xs-tag"
                     onClick={() => handleSimulateStatus('in_progress')}
                   >
-                    Mark In Progress
+                    I’m dealing with it
                   </button>
                   <button 
                     type="button" 

@@ -6,6 +6,8 @@ backoff). Results are cached in the database by the repository layer for 30 days
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from app.core.config import get_settings
 from app.geospatial.geometry import valid_coordinate
 from app.ingestion.http import ProviderError, get_http
@@ -21,6 +23,15 @@ def build_query(lat: float, lon: float, radius_m: int) -> str:
             f'out center tags 300;')
 
 
+def first_phone(tags: dict) -> str | None:
+    """The first number of OSM's phone / contact:phone / emergency:phone tags, exactly as mapped (never synthesised)."""
+    for k in ("phone", "contact:phone", "emergency:phone"):
+        raw = (tags.get(k) or "").split(";")[0].strip()
+        if raw and sum(ch.isdigit() for ch in raw) >= 3 and len(raw) <= 64:
+            return raw
+    return None
+
+
 def parse(body: dict) -> list[Facility]:
     out = []
     for el in body.get("elements") or []:
@@ -33,7 +44,9 @@ def parse(body: dict) -> list[Facility]:
         emergency = tags.get("emergency")
         out.append(Facility(osm_id=f"{el.get('type', 'n')[0]}{el.get('id')}", kind=kind, name=tags.get("name"),
                             latitude=float(lat), longitude=float(lon),
-                            has_emergency=True if emergency == "yes" else False if emergency == "no" else None))
+                            has_emergency=True if emergency == "yes" else False if emergency == "no" else None,
+                            phone=first_phone(tags), healthcare=(tags.get("healthcare") or None),
+                            retrieved_at=datetime.now(timezone.utc)))
     return out
 
 

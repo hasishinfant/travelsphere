@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   FileText, ArrowLeft, CheckCircle2, AlertTriangle, 
   MapPin, Phone, ShieldCheck, Calendar, Clock, 
   HelpCircle, Building2, ExternalLink, AlertCircle
 } from 'lucide-react';
-import { 
-  complaintService, 
-  PassportEmergencyRecord 
-} from '@/services/complaintService';
+import {
+  newRequestId, registerIncident, SubmitError, FAILURE_MESSAGE, type Registration,
+} from '@/services/emergency';
+import { IncidentNotRegistered, IncidentRegistered } from './IncidentOutcome';
+
+type DocumentType = 'passport' | 'visa' | 'national_id' | 'driving_license' | 'boarding_pass';
+const DOCUMENT_LABEL: Record<DocumentType, string> = {
+  passport: 'passport', visa: 'visa', national_id: 'national ID', driving_license: 'driving licence', boarding_pass: 'tickets',
+};
 
 interface LostPassportViewProps {
   onBack: () => void;
@@ -18,21 +23,23 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
   onBack,
   onSuccessTrack,
 }) => {
-  const [documentType, setDocumentType] = useState<PassportEmergencyRecord['documentType']>('passport');
-  const [issuingCountry, setIssuingCountry] = useState<string>('United States');
+  const [documentType, setDocumentType] = useState<DocumentType>('passport');
+  const [issuingCountry, setIssuingCountry] = useState<string>('');
   const [incidentDate, setIncidentDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [incidentLocation, setIncidentLocation] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [policeReportFiled, setPoliceReportFiled] = useState<boolean>(false);
   const [policeReportNumber, setPoliceReportNumber] = useState<string>('');
   const [upcomingDepartureDate, setUpcomingDepartureDate] = useState<string>('');
-  const [contactNumber, setContactNumber] = useState<string>('+1 (555) 234-5678');
+  const [contactNumber, setContactNumber] = useState<string>('');
   const [contactPreference, setContactPreference] = useState<'phone' | 'email' | 'whatsapp'>('phone');
 
   // UI state
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submittedRecord, setSubmittedRecord] = useState<PassportEmergencyRecord | null>(null);
+  const [registration, setRegistration] = useState<Registration | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const requestId = useRef(newRequestId());
 
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
@@ -53,122 +60,62 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
 
     if (!contactNumber.trim()) {
       errors.contactNumber = 'Contact phone number is required.';
+    } else if (!/^[+()\d\s.-]{7,32}$/.test(contactNumber.trim())) {
+      errors.contactNumber = 'Use digits, spaces and + ( ) - only, at least 7 characters.';
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!validate() || isSubmitting) return;
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      const record = await complaintService.submitPassportEmergency({
-        documentType,
-        issuingCountry: issuingCountry.trim(),
-        incidentDate,
-        incidentLocation: incidentLocation.trim(),
+      setRegistration(await registerIncident({
+        category: 'lost_documents',
+        title: `Lost or stolen ${DOCUMENT_LABEL[documentType]}`,
         description: description.trim(),
-        policeReportFiled,
-        policeReportNumber: policeReportFiled ? policeReportNumber.trim() : undefined,
-        upcomingDepartureDate: upcomingDepartureDate || undefined,
-        contactNumber: contactNumber.trim(),
-        contactPreference,
-      });
-
-      setSubmittedRecord(record);
+        client_request_id: requestId.current,
+        details: {
+          document_type: documentType,
+          issuing_country: issuingCountry.trim(),
+          location_text: incidentLocation.trim(),
+          location_status: 'manual',
+          ...(incidentDate ? { incident_date: incidentDate } : {}),
+          police_report_filed: policeReportFiled,
+          ...(policeReportFiled && policeReportNumber.trim() ? { police_report_number: policeReportNumber.trim() } : {}),
+          ...(upcomingDepartureDate ? { upcoming_departure_date: upcomingDepartureDate } : {}),
+          contact_number: contactNumber.trim(),
+          contact_preference: contactPreference,
+        },
+      }));
     } catch (err) {
-      console.error('Failed to submit lost passport case:', err);
-      alert('Failed to log document assistance request. Please try again.');
+      setSubmitError(err instanceof SubmitError ? err.message : FAILURE_MESSAGE.server);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // SUCCESS CONFIRMATION VIEW
-  if (submittedRecord) {
+  if (registration) {
     return (
       <div className="emergency-form-container">
-        <div className="success-confirmation-card">
-          <div className="success-icon-badge badge-passport">
-            <CheckCircle2 size={40} className="text-blue-500" />
-          </div>
-
-          <span className="success-pretitle">Consular Case Initiated</span>
-          <h2 className="success-title">Document Report Logged</h2>
-          <p className="success-desc">
-            Your lost document request has been filed. Our consular liaison team is compiling 
-            the verified emergency travel certificate procedures for citizens of <strong>{submittedRecord.issuingCountry}</strong>.
-          </p>
-
-          <div className="reference-code-box">
-            <span className="ref-label">Document Case Reference ID</span>
-            <div className="ref-code">{submittedRecord.id}</div>
-            <span className="ref-hint">Present this number to your consular officer or local police precinct.</span>
-          </div>
-
-          <div className="success-details-summary">
-            <div className="summary-row">
-              <span className="sum-label">Document Reported</span>
-              <span className="sum-val capitalize">{submittedRecord.documentType.replace('_', ' ')}</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Issuing Country</span>
-              <span className="sum-val font-semibold">{submittedRecord.issuingCountry}</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Approximate Location</span>
-              <span className="sum-val">{submittedRecord.incidentLocation}</span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Police Report</span>
-              <span className="sum-val">
-                {submittedRecord.policeReportFiled 
-                  ? `Filed (Ref: ${submittedRecord.policeReportNumber || 'Pending'})` 
-                  : 'Not yet filed - Recommended'}
-              </span>
-            </div>
-            <div className="summary-row">
-              <span className="sum-label">Status</span>
-              <span className="status-pill status-submitted">
-                <span className="status-dot"></span> Under Review
-              </span>
-            </div>
-          </div>
-
-          {/* Consular Next Steps Advice */}
+        <IncidentRegistered registration={registration} locationNote={`Not included as GPS coordinates. You wrote: “${incidentLocation.trim()}”.`}
+          onTrack={() => onSuccessTrack(registration.incident.id)} onBack={onBack}>
           <div className="consular-guide-box mb-6">
             <Building2 size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="consular-guide-content text-left">
-              <h4 className="text-sm font-semibold text-slate-900 mb-1">Recommended Next Steps:</h4>
+              <h4 className="text-sm font-semibold text-slate-900 mb-1">What you can do yourself now</h4>
               <ol className="text-xs text-slate-600 space-y-1.5 list-decimal pl-4">
-                <li>Visit the nearest local police station to obtain an official <strong>Police Loss Certificate (PIR)</strong>. Consulates require this to issue emergency passports.</li>
-                <li>Carry digital copies of your passport, birth certificate, or national identity card if stored securely.</li>
-                <li>Check with our support agent via the timeline below for the nearest embassy address and emergency appointment slots.</li>
+                <li>Report the loss or theft to the local police and ask for a written report; many consulates ask for one before issuing replacement documents.</li>
+                <li>Contact your country’s embassy or consulate directly. TravelSphere does not contact embassies for you.</li>
+                <li>Keep copies of your passport and other ID ready if you have them.</li>
               </ol>
             </div>
           </div>
-
-          <div className="success-actions">
-            <button 
-              type="button" 
-              className="btn-primary-green flex-1"
-              onClick={() => onSuccessTrack(submittedRecord.id)}
-            >
-              <Clock size={18} />
-              <span>Track Case & Embassy Updates</span>
-            </button>
-            <button 
-              type="button" 
-              className="btn-outline-neutral"
-              onClick={onBack}
-            >
-              Back to Support Hub
-            </button>
-          </div>
-        </div>
+        </IncidentRegistered>
       </div>
     );
   }
@@ -194,7 +141,7 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
           <div>
             <h1 className="form-title">Lost Passport & Documents Assistance</h1>
             <p className="form-subtitle">
-              Report lost or stolen passports, visas, or IDs to obtain consular guidance and emergency transit permits.
+              Record lost or stolen documents with TravelSphere. TravelSphere does not contact embassies or the police for you.
             </p>
           </div>
         </div>
@@ -204,9 +151,11 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
       <div className="info-privacy-notice mb-6">
         <ShieldCheck size={18} className="text-blue-600 flex-shrink-0" />
         <span className="text-xs text-slate-600">
-          <strong>Privacy Protected:</strong> We never ask for full unredacted passport document numbers. Only general incident information is required to coordinate with your embassy.
+          <strong>Privacy:</strong> Don’t enter document numbers. Only you and TravelSphere responder accounts can see this report.
         </span>
       </div>
+
+      {submitError && <IncidentNotRegistered message={submitError} onRetry={() => handleSubmit()} retrying={isSubmitting} />}
 
       <form onSubmit={handleSubmit} className="complaint-card-form" noValidate>
         {/* Section 1: Document Details */}
@@ -228,7 +177,7 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
                 id="documentType"
                 className="select-input"
                 value={documentType}
-                onChange={(e) => setDocumentType(e.target.value as any)}
+                onChange={(e) => setDocumentType(e.target.value as DocumentType)}
               >
                 <option value="passport">Passport (Primary Book)</option>
                 <option value="visa">Entry Visa / Electronic Visa (e-Visa)</option>
@@ -301,7 +250,7 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
                   onChange={(e) => setUpcomingDepartureDate(e.target.value)}
                 />
               </div>
-              <span className="field-hint">Helps the embassy prioritize emergency same-day travel certificates.</span>
+              <span className="field-hint">Useful to mention when you contact your embassy or consulate.</span>
             </div>
           </div>
 
@@ -355,7 +304,7 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
             <span className="section-step-num">3</span>
             <div className="section-title-content">
               <h3>Police Loss Report</h3>
-              <p>Almost all embassies require a local police report before issuing replacement papers</p>
+              <p>Many consulates ask for a local police report before issuing replacement documents</p>
             </div>
           </div>
 
@@ -397,7 +346,7 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
             <span className="section-step-num">4</span>
             <div className="section-title-content">
               <h3>How to Reach You</h3>
-              <p>Provide a phone number or hotel phone where consular liaison updates can be delivered</p>
+              <p>How a TravelSphere responder can reach you</p>
             </div>
           </div>
 
@@ -462,12 +411,12 @@ export const LostPassportView: React.FC<LostPassportViewProps> = ({
             {isSubmitting ? (
               <>
                 <span className="submit-spinner"></span>
-                <span>Registering Report...</span>
+                <span>Creating incident…</span>
               </>
             ) : (
               <>
                 <ShieldCheck size={18} />
-                <span>Submit Document Assistance Report</span>
+                <span>Register lost-document report</span>
               </>
             )}
           </button>

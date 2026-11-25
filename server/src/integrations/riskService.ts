@@ -107,7 +107,34 @@ export interface JourneyAssessmentInput {
   persist?: boolean;
 }
 
+// Nearby emergency facilities from OpenStreetMap (via the risk service's cached Overpass adapter)
+export const FacilitiesSchema = z.object({
+  facilities: z.array(z.object({
+    osm_id: z.string(),
+    kind: z.enum(['hospital', 'clinic', 'police', 'fire_station']),
+    name: z.string().nullable(),
+    latitude: z.number(),
+    longitude: z.number(),
+    distance_m: z.number(),
+    phone: z.string().nullable(),
+    healthcare: z.string().nullable(),
+    has_emergency: z.boolean().nullable(),
+    retrieved_at: z.string().nullable(),
+  })),
+  radius_m: z.number(),
+  source: z.string(),
+  licence: z.string(),
+  cached: z.boolean(),
+  country_code: z.string().length(2).nullable(),
+  error: z.string().nullable(),
+});
+export type Facilities = z.infer<typeof FacilitiesSchema>;
+
+export const CountrySchema = z.object({ country_code: z.string().length(2).nullable() });
+
 export interface RiskService {
+  countryAt?(latitude: number, longitude: number): Promise<{ country_code: string | null }>;
+  facilitiesNear?(latitude: number, longitude: number, radiusM: number): Promise<Facilities>;
   assessDestination(destinationId: string): Promise<DestinationAssessment>;
   assessJourney(input: JourneyAssessmentInput): Promise<JourneyAssessment>;
   health(): Promise<{ status: string; engine_version?: string } | null>;
@@ -119,9 +146,10 @@ export function createRiskService(config: Pick<Config, 'RISK_SERVICE_URL' | 'RIS
   fetchFn: FetchFn = fetch): RiskService {
   const base = config.RISK_SERVICE_URL.replace(/\/$/, '');
 
-  async function call<T extends z.ZodType>(path: string, body: unknown, schema: T): Promise<z.infer<T>> {
+  async function call<T extends z.ZodType>(path: string, body: unknown, schema: T,
+    timeoutMs = config.RISK_SERVICE_TIMEOUT_MS): Promise<z.infer<T>> {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), config.RISK_SERVICE_TIMEOUT_MS);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     let res: Response;
     try {
       res = await fetchFn(`${base}${path}`, {
@@ -157,6 +185,9 @@ export function createRiskService(config: Pick<Config, 'RISK_SERVICE_URL' | 'RIS
     assessDestination: id => call('/internal/v1/assessments/destination', { destination_id: id, persist: true },
       DestinationAssessmentSchema),
     assessJourney: input => call('/internal/v1/assessments/journey', { persist: true, ...input }, JourneyAssessmentSchema),
+    countryAt: (latitude, longitude) => call('/internal/v1/country', { latitude, longitude }, CountrySchema, 10_000),
+    facilitiesNear: (latitude, longitude, radius_m) =>
+      call('/internal/v1/facilities', { latitude, longitude, radius_m }, FacilitiesSchema, 60_000), // > the risk service's 45 s Overpass deadline, so its "lookup failed" answer arrives
     async health() {
       try {
         const ctrl = new AbortController();
