@@ -18,6 +18,22 @@
 }
 .pano-title h2 { font-size: var(--fs-lg); margin-top: 2px; }
 .pano-place { font-size: var(--fs-sm); color: var(--muted); }
+.pano-note { font-size: var(--fs-xs); color: var(--muted); max-width: 36ch; margin-top: var(--space-1); }
+
+/* Live conditions label (simulated light and weather over the recorded photo) */
+.pano-live {
+  position: absolute; top: var(--space-5); left: 50%; transform: translateX(-50%);
+  max-width: min(460px, calc(100% - 2 * var(--space-5)));
+  padding: var(--space-2) var(--space-4); border-radius: var(--r-lg);
+  background: rgba(20, 22, 28, 0.72); color: #fff; backdrop-filter: blur(10px);
+  text-align: center; pointer-events: none;
+}
+.pano-live-now { display: flex; align-items: center; justify-content: center; gap: var(--space-2); flex-wrap: wrap;
+  font-size: var(--fs-sm); }
+.pano-live p, .pano-live strong, .pano-live span { color: #fff; }
+.pano-live-now strong { font-weight: var(--fw-medium); }
+.pano-live-now span { opacity: 0.9; }
+.pano-live-note { font-size: var(--fs-xs); opacity: 0.8; margin-top: 2px; }
 
 .pano-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-2); }
 .pano-btn {
@@ -63,6 +79,7 @@
 @media (max-width: 720px) {
   .pano-top, .pano-bottom { left: var(--space-3); right: var(--space-3); }
   .pano-top { top: calc(var(--space-3) + env(safe-area-inset-top)); }
+  .pano-live { top: auto; bottom: calc(150px + env(safe-area-inset-bottom)); }
   .pano-bottom { bottom: calc(var(--space-3) + env(safe-area-inset-bottom)); }
   .pano-hint { display: none; }
 }

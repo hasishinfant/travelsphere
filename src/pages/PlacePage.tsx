@@ -222,7 +222,8 @@ const PlacePage: React.FC = () => {
 
       {view360 && pano && (
         <Suspense fallback={<div className="pano-boot"><LoadingSpinner size="md" message="Opening 360° view…" /></div>}>
-          <PanoramaViewer panorama={pano} placeName={d.name} onClose={close360} />
+          <PanoramaViewer panorama={pano} placeName={d.name} onClose={close360}
+            weather={assessment?.weather ?? null} weatherObservedAt={assessment?.observed_at ?? null} />
         </Suspense>
       )}
       {showMap && <MapModal destination={d} onClose={() => setShowMap(false)} />}
