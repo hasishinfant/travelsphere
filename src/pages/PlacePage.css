@@ -37,7 +37,24 @@
 .safety-meta { font-size: var(--fs-xs); color: var(--muted); margin-top: auto; }
 .safety-loading { padding: var(--space-10); }
 
-/* Factors */
+/* Tourist Confidence Score (destination background score) */
+.destination-score {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 280px); gap: var(--space-6);
+  padding: var(--space-6); margin-top: var(--space-6);
+}
+.destination-score-num { font-size: var(--fs-3xl); font-weight: var(--fw-medium); line-height: 1.1; color: var(--ink); }
+.destination-score-num small { font-size: var(--fs-lg); color: var(--muted); }
+.destination-score-num span { font-size: var(--fs-sm); color: var(--muted); font-weight: var(--fw-regular, 400); }
+.destination-score-note { font-size: var(--fs-sm); color: var(--muted); margin-top: var(--space-2); max-width: 46ch; }
+.destination-score-parts { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); align-content: center; }
+.destination-score-parts li { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--fs-sm);
+  color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: var(--space-2); }
+.destination-score-parts strong { color: var(--ink); font-weight: var(--fw-medium); }
+@media (max-width: 640px) { .destination-score { grid-template-columns: 1fr; } }
+
+/* Factors, grouped by dimension */
+.factor-dimension { margin-top: var(--space-6); }
+.factor-dimension .factor-grid { margin-top: var(--space-3); }
 .factor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: var(--space-4); margin-top: var(--space-6); }
 .factor {
   --tone: var(--muted-2);

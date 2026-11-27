@@ -1,4 +1,4 @@
-// Live safety conditions from the API (8-factor rule baseline on the server).
+// Live safety conditions from the API (scoring-v2: eight risk factors, confidence and destination score kept separate).
 import { useEffect, useState } from 'react';
 import { api, getSession, ensureSession } from './apiClient';
 
@@ -10,6 +10,13 @@ export interface PlaceConditions {
   risk_level: RiskLevel | null;
   data_status: DataStatus;
   factors_available: number;
+  factors_total?: number;
+  /** Confidence in the data behind the assessment — never part of the risk level. Null from the fallback engine. */
+  confidence?: { score: number; level: 'high' | 'medium' | 'low'; explanation: string; weakest: string | null;
+    components: Record<string, number> } | null;
+  /** Tourist Confidence Score (destination background score, 0–100); provisional while a factor is missing. */
+  destination_score?: { score: number | null; band: string | null; provisional: boolean; explanation: string;
+    components: { key: string; label: string; weight: number; score: number | null; note: string }[] } | null;
   headline: string;
   observed_at: string | null;
   weather: { summary: string; temperatureC: number | null; rainRateMmH: number | null; windGustMs: number | null } | null;
@@ -21,6 +28,7 @@ export interface Factor {
   value: number | null;
   status: 'live' | 'derived' | 'configured' | 'default' | 'unavailable';
   detail: string;
+  dimension?: 'hazard' | 'exposure' | 'journey_context' | 'response_capacity' | null;
 }
 
 /** Historical frequency of a hazard near a place (risk-service climatology): a hazard probability, not harm. */

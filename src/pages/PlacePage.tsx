@@ -38,6 +38,12 @@ const FactorCard: React.FC<{ f: Factor }> = ({ f }) => (
   </div>
 );
 
+const CONFIDENCE_LABEL = { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence' } as const;
+const DIMENSIONS: [string, string][] = [
+  ['hazard', 'Hazard'], ['exposure', 'Exposure'], ['journey_context', 'Journey context'],
+  ['response_capacity', 'Response capacity'], ['other', 'Other factors'],
+];
+
 const PlacePage: React.FC = () => {
   const { placeId = '' } = useParams<{ placeId: string }>();
   const navigate = useNavigate();
@@ -148,10 +154,20 @@ const PlacePage: React.FC = () => {
                 </div>
               </div>
               <div className="safety-summary-side">
-                <div className="safety-conf">
-                  <span className="safety-conf-num">{assessment.factors_available}<small>/8</small></span>
-                  <span className="safety-conf-label">factors backed by live or configured data</span>
-                </div>
+                {assessment.confidence ? (
+                  <div className="safety-conf" title={assessment.confidence.explanation}>
+                    <span className="safety-conf-num">{assessment.confidence.score}<small>/100</small></span>
+                    <span className="safety-conf-label">
+                      {CONFIDENCE_LABEL[assessment.confidence.level]} · {assessment.factors_available} of {assessment.factors_total ?? 8} factors
+                      have data
+                    </span>
+                  </div>
+                ) : (
+                  <div className="safety-conf">
+                    <span className="safety-conf-num">{assessment.factors_available}<small>/{assessment.factors_total ?? 8}</small></span>
+                    <span className="safety-conf-label">factors backed by live or configured data</span>
+                  </div>
+                )}
                 {assessment.weather && (
                   <ul className="safety-weather">
                     <li><Thermometer size={15} /> {assessment.weather.summary}{assessment.weather.temperatureC !== null ? `, ${assessment.weather.temperatureC} °C` : ''}</li>
@@ -168,9 +184,34 @@ const PlacePage: React.FC = () => {
 
             <HazardOutlook outlook={assessment.hazard_outlook} />
 
-            <div className="factor-grid">
-              {assessment.factors.map(f => <FactorCard key={f.key} f={f} />)}
-            </div>
+            {assessment.destination_score && assessment.destination_score.score !== null && (
+              <div className="surface destination-score">
+                <div>
+                  <p className="eyebrow">Tourist Confidence Score</p>
+                  <p className="destination-score-num">{Math.round(assessment.destination_score.score)}<small>/100</small>
+                    <span> {assessment.destination_score.band}{assessment.destination_score.provisional ? ' · provisional' : ''}</span></p>
+                  <p className="destination-score-note">
+                    Background safety of the place (access to care, remoteness, hazard history); today's conditions are in
+                    the risk level above.
+                  </p>
+                </div>
+                <ul className="destination-score-parts">
+                  {assessment.destination_score.components.map(c => (
+                    <li key={c.key}><span>{c.label}</span><strong>{c.score === null ? 'not available' : Math.round(c.score)}</strong></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {DIMENSIONS.map(([dim, title]) => {
+              const fs = assessment.factors.filter(f => (f.dimension ?? 'other') === dim);
+              return fs.length ? (
+                <div key={dim} className="factor-dimension">
+                  <p className="eyebrow">{title}</p>
+                  <div className="factor-grid">{fs.map(f => <FactorCard key={f.key} f={f} />)}</div>
+                </div>
+              ) : null;
+            })}
 
             <p className="safety-footnote">
               Model {assessment.model_version} · {assessment.uncertainty}. {assessment.notice}

@@ -48,11 +48,14 @@ const SafetyMeter: React.FC<SafetyMeterProps> = ({ placeId, conditions, onOpen }
       className={`safety-meter tone-${tone}`}
       onClick={onOpen}
       title={c?.headline}
-      aria-label={`Safety: ${label}${c ? `. ${c.factors_available} of 8 factors backed by live or configured data.` : ''}`}
+      aria-label={`Safety: ${label}${c ? (c.confidence ? `. ${c.confidence.level} confidence in the data (${c.confidence.score} of 100).`
+        : `. ${c.factors_available} of ${c.factors_total ?? 8} factors backed by live or configured data.`) : ''}`}
     >
       <span className="safety-meter-top">
         <span className="safety-meter-label">{label}</span>
-        {c && <span className="safety-meter-conf">{c.factors_available}/8 data</span>}
+        {c && <span className="safety-meter-conf">
+          {c.confidence ? `${c.confidence.level} confidence` : `${c.factors_available}/${c.factors_total ?? 8} data`}
+        </span>}
       </span>
       <span className="safety-meter-bar" aria-hidden="true">
         {SEGMENTS.map((s, i) => <span key={s} className={i < filled ? 'is-on' : ''} />)}
