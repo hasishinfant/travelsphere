@@ -1,441 +1,462 @@
 {
- "id": null,
- "destination_id": "kyoto",
- "destination": {
-  "id": "kyoto",
-  "name": "Kyoto, Japan",
-  "latitude": 34.9986,
-  "longitude": 135.785
- },
- "risk_category": "LOW",
- "composite_index": 0.1667,
- "assessment_status": "COMPLETE",
- "data_coverage": 1.0,
- "data_reliability": 0.931,
- "missing_indicators": [],
- "active_warnings": [],
- "critical_override": false,
- "override_event": null,
- "explanation": {
-  "summary": "Low risk from current conditions: Weather: Strong gusts 10.9 m/s",
-  "hazard_detected": "Weather: Strong gusts 10.9 m/s",
-  "contributing_inputs": [
-   {
-    "factor": "historical_incident_risk",
-    "label": "Historical incident risk",
-    "value": 0.5,
-    "class": "moderate",
-    "explanation": "1 significant event within 150 km since 2016 (1 cyclone) \u2014 about 0.10/year, i.e. a 9.5% chance of at least one in a year"
-   },
-   {
-    "factor": "weather_severity",
-    "label": "Weather severity",
-    "value": 0.25,
-    "class": "minor",
-    "explanation": "Strong gusts 10.9 m/s (Sun 12:00 local, at the destination)"
-   },
-   {
-    "factor": "time_factor",
-    "label": "Time factor",
-    "value": 0.25,
-    "class": "minor",
-    "explanation": "Sun 22 Nov 11:40 \u2013 Sun 22 Nov 12:40: Inside the Western North Pacific tropical-cyclone season (JMA climatology (main season))"
-   }
-  ],
-  "location": "Kyoto, Japan (34.999, 135.785)",
-  "journey_effect": "Destination overview \u2014 plan a journey to assess your route, timing and activity",
-  "information_age": "Weather observed 11 min ago; oldest input 5 days ago",
-  "recommended_action": "No elevated risk from current conditions. Check again before heading out.",
-  "additional_actions": [],
-  "rules_applied": [
-   "Weather severity: minor"
-  ],
-  "missing_information": [],
+  "id": null,
+  "destination_id": "kyoto",
+  "destination": {
+    "id": "kyoto",
+    "name": "Kyoto, Japan",
+    "latitude": 34.9986,
+    "longitude": 135.785
+  },
+  "risk_category": "LOW",
+  "composite_index": 0.1667,
   "assessment_status": "COMPLETE",
-  "disclaimer": "The risk category and composite index are rule-based summaries of current conditions. They are not the probability of an accident or injury."
- },
- "factors": [
-  {
-   "key": "weather_severity",
-   "label": "Weather severity",
-   "status": "measured",
-   "value": 0.25,
-   "severity_class": "minor",
-   "raw_value": null,
-   "unit": "class",
-   "inputs": {
-    "drivers": [
-     {
-      "class": "minor",
-      "description": "Strong gusts 10.9 m/s",
-      "time": "2026-11-22T03:00:00+00:00",
-      "where": "at the destination"
-     }
+  "data_coverage": 1.0,
+  "data_reliability": 0.86,
+  "missing_indicators": [],
+  "active_warnings": [],
+  "critical_override": false,
+  "override_event": null,
+  "explanation": {
+    "summary": "Low risk from current conditions: Weather: Strong gusts 10.9 m/s",
+    "hazard_detected": "Weather: Strong gusts 10.9 m/s",
+    "contributing_inputs": [
+      {
+        "factor": "historical_incident_risk",
+        "label": "Historical incident risk",
+        "value": 0.5,
+        "class": "moderate",
+        "explanation": "1 significant event within 150 km since 2016 (1 cyclone) — about 0.10/year, i.e. a 9.5% chance of at least one in a year"
+      },
+      {
+        "factor": "weather_severity",
+        "label": "Weather severity",
+        "value": 0.25,
+        "class": "minor",
+        "explanation": "Strong gusts 10.9 m/s (Sun 12:00 local, at the destination)"
+      },
+      {
+        "factor": "activity_timing",
+        "label": "Time factor",
+        "value": 0.25,
+        "class": "minor",
+        "explanation": "Sun 22 Nov 11:40 – Sun 22 Nov 12:40: Inside the Western North Pacific tropical-cyclone season (JMA climatology (main season))"
+      }
     ],
-    "hours_assessed": 26,
-    "points": 1,
-    "current": {
-     "precipitation_mm_h": 0.0,
-     "wind_gust_ms": 10.1,
-     "temperature_c": 9.3,
-     "apparent_temperature_c": 6.0,
-     "weather_code": 0,
-     "visibility_m": 48660.0
+    "location": "Kyoto, Japan (34.999, 135.785)",
+    "journey_effect": "Destination overview — plan a journey to assess your route, timing and activity",
+    "information_age": "Weather observed 11 min ago; oldest input 5 days ago",
+    "recommended_action": "No elevated risk from current conditions. Check again before heading out.",
+    "additional_actions": [],
+    "rules_applied": [
+      "Weather severity: minor"
+    ],
+    "missing_information": [],
+    "assessment_status": "COMPLETE",
+    "disclaimer": "The risk category and composite index are rule-based summaries of current conditions. They are not the probability of an accident or injury."
+  },
+  "factors": [
+    {
+      "key": "weather_severity",
+      "label": "Weather severity",
+      "status": "measured",
+      "value": 0.25,
+      "severity_class": "minor",
+      "raw_value": null,
+      "unit": "class",
+      "inputs": {
+        "drivers": [
+          {
+            "class": "minor",
+            "description": "Strong gusts 10.9 m/s",
+            "time": "2026-11-22T03:00:00+00:00",
+            "where": "at the destination"
+          }
+        ],
+        "hours_assessed": 26,
+        "points": 1,
+        "current": {
+          "precipitation_mm_h": 0.0,
+          "wind_gust_ms": 10.1,
+          "temperature_c": 9.3,
+          "apparent_temperature_c": 6.0,
+          "weather_code": 0,
+          "visibility_m": 48660.0
+        },
+        "internal_agreement": 1.0
+      },
+      "methodology": "Worst hourly driver across rain rate (AMS/Met Office), gusts (Beaufort), heat (NWS heat index), cold (Env. Canada wind chill), WMO weather codes and visibility (WMO/NWS fog) over the assessed period.",
+      "explanation": "Strong gusts 10.9 m/s (Sun 12:00 local, at the destination)",
+      "observed_at": "2026-11-22T02:30:00Z",
+      "computed_at": "2026-11-22T02:40:42.132449Z",
+      "data_quality": {
+        "sources": [
+          "open-meteo-forecast"
+        ],
+        "observed_at": "2026-11-22T02:30:00Z",
+        "retrieved_at": "2026-11-22T02:40:43.678476Z",
+        "age_minutes": 10.702207483333332,
+        "max_age_minutes": 90,
+        "is_stale": false,
+        "from_cache": false,
+        "missing_fields": [],
+        "geographic_precision_m": 2515.0,
+        "notes": []
+      }
     },
-    "internal_agreement": 1.0
-   },
-   "methodology": "Worst hourly driver across rain rate (AMS/Met Office), gusts (Beaufort), heat (NWS heat index), cold (Env. Canada wind chill), WMO weather codes and visibility (WMO/NWS fog) over the assessed period.",
-   "explanation": "Strong gusts 10.9 m/s (Sun 12:00 local, at the destination)",
-   "observed_at": "2026-11-22T02:30:00Z",
-   "computed_at": "2026-11-22T02:40:42.132449Z",
-   "data_quality": {
-    "sources": [
-     "open-meteo-forecast"
-    ],
-    "observed_at": "2026-11-22T02:30:00Z",
-    "retrieved_at": "2026-11-22T02:40:43.678476Z",
-    "age_minutes": 10.702207483333332,
-    "max_age_minutes": 90,
-    "is_stale": false,
-    "from_cache": false,
-    "missing_fields": [],
-    "geographic_precision_m": 2515.0,
-    "notes": []
-   }
-  },
-  {
-   "key": "hazard_severity",
-   "label": "Hazard severity",
-   "status": "measured",
-   "value": 0.0,
-   "severity_class": "none",
-   "raw_value": null,
-   "unit": "class",
-   "inputs": {
-    "affecting": [],
-    "active_hazards_in_search_area": 4,
-    "sources_ok": [
-     "gdacs",
-     "usgs-earthquakes"
-    ],
-    "sources_failed": []
-   },
-   "methodology": "Highest official severity (GDACS alert / USGS PAGER or magnitude class / cyclone wind buffer) among active hazards whose footprint touches the subject, or point hazards within the assessment radius.",
-   "explanation": "No active hazard affects this location during the assessed period",
-   "observed_at": null,
-   "computed_at": "2026-11-22T02:40:42.132449Z",
-   "data_quality": {
-    "sources": [
-     "gdacs",
-     "usgs-earthquakes"
-    ],
-    "observed_at": null,
-    "retrieved_at": "2026-11-22T02:40:45.593556Z",
-    "age_minutes": 0.0,
-    "max_age_minutes": null,
-    "is_stale": false,
-    "from_cache": false,
-    "missing_fields": [],
-    "geographic_precision_m": null,
-    "notes": []
-   }
-  },
-  {
-   "key": "distance_to_hazard",
-   "label": "Distance to hazard",
-   "status": "measured",
-   "value": 0.0,
-   "severity_class": null,
-   "raw_value": 276543.0,
-   "unit": "m",
-   "inputs": {
-    "nearest_hazard": "usgs-earthquakes:us7000tyhr",
-    "hazard_type": "earthquake",
-    "measured_to": "centroid",
-    "assessment_radius_m": 50000.0,
-    "hazards_considered": 4
-   },
-   "methodology": "Minimum geodesic distance from the subject to any active hazard geometry (footprint or centroid); proximity = 1 \u2212 min(d, R)/R with R = assessment radius.",
-   "explanation": "M 5.4 - 20 km NW of Anamizu, Japan is 276.5 km from the location (measured to its reported centre (no footprint published))",
-   "observed_at": "2026-11-17T04:33:32.722000Z",
-   "computed_at": "2026-11-22T02:40:42.132449Z",
-   "data_quality": {
-    "sources": [
-     "usgs-earthquakes"
-    ],
-    "observed_at": "2026-11-17T04:33:32.722000Z",
-    "retrieved_at": null,
-    "age_minutes": null,
-    "max_age_minutes": null,
-    "is_stale": false,
-    "from_cache": false,
-    "missing_fields": [],
-    "geographic_precision_m": 10000.0,
-    "notes": [
-     "Point location only \u2014 true extent unknown"
-    ]
-   }
-  },
-  {
-   "key": "route_exposure",
-   "label": "Route exposure",
-   "status": "not_applicable",
-   "value": null,
-   "severity_class": null,
-   "raw_value": null,
-   "unit": null,
-   "inputs": {},
-   "methodology": "Route \u2229 active hazard footprints (GeoPandas overlay, local AEQD CRS): exposed length / route length; exposed duration = route duration \u00d7 exposed fraction.",
-   "explanation": "Route exposure applies to journeys, not to a destination overview",
-   "observed_at": null,
-   "computed_at": "2026-11-22T02:40:42.132449Z",
-   "data_quality": {
-    "sources": [],
-    "observed_at": null,
-    "retrieved_at": null,
-    "age_minutes": null,
-    "max_age_minutes": null,
-    "is_stale": false,
-    "from_cache": false,
-    "missing_fields": [],
-    "geographic_precision_m": null,
-    "notes": []
-   }
-  },
-  {
-   "key": "time_factor",
-   "label": "Time factor",
-   "status": "measured",
-   "value": 0.25,
-   "severity_class": "minor",
-   "raw_value": 0.0,
-   "unit": "darkness share",
-   "inputs": {
-    "window_start": "2026-11-22T02:40:42.132449+00:00",
-    "window_end": "2026-11-22T03:40:42.132449+00:00",
-    "timezone": "Asia/Tokyo",
-    "darkness_fraction": 0.0,
-    "cyclone_season": "Western North Pacific",
-    "season_authority": "JMA climatology (main season)",
-    "lead_time_hours": 0.0,
-    "beyond_forecast_horizon": false,
-    "activity": "sightseeing",
-    "ongoing_hazards": 0
-   },
-   "methodology": "Darkness share of the period (NOAA solar elevation), tropical-cyclone season of the basin, overlap with hazard validity periods and forecast lead time; rule-based class.",
-   "explanation": "Sun 22 Nov 11:40 \u2013 Sun 22 Nov 12:40: Inside the Western North Pacific tropical-cyclone season (JMA climatology (main season))",
-   "observed_at": null,
-   "computed_at": "2026-11-22T02:40:42.132449Z",
-   "data_quality": {
-    "sources": [
-     "noaa-solar-equations"
-    ],
-    "observed_at": null,
-    "retrieved_at": null,
-    "age_minutes": null,
-    "max_age_minutes": null,
-    "is_stale": false,
-    "from_cache": false,
-    "missing_fields": [],
-    "geographic_precision_m": null,
-    "notes": []
-   }
-  },
-  {
-   "key": "historical_incident_risk",
-   "label": "Historical incident risk",
-   "status": "measured",
-   "value": 0.5,
-   "severity_class": "moderate",
-   "raw_value": 0.1,
-   "unit": "events/year",
-   "inputs": {
-    "window_start": "2016-11-22",
-    "window_end": "2026-11-22",
-    "radius_m": 150000.0,
-    "events_total": 1,
-    "events_by_type": {
-     "cyclone": 1
+    {
+      "key": "hazard_severity",
+      "label": "Active hazards",
+      "status": "measured",
+      "value": 0.0,
+      "severity_class": "none",
+      "raw_value": null,
+      "unit": "class",
+      "inputs": {
+        "affecting": [],
+        "active_hazards_in_search_area": 4,
+        "sources_ok": [
+          "gdacs",
+          "usgs-earthquakes"
+        ],
+        "sources_failed": []
+      },
+      "methodology": "Highest official severity (GDACS alert / USGS PAGER or magnitude class / cyclone wind buffer) among active hazards whose footprint touches the subject, or point hazards within the assessment radius.",
+      "explanation": "No active hazard affects this location during the assessed period",
+      "observed_at": null,
+      "computed_at": "2026-11-22T02:40:42.132449Z",
+      "data_quality": {
+        "sources": [
+          "gdacs",
+          "usgs-earthquakes"
+        ],
+        "observed_at": null,
+        "retrieved_at": "2026-11-22T02:40:45.593556Z",
+        "age_minutes": 0.0,
+        "max_age_minutes": null,
+        "is_stale": false,
+        "from_cache": false,
+        "missing_fields": [],
+        "geographic_precision_m": null,
+        "notes": []
+      }
     },
-    "annual_rate": 0.1,
-    "p_at_least_one_per_year": 0.0952,
-    "p_at_least_one_during_trip": null,
-    "return_period_years": 10.0,
-    "verified_incidents": 0,
-    "examples": [
-     {
-      "title": "Tropical Cyclone CHANTHU-21",
-      "date": "2021-09-06",
-      "distance_km": 125
-     }
-    ]
-   },
-   "methodology": "Annual rate \u03bb of significant hazard events (GDACS Orange/Red, USGS M\u22656) within the historical radius over the window; P(\u22651) = 1 \u2212 exp(\u2212\u03bbt); class by return period. Verified TravelSphere incidents as a separate rate.",
-   "explanation": "1 significant event within 150 km since 2016 (1 cyclone) \u2014 about 0.10/year, i.e. a 9.5% chance of at least one in a year",
-   "observed_at": null,
-   "computed_at": "2026-11-22T02:40:42.132449Z",
-   "data_quality": {
-    "sources": [
-     "gdacs",
-     "usgs-earthquakes",
-     "travelsphere-incidents"
-    ],
-    "observed_at": null,
-    "retrieved_at": null,
-    "age_minutes": null,
-    "max_age_minutes": null,
-    "is_stale": false,
-    "from_cache": false,
-    "missing_fields": [],
-    "geographic_precision_m": null,
-    "notes": [
-     "Event frequency, not accident probability",
-     "Incident reports not normalised: visitor numbers unavailable"
-    ]
-   }
+    {
+      "key": "hazard_exposure",
+      "label": "Hazard exposure",
+      "status": "measured",
+      "value": 0.0,
+      "severity_class": null,
+      "raw_value": 276543.0,
+      "unit": "m to nearest active hazard",
+      "inputs": {
+        "nearest_hazard": "usgs-earthquakes:us7000tyhr",
+        "hazard_type": "earthquake",
+        "measured_to": "centroid",
+        "assessment_radius_m": 50000.0,
+        "hazards_considered": 4
+      },
+      "methodology": "Minimum geodesic distance from the subject to any active hazard geometry (footprint or centroid); proximity = 1 − min(d, R)/R with R = assessment radius.",
+      "explanation": "M 5.4 - 20 km NW of Anamizu, Japan is 276.5 km from the location (measured to its reported centre (no footprint published))",
+      "observed_at": "2026-11-17T04:33:32.722000Z",
+      "computed_at": "2026-11-22T02:40:42.132449Z",
+      "data_quality": {
+        "sources": [
+          "usgs-earthquakes"
+        ],
+        "observed_at": "2026-11-17T04:33:32.722000Z",
+        "retrieved_at": null,
+        "age_minutes": null,
+        "max_age_minutes": null,
+        "is_stale": false,
+        "from_cache": false,
+        "missing_fields": [],
+        "geographic_precision_m": 10000.0,
+        "notes": [
+          "Point location only — true extent unknown"
+        ]
+      }
+    },
+    {
+      "key": "terrain",
+      "label": "Terrain",
+      "status": "measured",
+      "value": 0.0,
+      "severity_class": "none",
+      "raw_value": 2.0,
+      "unit": "% slope (max over 300 m)",
+      "inputs": {
+        "max_slope_pct": 2.0,
+        "max_relief_m": 12,
+        "configured_features": []
+      },
+      "methodology": "Worst hourly driver across rain rate (AMS/Met Office), gusts (Beaufort), heat (NWS heat index), cold (Env. Canada wind chill), WMO weather codes and visibility (WMO/NWS fog) over the assessed period.",
+      "explanation": "Steepest ground at the location: 2 % slope over 300 m, 12 m of relief within 1 km (elevation 45 m)",
+      "observed_at": "2026-11-22T02:30:00Z",
+      "computed_at": "2026-11-22T02:40:42.132449Z",
+      "data_quality": {
+        "sources": [
+          "copernicus-dem"
+        ],
+        "observed_at": "2026-11-22T02:30:00Z",
+        "retrieved_at": "2026-11-22T02:40:43.678476Z",
+        "age_minutes": 10.702207483333332,
+        "max_age_minutes": 90,
+        "is_stale": false,
+        "from_cache": false,
+        "missing_fields": [],
+        "geographic_precision_m": 2515.0,
+        "notes": []
+      }
+    },
+    {
+      "key": "activity_timing",
+      "label": "Activity and timing",
+      "status": "measured",
+      "value": 0.25,
+      "severity_class": "minor",
+      "raw_value": 0.0,
+      "unit": "darkness share",
+      "inputs": {
+        "window_start": "2026-11-22T02:40:42.132449+00:00",
+        "window_end": "2026-11-22T03:40:42.132449+00:00",
+        "timezone": "Asia/Tokyo",
+        "darkness_fraction": 0.0,
+        "cyclone_season": "Western North Pacific",
+        "season_authority": "JMA climatology (main season)",
+        "lead_time_hours": 0.0,
+        "beyond_forecast_horizon": false,
+        "activity": "sightseeing",
+        "ongoing_hazards": 0
+      },
+      "methodology": "Darkness share of the period (NOAA solar elevation), tropical-cyclone season of the basin, overlap with hazard validity periods and forecast lead time; rule-based class.",
+      "explanation": "Sun 22 Nov 11:40 – Sun 22 Nov 12:40: Inside the Western North Pacific tropical-cyclone season (JMA climatology (main season))",
+      "observed_at": null,
+      "computed_at": "2026-11-22T02:40:42.132449Z",
+      "data_quality": {
+        "sources": [
+          "noaa-solar-equations"
+        ],
+        "observed_at": null,
+        "retrieved_at": null,
+        "age_minutes": null,
+        "max_age_minutes": null,
+        "is_stale": false,
+        "from_cache": false,
+        "missing_fields": [],
+        "geographic_precision_m": null,
+        "notes": []
+      }
+    },
+    {
+      "key": "historical_incident_risk",
+      "label": "Hazard history",
+      "status": "measured",
+      "value": 0.5,
+      "severity_class": "moderate",
+      "raw_value": 0.1,
+      "unit": "events/year",
+      "inputs": {
+        "window_start": "2016-11-22",
+        "window_end": "2026-11-22",
+        "radius_m": 150000.0,
+        "events_total": 1,
+        "events_by_type": {
+          "cyclone": 1
+        },
+        "annual_rate": 0.1,
+        "p_at_least_one_per_year": 0.0952,
+        "p_at_least_one_during_trip": null,
+        "return_period_years": 10.0,
+        "verified_incidents": 0,
+        "examples": [
+          {
+            "title": "Tropical Cyclone CHANTHU-21",
+            "date": "2021-09-06",
+            "distance_km": 125
+          }
+        ]
+      },
+      "methodology": "Annual rate λ of significant hazard events (GDACS Orange/Red, USGS M≥6) within the historical radius over the window; P(≥1) = 1 − exp(−λt); class by return period. Verified TravelSphere incidents as a separate rate.",
+      "explanation": "1 significant event within 150 km since 2016 (1 cyclone) — about 0.10/year, i.e. a 9.5% chance of at least one in a year",
+      "observed_at": null,
+      "computed_at": "2026-11-22T02:40:42.132449Z",
+      "data_quality": {
+        "sources": [
+          "gdacs",
+          "usgs-earthquakes",
+          "travelsphere-incidents"
+        ],
+        "observed_at": null,
+        "retrieved_at": null,
+        "age_minutes": null,
+        "max_age_minutes": null,
+        "is_stale": false,
+        "from_cache": false,
+        "missing_fields": [],
+        "geographic_precision_m": null,
+        "notes": [
+          "Event frequency, not accident probability",
+          "Incident reports not normalised: visitor numbers unavailable"
+        ]
+      }
+    },
+    {
+      "key": "emergency_access",
+      "label": "Access to emergency care",
+      "status": "measured",
+      "value": 0.0,
+      "severity_class": "none",
+      "raw_value": 9.0,
+      "unit": "minutes to nearest hospital/clinic",
+      "inputs": {
+        "class": "adequate",
+        "minutes_to_care": 9.0,
+        "precision": "osrm-routed"
+      },
+      "methodology": "Worst hourly driver across rain rate (AMS/Met Office), gusts (Beaufort), heat (NWS heat index), cold (Env. Canada wind chill), WMO weather codes and visibility (WMO/NWS fog) over the assessed period.",
+      "explanation": "Nearest hospital/clinic from the least-served point: Kyoto Hospital, 2.1 km (~9 min by road, osrm-routed)",
+      "observed_at": "2026-11-22T02:30:00Z",
+      "computed_at": "2026-11-22T02:40:42.132449Z",
+      "data_quality": {
+        "sources": [
+          "overpass",
+          "osrm"
+        ],
+        "observed_at": "2026-11-22T02:30:00Z",
+        "retrieved_at": "2026-11-22T02:40:43.678476Z",
+        "age_minutes": 10.702207483333332,
+        "max_age_minutes": 90,
+        "is_stale": false,
+        "from_cache": false,
+        "missing_fields": [],
+        "geographic_precision_m": 2515.0,
+        "notes": []
+      }
+    },
+    {
+      "key": "remoteness",
+      "label": "Remoteness",
+      "status": "measured",
+      "value": 0.015,
+      "severity_class": "none",
+      "raw_value": 1500,
+      "unit": "m to nearest town (≥ 5 000 people)",
+      "inputs": {
+        "town": {
+          "name": "Kyoto",
+          "population": 1459640,
+          "distance_m": 1500
+        }
+      },
+      "methodology": "Worst hourly driver across rain rate (AMS/Met Office), gusts (Beaufort), heat (NWS heat index), cold (Env. Canada wind chill), WMO weather codes and visibility (WMO/NWS fog) over the assessed period.",
+      "explanation": "Nearest town: Kyoto (pop. 1,459,640), 1.5 km",
+      "observed_at": "2026-11-22T02:30:00Z",
+      "computed_at": "2026-11-22T02:40:42.132449Z",
+      "data_quality": {
+        "sources": [
+          "geonames"
+        ],
+        "observed_at": "2026-11-22T02:30:00Z",
+        "retrieved_at": "2026-11-22T02:40:43.678476Z",
+        "age_minutes": 10.702207483333332,
+        "max_age_minutes": 90,
+        "is_stale": false,
+        "from_cache": false,
+        "missing_fields": [],
+        "geographic_precision_m": 2515.0,
+        "notes": []
+      }
+    }
+  ],
+  "weather": {
+    "summary": "Clear sky",
+    "temperatureC": 9.3,
+    "rainRateMmH": 0.0,
+    "windGustMs": 10.1,
+    "observed_at": "2026-11-22T02:30:00+00:00",
+    "grid_distance_m": null
   },
-  {
-   "key": "population_exposure",
-   "label": "Population exposure",
-   "status": "measured",
-   "value": 0.0,
-   "severity_class": "none",
-   "raw_value": 0.0,
-   "unit": "people",
-   "inputs": {
-    "locality": "Kyoto",
-    "locality_population": 1463723,
-    "population_density_per_km2": null,
-    "exposed_residents": 0,
-    "hazards": []
-   },
-   "methodology": "Locality population (GeoNames) counted as exposed when inside an affecting hazard (class \u2265 moderate); class by order of magnitude (GDACS tiers). Travellers exposed and traveller-hours reported separately.",
-   "explanation": "No resident population exposed \u2014 Kyoto is outside every active hazard area (population 1,463,723)",
-   "observed_at": null,
-   "computed_at": "2026-11-22T02:40:42.132449Z",
-   "data_quality": {
-    "sources": [
-     "open-meteo-geocoding",
-     "gdacs",
-     "usgs-earthquakes"
-    ],
-    "observed_at": null,
-    "retrieved_at": "2026-11-22T02:40:43.551744Z",
-    "age_minutes": null,
-    "max_age_minutes": null,
-    "is_stale": false,
-    "from_cache": false,
-    "missing_fields": [
-     "population_density"
-    ],
-    "geographic_precision_m": 3781.0,
-    "notes": [
-     "Population is the GeoNames locality total; density unavailable"
-    ]
-   }
+  "ml_signal": {
+    "available": false,
+    "reason": "No trained model artefact"
   },
-  {
-   "key": "data_reliability",
-   "label": "Data reliability",
-   "status": "derived",
-   "value": 0.931,
-   "severity_class": null,
-   "raw_value": 0.931,
-   "unit": "evidence quality (0\u20131, higher is better)",
-   "inputs": {
+  "scoring_version": "scoring-v2",
+  "engine_version": "risk-engine-1.0.0",
+  "inputs_hash": "dfddb4fac33aaedd0089df619ef50a51",
+  "assessed_at": "2026-11-22T02:40:42.132449+00:00",
+  "confidence": {
+    "score": 86,
+    "value": 0.86,
+    "level": "high",
     "components": {
-     "credibility": 0.83,
-     "freshness": 1.0,
-     "completeness": 1.0,
-     "precision": 0.825,
-     "agreement": 1.0
+      "credibility": 0.83,
+      "freshness": 1.0,
+      "completeness": 1.0,
+      "precision": 0.75,
+      "agreement": 0.75
     },
     "not_evaluated": [],
+    "weakest": "precision",
     "sources_used": [
-     "gdacs",
-     "open-meteo-forecast",
-     "open-meteo-geocoding",
-     "travelsphere-incidents",
-     "usgs-earthquakes"
+      "copernicus-dem",
+      "gdacs",
+      "geonames",
+      "open-meteo-forecast",
+      "osrm",
+      "overpass",
+      "usgs-earthquakes"
     ],
     "missing_factors": [],
     "stale_factors": [],
-    "agreement_checks": [
-     {
-      "event": "M 4.6 - 68 km SSE of Tateyama, Japan",
-      "sources": [
-       "usgs-earthquakes",
-       "gdacs"
-      ],
-      "agree": true,
-      "usgs_magnitude": 4.6,
-      "gdacs_magnitude": 4.6,
-      "tolerance": 0.3
-     },
-     {
-      "event": "M 5.2 - 112 km SSE of Tateyama, Japan",
-      "sources": [
-       "usgs-earthquakes",
-       "gdacs"
-      ],
-      "agree": true,
-      "usgs_magnitude": 5.2,
-      "gdacs_magnitude": 5.2,
-      "tolerance": 0.3
-     },
-     {
-      "event": "M 5.2 - 86 km NW of Ry\u014dtsu-minato, Japan",
-      "sources": [
-       "usgs-earthquakes",
-       "gdacs"
-      ],
-      "agree": true,
-      "usgs_magnitude": 5.2,
-      "gdacs_magnitude": 5.2,
-      "tolerance": 0.3
-     }
-    ]
-   },
-   "methodology": "Unweighted mean of credibility, freshness, completeness, precision and source-agreement components.",
-   "explanation": "6 of 6 applicable factors have data; weakest component: precision (0.82)",
-   "observed_at": null,
-   "computed_at": "2026-11-22T02:40:42.132449Z",
-   "data_quality": {
-    "sources": [
-     "gdacs",
-     "open-meteo-forecast",
-     "open-meteo-geocoding",
-     "travelsphere-incidents",
-     "usgs-earthquakes"
+    "caps": [],
+    "agreement_checks": [],
+    "explanation": "8 of 8 applicable factors have data; weakest component: precision (0.75)",
+    "method": "100 × unweighted mean of credibility, freshness, completeness, precision and source agreement"
+  },
+  "destination_score": {
+    "score": 95.8,
+    "band": "Excellent",
+    "provisional": true,
+    "weight_available": 0.667,
+    "components": [
+      {
+        "key": "safety_index",
+        "label": "Safety index",
+        "weight": 0.2,
+        "score": null,
+        "from_factor": null,
+        "note": "Travel-advisory data is not integrated yet"
+      },
+      {
+        "key": "health_emergency",
+        "label": "Health and emergency care",
+        "weight": 0.15,
+        "score": 100.0,
+        "from_factor": "emergency_access",
+        "note": "adequate"
+      },
+      {
+        "key": "transport_access",
+        "label": "Transport access",
+        "weight": 0.15,
+        "score": 98.5,
+        "from_factor": "remoteness",
+        "note": "1.5 km"
+      },
+      {
+        "key": "weather_stability",
+        "label": "Weather stability",
+        "weight": 0.1,
+        "score": 75.0,
+        "from_factor": "historical_incident_risk",
+        "note": "history"
+      }
     ],
-    "observed_at": null,
-    "retrieved_at": null,
-    "age_minutes": null,
-    "max_age_minutes": null,
-    "is_stale": false,
-    "from_cache": false,
-    "missing_fields": [],
-    "geographic_precision_m": null,
-    "notes": [
-     "Describes evidence quality; not part of the hazard score"
-    ]
-   }
+    "explanation": "96/100 (Excellent) — provisional, without: Safety index"
+  },
+  "population": {
+    "available": true,
+    "class": "none",
+    "exposed_residents": 0
   }
- ],
- "weather": {
-  "summary": "Clear sky",
-  "temperatureC": 9.3,
-  "rainRateMmH": 0.0,
-  "windGustMs": 10.1,
-  "observed_at": "2026-11-22T02:30:00+00:00",
-  "grid_distance_m": null
- },
- "ml_signal": {
-  "available": false,
-  "reason": "No trained model artefact"
- },
- "scoring_version": "scoring-v1",
- "engine_version": "risk-engine-1.0.0",
- "inputs_hash": "dfddb4fac33aaedd0089df619ef50a51",
- "assessed_at": "2026-11-22T02:40:42.132449+00:00"
 }

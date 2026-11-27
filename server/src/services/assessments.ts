@@ -2,7 +2,7 @@
 // Also maps the 8-factor result onto the shape the existing place UI already renders (no frontend change needed).
 import { z } from 'zod';
 import type { Db } from '../db.js';
-import type { DestinationAssessment, RiskService } from '../integrations/riskService.js';
+import type { Confidence, DestinationAssessment, DestinationScore, RiskService } from '../integrations/riskService.js';
 
 // Climatological hazard probabilities reported by Factor 6 (risk-service docs/ML.md). Hazard probabilities, not harm.
 const Outlook = z.object({
@@ -33,16 +33,28 @@ export function hazardOutlook(factors: { key: string; inputs?: unknown }[]): Haz
   return out.cyclone || out.flood || Object.keys(out.unavailable).length ? out : null;
 }
 
+// scoring-v2 factors, in display order, with their dimension
 export const FACTOR_LABELS: Record<string, string> = {
   weather_severity: 'Weather severity',
-  hazard_severity: 'Hazard severity',
-  distance_to_hazard: 'Distance to hazard',
-  route_exposure: 'Route exposure',
-  time_factor: 'Time factor',
-  historical_incident_risk: 'Historical incident risk',
-  population_exposure: 'Population exposure',
-  data_reliability: 'Data reliability',
+  hazard_severity: 'Active hazards',
+  hazard_exposure: 'Hazard exposure',
+  terrain: 'Terrain',
+  activity_timing: 'Activity and timing',
+  historical_incident_risk: 'Hazard history',
+  emergency_access: 'Access to emergency care',
+  remoteness: 'Remoteness',
 };
+export const FACTOR_DIMENSION: Record<string, string> = {
+  weather_severity: 'hazard', hazard_severity: 'hazard', hazard_exposure: 'exposure', terrain: 'exposure',
+  activity_timing: 'journey_context', historical_incident_risk: 'journey_context',
+  emergency_access: 'response_capacity', remoteness: 'response_capacity',
+};
+// Keys of assessments stored under scoring-v1 (shown only until a fresh assessment replaces them)
+const LEGACY_LABELS: Record<string, string> = {
+  distance_to_hazard: 'Distance to hazard', route_exposure: 'Route exposure', time_factor: 'Time factor',
+  population_exposure: 'Population exposure', data_reliability: 'Data reliability',
+};
+const labelOf = (k: string) => FACTOR_LABELS[k] ?? LEGACY_LABELS[k] ?? k;
 
 /** Latest stored destination assessment (with its factors), or null if none / older than maxAgeMin. */
 export async function latestDestinationAssessment(db: Db, destinationId: string, maxAgeMin?: number) {
@@ -59,20 +71,21 @@ export async function latestDestinationAssessment(db: Db, destinationId: string,
     `select factor_key as key, status, value, severity_class, raw_value, unit, inputs, source_ids, explanation,
             data_quality, observed_at, computed_at
      from public.factor_assessments where destination_assessment_id = $1`, [a.id]);
-  return { a, factors: factors.map(f => ({ ...f, label: FACTOR_LABELS[f.key], value: f.value === null ? null : Number(f.value),
+  return { a, factors: factors.map(f => ({ ...f, label: labelOf(f.key), value: f.value === null ? null : Number(f.value),
     raw_value: f.raw_value === null ? null : Number(f.raw_value) })) };
 }
 
 /** Shape a stored row like a freshly computed assessment. */
 export function storedToAssessment(s: NonNullable<Awaited<ReturnType<typeof latestDestinationAssessment>>>) {
   const { a, factors } = s;
-  const order = Object.keys(FACTOR_LABELS);
+  const order = [...Object.keys(FACTOR_LABELS), ...Object.keys(LEGACY_LABELS)];
   return {
     id: a.id, destination_id: a.destination_id,
     destination: { id: a.destination_id, name: a.destination_name, latitude: a.latitude, longitude: a.longitude },
     risk_category: a.risk_category, composite_index: a.composite_index === null ? null : Number(a.composite_index),
     assessment_status: a.assessment_status, data_coverage: Number(a.data_coverage),
     data_reliability: a.data_reliability === null ? null : Number(a.data_reliability),
+    confidence: a.confidence ?? null, destination_score: a.destination_score ?? null, population: a.population ?? null,
     missing_indicators: a.missing_indicators, active_warnings: a.active_warnings, critical_override: a.critical_override,
     explanation: a.explanation, ml_signal: a.ml_signal,
     factors: factors.sort((x, y) => order.indexOf(x.key) - order.indexOf(y.key)),
@@ -98,6 +111,8 @@ export async function getOrAssessDestination(db: Db, risk: RiskService, id: stri
 // ------------------------------------------------------------------ legacy place-card mapping
 type AnyAssessment = Pick<DestinationAssessment, 'destination_id' | 'risk_category' | 'assessment_status' |
   'scoring_version' | 'engine_version' | 'data_reliability' | 'assessed_at'> & {
+  confidence?: Confidence | null;
+  destination_score?: DestinationScore | null;
   factors: { key: string; label?: string; status: string; value: number | null; explanation: string; inputs?: unknown;
     data_quality: { is_stale?: boolean } | Record<string, unknown>; observed_at?: string | null }[];
   explanation: { summary: string; recommended_action: string; rules_applied: string[]; contributing_inputs: { explanation: string }[] };
@@ -108,18 +123,15 @@ const LEGACY_STATUS: Record<string, string> = { measured: 'live', derived: 'deri
   not_applicable: 'unavailable', unavailable: 'unavailable' };
 
 export function toPlaceShape(x: AnyAssessment, weather: unknown) {
-  const factors = x.factors.map(f => {
-    if (f.key === 'data_reliability') {
-      // Evidence quality, not risk: never drawn as a risk bar
-      return { key: f.key, label: 'Data reliability', value: null, status: 'derived',
-        detail: `Evidence quality ${Math.round((f.value ?? 0) * 100)}/100 — ${f.explanation}` };
-    }
+  // Confidence is evidence quality, not risk: it is returned separately and never drawn as a risk bar
+  const factors = x.factors.filter(f => f.key !== 'data_reliability').map(f => {
+    const base = { key: f.key, label: f.label ?? labelOf(f.key), dimension: FACTOR_DIMENSION[f.key] ?? null };
     if (f.status === 'not_applicable') {
-      return { key: f.key, label: f.label ?? FACTOR_LABELS[f.key], value: null, status: 'unavailable',
-        detail: 'Applies to journeys — plan a trip to assess your route' };
+      return { ...base, value: null, status: 'unavailable', detail: 'Applies to journeys — plan a trip to assess your route' };
     }
-    return { key: f.key, label: f.label ?? FACTOR_LABELS[f.key], value: f.value, status: LEGACY_STATUS[f.status], detail: f.explanation };
+    return { ...base, value: f.value, status: LEGACY_STATUS[f.status], detail: f.explanation };
   });
+  const conf = x.confidence ?? null;
   const stale = x.factors.some(f => (f.data_quality as { is_stale?: boolean })?.is_stale);
   const dataStatus = x.assessment_status === 'INCOMPLETE' ? 'UNAVAILABLE' : stale ? 'STALE'
     : x.assessment_status === 'PARTIAL' ? 'PARTIAL' : 'CURRENT';
@@ -132,7 +144,11 @@ export function toPlaceShape(x: AnyAssessment, weather: unknown) {
     place_id: x.destination_id,
     risk_level: x.risk_category,
     data_status: dataStatus,
-    factors_available: x.factors.filter(f => ['measured', 'derived', 'configured'].includes(f.status)).length,
+    factors_available: factors.filter(f => ['live', 'derived', 'configured'].includes(f.status)).length,
+    factors_total: factors.length,
+    confidence: conf ? { score: conf.score, level: conf.level, explanation: conf.explanation, weakest: conf.weakest,
+      components: conf.components } : null,
+    destination_score: x.destination_score ?? null,
     headline: x.explanation.summary,
     observed_at: observed,
     weather: w ? { summary: w.summary ?? 'Unknown', temperatureC: w.temperatureC ?? null, rainRateMmH: w.rainRateMmH ?? null,
@@ -142,8 +158,8 @@ export function toPlaceShape(x: AnyAssessment, weather: unknown) {
     recommended_action: x.explanation.recommended_action,
     observation_age_min: observed ? Math.round((Date.now() - Date.parse(observed)) / 60_000) : null,
     model_version: `${x.scoring_version} (${x.engine_version})`,
-    uncertainty: `Rule-based and not calibrated against incidents; evidence quality ${x.data_reliability === null ? 'unknown'
-      : `${Math.round(x.data_reliability * 100)}/100`}`,
+    uncertainty: `Rule-based and not calibrated against incidents; confidence in the data ${conf ? `${conf.level} (${conf.score}/100)`
+      : x.data_reliability === null ? 'unknown' : `${Math.round(x.data_reliability * 100)}/100`}`,
     notice: 'Travel safety information only. Always follow official warnings and local emergency services.',
     hazard_outlook: hazardOutlook(x.factors),
   };

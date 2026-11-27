@@ -8,8 +8,9 @@ const Severity = z.enum(['none', 'minor', 'moderate', 'severe', 'extreme']);
 const Category = z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']);
 
 export const FactorSchema = z.object({
-  key: z.enum(['weather_severity', 'hazard_severity', 'distance_to_hazard', 'route_exposure', 'time_factor',
-    'historical_incident_risk', 'population_exposure', 'data_reliability']),
+  // scoring-v2: eight risk factors in four dimensions (hazard, exposure, journey context, response capacity)
+  key: z.enum(['weather_severity', 'hazard_severity', 'hazard_exposure', 'terrain', 'activity_timing',
+    'historical_incident_risk', 'emergency_access', 'remoteness']),
   label: z.string(),
   status: z.enum(['measured', 'derived', 'configured', 'not_applicable', 'unavailable']),
   value: z.number().min(0).max(1).nullable(),
@@ -47,6 +48,34 @@ export const ExplanationSchema = z.object({
   disclaimer: z.string(),
 });
 
+// Confidence in the assessment: evidence quality, never part of the risk category (risk-service confidence.py)
+export const ConfidenceSchema = z.object({
+  score: z.number().int().min(0).max(100),
+  value: z.number().min(0).max(1),
+  level: z.enum(['high', 'medium', 'low']),
+  components: z.record(z.string(), z.number()),
+  not_evaluated: z.array(z.string()),
+  weakest: z.string().nullable(),
+  missing_factors: z.array(z.string()),
+  stale_factors: z.array(z.string()),
+  caps: z.array(z.string()),
+  explanation: z.string(),
+  method: z.string(),
+}).passthrough();
+export type Confidence = z.infer<typeof ConfidenceSchema>;
+
+// Tourist Confidence Score (destination layer, 0–100) from the four safety factors of the report's Table 6.4
+export const DestinationScoreSchema = z.object({
+  score: z.number().min(0).max(100).nullable(),
+  band: z.enum(['Low', 'Moderate', 'High', 'Excellent']).nullable(),
+  provisional: z.boolean(),
+  weight_available: z.number().min(0).max(1),
+  components: z.array(z.object({ key: z.string(), label: z.string(), weight: z.number(), score: z.number().nullable(),
+    from_factor: z.string().nullable(), note: z.string() })),
+  explanation: z.string(),
+});
+export type DestinationScore = z.infer<typeof DestinationScoreSchema>;
+
 const Common = {
   id: z.string().uuid().nullable(),
   destination_id: z.string(),
@@ -60,6 +89,8 @@ const Common = {
   override_event: z.record(z.string(), z.unknown()).nullable(),
   factors: z.array(FactorSchema).length(8),
   explanation: ExplanationSchema,
+  confidence: ConfidenceSchema,
+  population: z.record(z.string(), z.unknown()).nullable().optional(),
   scoring_version: z.string(),
   engine_version: z.string(),
   assessed_at: z.string(),
@@ -68,6 +99,7 @@ const Common = {
 export const DestinationAssessmentSchema = z.object({
   ...Common,
   destination: z.object({ id: z.string(), name: z.string(), latitude: z.number(), longitude: z.number() }),
+  destination_score: DestinationScoreSchema,
   active_warnings: z.array(z.record(z.string(), z.unknown())),
   weather: z.object({ summary: z.string(), temperatureC: z.number().nullable(), rainRateMmH: z.number().nullable(),
     windGustMs: z.number().nullable(), observed_at: z.string() }).passthrough().nullable(),
@@ -81,7 +113,7 @@ export const JourneyAssessmentSchema = z.object({
   journey_id: z.string().uuid().nullable(),
   user_id: z.string().uuid(),
   dimensions: z.object({ hazard: z.record(z.string(), z.unknown()), exposure: z.record(z.string(), z.unknown()),
-    journey_context: z.record(z.string(), z.unknown()), response_accessibility: z.record(z.string(), z.unknown()) }),
+    journey_context: z.record(z.string(), z.unknown()), response_capacity: z.record(z.string(), z.unknown()) }),
   route: z.record(z.string(), z.unknown()).nullable(),
   safer_route: z.record(z.string(), z.unknown()),
   activity: z.string(),

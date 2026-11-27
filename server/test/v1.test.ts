@@ -32,7 +32,7 @@ const fakeRisk: RiskService = {
   assessJourney: async input => {
     journeyCalls.push(input);
     return { ...FIXTURE, journey_id: input.journey_id ?? null, user_id: input.user_id, destination_id: input.destination_id,
-      dimensions: { hazard: {}, exposure: {}, journey_context: {}, response_accessibility: { class: 'adequate' } },
+      dimensions: { hazard: {}, exposure: {}, journey_context: {}, response_capacity: { access: { class: 'adequate' } } },
       route: null, safer_route: { available: false }, activity: input.activity ?? 'sightseeing',
       travellers: input.travellers ?? 1, travel_start: input.travel_start, travel_end: input.travel_start } as any;
   },
@@ -79,11 +79,14 @@ describe('destinations', () => {
     const { token } = await signIn('dest@example.test');
     const safety = await request(app).get('/api/v1/destinations/kyoto/safety').set(as(token));
     expect(safety.status).toBe(200);
-    expect(safety.body.assessment).toMatchObject({ destination_id: 'kyoto', scoring_version: 'scoring-v1' });
+    expect(safety.body.assessment).toMatchObject({ destination_id: 'kyoto', scoring_version: 'scoring-v2' });
+    expect(safety.body.assessment.confidence).toMatchObject({ level: 'high', score: 86 });
+    expect(safety.body.assessment.destination_score).toMatchObject({ provisional: true, band: 'Excellent' });
     expect(safety.body.assessment.explanation.disclaimer).toMatch(/not the probability/);
     const factors = await request(app).get('/api/v1/destinations/kyoto/factors').set(as(token));
     expect(factors.body.factors).toHaveLength(8);
-    expect(factors.body.factors.find((f: any) => f.key === 'route_exposure').status).toBe('not_applicable');
+    expect(factors.body.factors.map((f: any) => f.key)).toEqual(['weather_severity', 'hazard_severity', 'hazard_exposure',
+      'terrain', 'activity_timing', 'historical_incident_risk', 'emergency_access', 'remoteness']);
   });
   it('404s an unknown destination and 400s a malformed id', async () => {
     const { token } = await signIn('dest@example.test');
@@ -101,7 +104,7 @@ describe('destinations', () => {
     const { rows } = await db.query(
       `insert into public.destination_assessments (destination_id, risk_category, composite_index, assessment_status,
          data_coverage, data_reliability, explanation, scoring_version, engine_version, inputs_hash)
-       values ('santorini', 'MODERATE', 0.3, 'COMPLETE', 1, 0.9, $1, 'scoring-v1', 'test', 'h') returning id`,
+       values ('santorini', 'MODERATE', 0.3, 'COMPLETE', 1, 0.9, $1, 'scoring-v2', 'test', 'h') returning id`,
       [JSON.stringify(FIXTURE.explanation)]);
     for (const f of FIXTURE.factors) {
       await db.query(`insert into public.factor_assessments (destination_assessment_id, factor_key, status, value, explanation, inputs)
@@ -403,12 +406,15 @@ describe('risk-service client', () => {
 });
 
 describe('place-card mapping', () => {
-  it('never draws data reliability as a risk bar and labels journey-only factors', () => {
+  it('returns eight risk factors with dimensions and confidence separately, never as a risk bar', () => {
     const shaped = toPlaceShape(FIXTURE, FIXTURE.weather);
     expect(shaped.factors).toHaveLength(8);
-    expect(shaped.factors.find(f => f.key === 'data_reliability')).toMatchObject({ value: null });
-    expect(shaped.factors.find(f => f.key === 'route_exposure')).toMatchObject({ value: null, status: 'unavailable' });
-    expect(shaped.model_version).toMatch(/^scoring-v1/);
+    expect(shaped.factors.find(f => f.key === 'data_reliability')).toBeUndefined();
+    expect(shaped.factors.find(f => f.key === 'terrain')).toMatchObject({ dimension: 'exposure', status: 'live' });
+    expect(shaped.confidence).toMatchObject({ level: 'high', score: 86 });
+    expect(shaped.factors_available).toBe(8);
+    expect(shaped.uncertainty).toMatch(/confidence in the data high \(86\/100\)/);
+    expect(shaped.model_version).toMatch(/^scoring-v2/);
     expect(shaped.hazard_outlook).toBeNull();                 // assessments from before the climatologies
   });
   it('passes the cyclone and flood outlook through, dropping malformed entries', () => {
@@ -429,7 +435,7 @@ describe('place-card mapping', () => {
     const { token } = await signIn('places@example.test');
     const res = await request(app).get('/api/places/kyoto/assessment').set(as(token));
     expect(res.status).toBe(200);
-    expect(res.body.assessment.model_version).toMatch(/^scoring-v1/);
+    expect(res.body.assessment.model_version).toMatch(/^scoring-v2/);
   });
 });
 
@@ -486,3 +492,4 @@ describe('helpers', () => {
     expect(zonedIso('2027-07-15', '09:00', 'Europe/Paris')).toBe('2027-07-15T07:00:00.000Z');
   });
 });
+
