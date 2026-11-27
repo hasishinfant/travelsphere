@@ -56,14 +56,20 @@ const LEGACY_LABELS: Record<string, string> = {
 };
 const labelOf = (k: string) => FACTOR_LABELS[k] ?? LEGACY_LABELS[k] ?? k;
 
-/** Latest stored destination assessment (with its factors), or null if none / older than maxAgeMin. */
+/** Scoring versions whose stored assessments may be served. An assessment made by an older engine is never reused:
+ *  after an upgrade the next request recomputes it with the current model. */
+export const SERVABLE_SCORING_VERSIONS = ['scoring-v2'];
+
+/** Latest stored destination assessment (with its factors), or null if none / older than maxAgeMin / made by an
+ *  engine version that is no longer current. */
 export async function latestDestinationAssessment(db: Db, destinationId: string, maxAgeMin?: number) {
   const { rows } = await db.query(
     `select a.*, d.name as destination_name, d.latitude, d.longitude
      from public.destination_assessments a join public.destinations d on d.id = a.destination_id
      where a.destination_id = $1 and ($2::int is null or a.assessed_at > now() - make_interval(mins => $2::int))
+       and a.scoring_version = any($3::text[])
      order by a.assessed_at desc limit 1`,
-    [destinationId, maxAgeMin ?? null],
+    [destinationId, maxAgeMin ?? null, SERVABLE_SCORING_VERSIONS],
   );
   const a = rows[0];
   if (!a) return null;

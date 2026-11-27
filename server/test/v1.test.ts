@@ -100,6 +100,16 @@ describe('destinations', () => {
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('risk_service_unavailable');
   });
+  it('never serves a fresh assessment stored by an older scoring version', async () => {
+    const { token } = await signIn('dest@example.test');
+    await db.query(
+      `insert into public.destination_assessments (destination_id, risk_category, composite_index, assessment_status,
+         data_coverage, data_reliability, explanation, scoring_version, engine_version, inputs_hash)
+       values ('rome', 'HIGH', 0.9, 'COMPLETE', 1, 0.9, $1, 'scoring-v1', 'old', 'h')`, [JSON.stringify(FIXTURE.explanation)]);
+    const res = await request(app).get('/api/v1/destinations/rome/safety').set(as(token));
+    expect(res.status).toBe(200);
+    expect(res.body.assessment).toMatchObject({ scoring_version: 'scoring-v2', source: 'computed' });
+  });
   it('serves a fresh stored assessment without calling the engine, and paginates history', async () => {
     const { token } = await signIn('dest@example.test');
     const { rows } = await db.query(
