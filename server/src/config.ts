@@ -26,6 +26,11 @@ const Env = z.object({
   /** Production bookings stay disabled unless this is explicitly true. */
   LITEAPI_ALLOW_LIVE_BOOKINGS: z.enum(['true', 'false']).default('false').transform(v => v === 'true'),
   LITEAPI_TIMEOUT_MS: z.coerce.number().int().min(2000).max(120_000).default(30_000),
+  /** DEMO ONLY: one phone number that stands in for the local emergency service; every SOS message goes to it.
+   *  Ignored when NODE_ENV=production. Never commit a real number — set it in server/.env. */
+  DEMO_DISPATCH_NUMBER: z.string().trim().regex(/^\+[1-9]\d{6,14}$/, 'Use international format, e.g. +919876543210').optional(),
+  /** macos-messages: send through the Mac's Messages app. log: print only. */
+  DEMO_DISPATCH_TRANSPORT: z.enum(['macos-messages', 'log']).default('macos-messages'),
 });
 
 export type Config = z.infer<typeof Env> & { corsOrigins: string[] };

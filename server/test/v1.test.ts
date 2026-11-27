@@ -11,6 +11,7 @@ import { createRiskService, DestinationAssessmentSchema, type JourneyAssessmentI
 import { dispatchPending, type PushSender } from '../src/integrations/fcm.js';
 import { toPlaceShape } from '../src/services/assessments.js';
 import { zonedIso } from '../src/routes/v1/common.js';
+import { composeMessage, createDemoDispatcher, maskNumber } from '../src/integrations/demoDispatch.js';
 
 const ADMIN_URL = process.env.TEST_ADMIN_DATABASE_URL || 'postgres://localhost:5432/postgres';
 const DB_URL = ADMIN_URL.replace(/\/[^/]*$/, '/travelsphere_api_test');
@@ -493,3 +494,53 @@ describe('helpers', () => {
   });
 });
 
+
+describe('demo SOS dispatch (demo only)', () => {
+  const NUMBER = '+910000000000';   // placeholder — never a real number in the repo
+  it('texts the SOS with type, hotel stay and location to the stand-in number, and records it', async () => {
+    const calls: string[][] = [];
+    const dispatcher = createDemoDispatcher({ number: NUMBER, transport: 'macos-messages', production: false },
+      (file, args, cb) => { calls.push([file, ...args]); cb(null, '', ''); });
+    const demoApp = createApp(config, db, undefined, undefined, fakeRisk, null, dispatcher);
+    const u = await signIn('demo-sos@example.test');
+    await db.query(`update public.profiles set full_name = 'Demo Traveller' where id = $1`, [u.id]);
+    await db.query(`insert into public.hotel_bookings (user_id, provider_booking_id, client_reference, hotel_id, hotel_name, city,
+      country_code, checkin, checkout, rooms, guests, price, currency, status, sandbox, holder_name, holder_email)
+      values ($1, 'pb-1', 'TS-DEMO-0001', 'h1', 'Lalit Ashok', 'Bengaluru', 'IN', current_date, current_date + 2, 1, 1, 100, 'INR',
+      'CONFIRMED', true, 'Demo Traveller', 'demo@example.test')`, [u.id]);
+    const res = await request(demoApp).post('/api/v1/incidents').set(as(u.token)).send({
+      category: 'medical', title: 'SOS: Medical emergency', is_sos: true, latitude: 12.9791, longitude: 77.5913,
+      location_accuracy_m: 15, client_request_id: crypto.randomUUID(),
+      details: { emergency_type: 'medical', location_status: 'captured', contact_number: '+91 90000 00000' } });
+    expect(res.status).toBe(201);
+    expect(res.body.demo_dispatch).toMatchObject({ status: 'sent', service: 'Ambulance / medical service', to_masked: '+9100•••0000' });
+    expect(calls).toHaveLength(1);
+    const [file, , , to, message] = calls[0];
+    expect(file).toBe('osascript');
+    expect(to).toBe(NUMBER);                                      // passed as an argument, not inside the script
+    expect(message).toMatch(/MEDICAL EMERGENCY/);
+    expect(message).toMatch(/NOT verified/);
+    expect(message).toMatch(/Staying at: Lalit Ashok, Bengaluru \(booking TS-DEMO-0001/);
+    expect(message).toMatch(/maps\.google\.com\/\?q=12\.97910,77\.59130/);
+    const notes = await db.query('select note from public.incident_updates where incident_id = $1', [res.body.incident.id]);
+    expect(notes.rows.map(r => r.note).join(' ')).toMatch(/Demo: SOS message sent to the demo Ambulance/);
+  });
+  it('reports a Messages failure as not sent, and is disabled in production', async () => {
+    const failing = createDemoDispatcher({ number: NUMBER, production: false },
+      (_f, _a, cb) => cb(new Error('Command failed'), '', "35:39: execution error: Messages got an error: Can't get name of every account. (-1728)"));
+    const r = await failing.send({ reference: 'INC-1', emergencyType: 'theft', reporterName: null, contactNumber: null,
+      latitude: null, longitude: null, accuracyM: null, stay: null, notes: null, createdAt: new Date() });
+    expect(r).toMatchObject({ status: 'failed', service: 'Police' });
+    expect(r.error).toMatch(/Messages is not signed in on this Mac/);
+    expect(r.whatsapp_url).toMatch(/^https:\/\/wa\.me\/910000000000\?text=TravelSphere%20SOS/);
+    expect(createDemoDispatcher({ number: NUMBER, production: true }).enabled).toBe(false);
+    expect(maskNumber('+916383000000')).toBe('+9163•••0000');
+  });
+  it('puts no location line it does not have', () => {
+    const m = composeMessage({ reference: 'INC-2', emergencyType: 'fire', reporterName: null, contactNumber: null,
+      latitude: null, longitude: null, accuracyM: null, stay: null, notes: null, createdAt: new Date() });
+    expect(m).toMatch(/FIRE/);
+    expect(m).toMatch(/Live location not shared/);
+    expect(m).not.toMatch(/maps\.google/);
+  });
+});

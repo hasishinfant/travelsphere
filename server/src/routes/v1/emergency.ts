@@ -21,7 +21,7 @@ const Point = z.object({
   longitude: z.number().min(-180).max(180),
 }).strict();
 
-export function emergencyRouter(db: Db, risk: RiskService, opts: { pushConfigured: boolean }) {
+export function emergencyRouter(db: Db, risk: RiskService, opts: { pushConfigured: boolean; demoDispatch?: string | null }) {
   const r = Router();
   // Each lookup may reach the public Overpass servers; keep the per-user budget modest
   const lookupLimiter = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false,
@@ -50,6 +50,8 @@ export function emergencyRouter(db: Db, risk: RiskService, opts: { pushConfigure
       push_notifications: opts.pushConfigured ? 'configured' : 'not_configured',
       sms: 'not_configured',
       emergency_service_dispatch: 'not_available',
+      // DEMO ONLY: every SOS is also texted to one configured stand-in number (masked here)
+      demo_dispatch: opts.demoDispatch ? { enabled: true, to_masked: opts.demoDispatch } : { enabled: false },
     });
   }));
 

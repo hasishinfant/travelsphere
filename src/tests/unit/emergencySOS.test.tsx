@@ -63,6 +63,41 @@ beforeEach(() => {
 });
 
 describe('SOS', () => {
+  it('lists every emergency type and sends the chosen one with its category (demo dispatch shown as sent)', async () => {
+    mockGeolocation({ ok: true, lat: 12.9791, lon: 77.5913 });
+    serve(b => ({ incident: incident({ category: b.category, title: b.title, latitude: b.latitude, longitude: b.longitude,
+      details: b.details }), duplicate: false, responder_accounts: 1,
+      demo_dispatch: { status: 'sent', service: 'Ambulance / medical service', to_masked: '+9163•••0000',
+        message: 'TravelSphere SOS (DEMO) - MEDICAL EMERGENCY' } }));
+    render(<SOSButton />);
+    fireEvent.click(screen.getByRole('button', { name: /SOS: emergency options/i }));
+    for (const label of ['Medical emergency', 'Accident or injury', 'Theft or robbery', 'Assault or harassment', 'Fire',
+      'Flood, storm or landslide', 'Lost or stranded', 'Lost passport', 'Unsafe place']) {
+      expect(screen.getByRole('button', { name: `Send SOS: ${label}` })).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Send SOS: Medical emergency' }));
+    expect(await screen.findByText('Incident registered')).toBeInTheDocument();
+    expect(created[0]).toMatchObject({ category: 'medical', title: 'SOS: Medical emergency', is_sos: true,
+      details: { emergency_type: 'medical', location_status: 'captured' } });
+    expect(screen.getByText(/handed to Messages for the demo/)).toBeInTheDocument();
+    expect(screen.getByText(/Real hospitals,\s+police and 112 are not contacted/)).toBeInTheDocument();
+  });
+
+  it('says plainly when the demo message was not sent', async () => {
+    mockGeolocation({ ok: false, code: 1 });
+    serve(b => ({ incident: incident({ details: b.details, category: b.category }), duplicate: false, responder_accounts: 1,
+      demo_dispatch: { status: 'failed', service: 'Police', to_masked: '+9163•••0000', message: 'x',
+        error: 'Messages is not signed in on this Mac', whatsapp_url: 'https://wa.me/910000000000?text=x' } }));
+    render(<SOSButton />);
+    fireEvent.click(screen.getByRole('button', { name: /SOS: emergency options/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send SOS: Theft or robbery' }));
+    expect(await screen.findByText('Incident registered')).toBeInTheDocument();
+    expect(created[0]).toMatchObject({ category: 'security', details: { emergency_type: 'theft' } });
+    expect(screen.getByText('not sent')).toBeInTheDocument();
+    expect(screen.queryByText(/handed to Messages/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Send it on WhatsApp instead' })).toHaveAttribute('href', 'https://wa.me/910000000000?text=x');
+  });
+
   it('asks first, then registers a critical SOS with location and shows what that means', async () => {
     mockGeolocation({ ok: true, lat: 48.8566, lon: 2.3522 });
     serve();
@@ -91,7 +126,7 @@ describe('SOS', () => {
     fireEvent.click(screen.getByRole('button', { name: /Register SOS with my location/i }));
     expect(await screen.findByText('Incident registered')).toBeInTheDocument();
     expect(created[0].latitude).toBeUndefined();
-    expect(created[0].details).toEqual({ location_status: 'denied' });
+    expect(created[0].details).toEqual({ location_status: 'denied', emergency_type: 'other' });
     expect(screen.getByText(/Location permission is blocked, so your position was not included/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Try adding my location/i })).toBeInTheDocument();
   });
@@ -106,7 +141,7 @@ describe('SOS', () => {
     expect(screen.getByText(/Nothing has been sent yet/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Send without location/i }));
     expect(await screen.findByText('Incident registered')).toBeInTheDocument();
-    expect(created[0].details).toEqual({ location_status: 'unavailable' });
+    expect(created[0].details).toEqual({ location_status: 'unavailable', emergency_type: 'other' });
   });
 
   it('on network failure: not registered, call fallback shown, retry reuses the same request id', async () => {

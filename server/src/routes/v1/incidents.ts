@@ -10,6 +10,7 @@ import type { Db, Tx } from '../../db.js';
 import { withUser } from '../../db.js';
 import { HttpError, parse, route } from '../../http.js';
 import { DEST_ID, Page, UUID, pageMeta } from './common.js';
+import { EMERGENCY_TYPES, type DemoDispatcher, type DispatchResult, type EmergencyType } from '../../integrations/demoDispatch.js';
 
 const STATUSES = ['open', 'acknowledged', 'in_progress', 'resolved', 'closed'] as const;
 const ACTIVE = ['open', 'acknowledged', 'in_progress'];
@@ -36,6 +37,8 @@ const Common = {
   contact_preference: z.enum(['phone', 'email', 'whatsapp']).optional(),
   // How the location was (not) obtained — shown to responders so a missing location is explained
   location_status: z.enum(['captured', 'denied', 'timeout', 'unavailable', 'unsupported', 'manual']).optional(),
+  // What the traveller picked on the SOS screen (finer than the category: theft vs assault, fire, …)
+  emergency_type: z.enum(Object.keys(EMERGENCY_TYPES) as [EmergencyType, ...EmergencyType[]]).optional(),
 };
 const DETAILS: Partial<Record<(typeof CATEGORIES)[number], z.ZodType>> = {
   medical: z.object({
@@ -133,7 +136,16 @@ async function alertResponders(db: Db, incident: { id: string; reference: string
     [incident.id, title, body, `incident-alert:${incident.id}`]);
 }
 
-export function incidentsRouter(db: Db) {
+/** The reporter's current hotel stay (confirmed booking covering today ± 1 day), for the SOS message. */
+async function currentStay(db: Db, userId: string) {
+  const { rows } = await db.query(
+    `select hotel_name, city, checkin::text, checkout::text, client_reference as reference from public.hotel_bookings
+     where user_id = $1 and status = 'CONFIRMED' and checkin <= current_date + 1 and checkout >= current_date - 1
+     order by checkin desc limit 1`, [userId]).catch(() => ({ rows: [] as any[] }));
+  return rows[0] ?? null;
+}
+
+export function incidentsRouter(db: Db, dispatcher?: DemoDispatcher) {
   const r = Router();
   const key = (req: { user?: { id: string }; ip?: string }) => req.user?.id ?? ipKeyGenerator(req.ip ?? '');
   // SOS has its own, separate budget so filing ordinary reports can never block an SOS
@@ -175,7 +187,23 @@ export function incidentsRouter(db: Db) {
     // How many responder accounts can see this. 0 means nobody at TravelSphere will — the client must say so.
     const staff = await db.query(`select count(*)::int as n from public.profiles where role in ('responder', 'admin')`)
       .then(x => x.rows[0].n as number).catch(() => null);
-    res.status(duplicate ? 200 : 201).json({ incident, duplicate, responder_accounts: staff });
+    // DEMO ONLY: text the SOS to the configured stand-in number. The result reported is what Messages actually did.
+    let demo_dispatch: DispatchResult | null = null;
+    if (dispatcher?.enabled && incident.is_sos && !duplicate) {
+      const [stay, me] = await Promise.all([currentStay(db, req.user!.id),
+        db.query('select full_name from public.profiles where id = $1', [req.user!.id]).then(x => x.rows[0]).catch(() => null)]);
+      const type = (details.emergency_type as EmergencyType | undefined) ?? 'other';
+      demo_dispatch = await dispatcher.send({ reference: incident.reference, emergencyType: type,
+        reporterName: me?.full_name ?? null, contactNumber: (details.contact_number as string | undefined) ?? null,
+        latitude: incident.latitude, longitude: incident.longitude, accuracyM: incident.location_accuracy_m,
+        stay, notes: incident.description, createdAt: new Date(incident.created_at) });
+      await db.query(`insert into public.incident_updates (incident_id, author_id, note) values ($1, $2, $3)`,
+        [incident.id, req.user!.id, demo_dispatch.status === 'sent'
+          ? `Demo: SOS message sent to the demo ${demo_dispatch.service} number (${demo_dispatch.to_masked})`
+          : `Demo: SOS message to the demo ${demo_dispatch.service} number was not sent (${demo_dispatch.status})`])
+        .catch(err => console.warn('[incidents] demo dispatch note not saved:', (err as Error).message));
+    }
+    res.status(duplicate ? 200 : 201).json({ incident, duplicate, responder_accounts: staff, demo_dispatch });
   }));
 
   r.get('/', route(async (req, res) => {

@@ -78,12 +78,37 @@ export interface NewIncident {
   client_request_id: string;
 }
 
+/** DEMO ONLY: what the server's demo dispatcher did with the SOS text (one configured stand-in number). */
+export interface DemoDispatch {
+  status: 'sent' | 'logged' | 'failed' | 'disabled';
+  service: string;
+  to_masked: string | null;
+  message: string | null;
+  error?: string;
+  whatsapp_url?: string;
+}
+
 export interface Registration {
   incident: Incident;
   duplicate: boolean;
   /** Responder accounts able to see the incident; 0 = nobody at TravelSphere will. null = unknown. */
   responder_accounts: number | null;
+  demo_dispatch?: DemoDispatch | null;
 }
+
+/** What the traveller picks on the SOS screen. `category` is the incident category stored on the server. */
+export const EMERGENCY_TYPES = [
+  { id: 'medical', label: 'Medical emergency', hint: 'Illness, breathing, chest pain', category: 'medical', service: 'Ambulance' },
+  { id: 'accident', label: 'Accident or injury', hint: 'Road accident, fall', category: 'accident', service: 'Ambulance' },
+  { id: 'theft', label: 'Theft or robbery', hint: 'Bag, phone or money stolen', category: 'security', service: 'Police' },
+  { id: 'assault', label: 'Assault or harassment', hint: 'Attacked, followed, threatened', category: 'security', service: 'Police' },
+  { id: 'fire', label: 'Fire', hint: 'Fire or smoke', category: 'other', service: 'Fire service' },
+  { id: 'natural_hazard', label: 'Flood, storm or landslide', hint: 'Caught by the weather', category: 'natural_hazard', service: 'Disaster response' },
+  { id: 'lost', label: 'Lost or stranded', hint: 'No way back, no transport', category: 'lost_traveller', service: 'Police' },
+  { id: 'lost_documents', label: 'Lost passport', hint: 'Passport or ID lost or stolen', category: 'security', service: 'Police' },
+  { id: 'unsafe', label: 'Unsafe place', hint: 'I feel unsafe here', category: 'unsafe_location', service: 'Police' },
+] as const satisfies readonly { id: string; label: string; hint: string; category: IncidentCategory; service: string }[];
+export type EmergencyTypeId = (typeof EMERGENCY_TYPES)[number]['id'] | 'other';
 
 export type FailureKind = 'offline' | 'network' | 'session' | 'validation' | 'rate_limited' | 'server';
 

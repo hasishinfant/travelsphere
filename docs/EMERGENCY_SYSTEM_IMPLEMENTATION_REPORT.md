@@ -279,3 +279,27 @@ build machine. The live call returned `error: "overpass: no response within 45 s
 | Hotel complaint forwarding | Hotel or booking-provider integration (e.g. LiteAPI booking support channels) |
 | Confirming the unconfirmed numbers | Manual reading of the official pages (blocked to automated checks) |
 | Reliable facility lookups | Self-hosted Overpass or a commercial places API |
+
+## Demo dispatch (added 27 Nov 2026, demo only)
+
+For demonstrations, the SOS screen asks **what is happening** and offers nine types: medical, accident, theft,
+assault or harassment, fire, flood/storm/landslide, lost or stranded, lost passport, and unsafe place. There is also
+"Register SOS with my location" for an unknown emergency. The type is stored in `details.emergency_type` and mapped
+to an incident category (theft, assault and lost passport map to `security`).
+
+When `DEMO_DISPATCH_NUMBER` is set in `server/.env` (git-ignored; never commit a real number), every new SOS is also
+texted to that **one number**, which stands in for the local emergency service.
+
+- **Delivery.** The text is sent through the Mac's Messages app (AppleScript, `DEMO_DISPATCH_TRANSPORT=macos-messages`),
+  or printed to the server log (`log`). It is ignored when `NODE_ENV=production`.
+- **Message content.** Emergency type and the service it is meant for; the reference and time (IST); the traveller's
+  name and phone if known; the current hotel stay from a confirmed booking covering today; GPS with a map link; and a
+  line saying the alert is **not verified**.
+- **What the traveller sees.** Exactly what happened: "handed to Messages", "not sent" with the reason (for example
+  "Messages is not signed in on this Mac"), and a WhatsApp click-to-chat link with the same text. The screen states
+  that real hospitals, police and 112 are not contacted.
+- **Audit.** An incident note records whether the demo message was sent.
+
+"Sent" means Messages accepted the message for sending, not that anyone read it. Setup: sign in to Messages with an
+Apple ID. For SMS to non-iPhone numbers, turn on Text Message Forwarding on the iPhone. Allow the terminal or Node to
+control Messages when macOS asks.

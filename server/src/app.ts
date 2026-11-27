@@ -17,6 +17,7 @@ import { destinationsRouter } from './routes/v1/destinations.js';
 import { assessmentsRouter, journeyAssessmentRouter } from './routes/v1/assessments.js';
 import { incidentsRouter } from './routes/v1/incidents.js';
 import { emergencyRouter } from './routes/v1/emergency.js';
+import { createDemoDispatcher, type DemoDispatcher } from './integrations/demoDispatch.js';
 import { alertsRouter, devicesRouter } from './routes/v1/alerts.js';
 import { hotelsRouter } from './routes/v1/hotels.js';
 import { createLiteApi, type HotelProvider } from './integrations/liteapi.js';
@@ -37,9 +38,12 @@ export function createApp(
   hotels: HotelProvider | null = config.LITEAPI_API_KEY
     ? createLiteApi({ apiKey: config.LITEAPI_API_KEY, env: config.LITEAPI_ENV, timeoutMs: config.LITEAPI_TIMEOUT_MS })
     : null,
+  demoDispatcher?: DemoDispatcher,
 ) {
   const app = express();
   const pushConfigured = Boolean(config.FCM_PROJECT_ID && config.FCM_SERVICE_ACCOUNT_JSON);
+  const dispatcher: DemoDispatcher = demoDispatcher ?? createDemoDispatcher({ number: config.DEMO_DISPATCH_NUMBER,
+    transport: config.DEMO_DISPATCH_TRANSPORT, production: config.NODE_ENV === 'production' });
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
   app.use(helmet());
@@ -99,8 +103,8 @@ export function createApp(
   app.use('/api/v1/assessments', auth, (req, res, next) => (req.method === 'POST' ? assessLimiter(req, res, next) : next()),
     assessmentsRouter(db, risk, config.ASSESSMENT_MAX_AGE_MIN));
   app.use('/api/v1/journeys', auth, journeyAssessmentRouter(db));
-  app.use('/api/v1/incidents', auth, incidentsRouter(db));
-  app.use('/api/v1/emergency', auth, emergencyRouter(db, risk, { pushConfigured }));
+  app.use('/api/v1/incidents', auth, incidentsRouter(db, dispatcher));
+  app.use('/api/v1/emergency', auth, emergencyRouter(db, risk, { pushConfigured, demoDispatch: dispatcher.enabled ? dispatcher.toMasked : null }));
   app.use('/api/v1/alerts', auth, alertsRouter(db));
   app.use('/api/v1/devices', auth, devicesRouter(db));
   app.use('/api/v1/hotels', auth, hotelsRouter(db, hotels, { allowLiveBookings: config.LITEAPI_ALLOW_LIVE_BOOKINGS }));
