@@ -1,6 +1,6 @@
 """The contract every factor module returns. One model for all eight factors keeps them comparable and auditable,
 while `status`, `unit`, `raw_value` and `inputs` keep their different meanings explicit (a distance is not a
-severity, and data reliability describes evidence quality, not hazard)."""
+severity)."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -8,23 +8,34 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+# scoring-v2: eight RISK factors in four dimensions (hazard, exposure, journey context, response capacity).
+# Confidence in the assessment (evidence quality) is NOT a factor: it is computed separately (risk_engine/confidence.py)
+# so that good data can never make a place look safer and poor data can never make it look more dangerous.
 FactorKey = Literal[
-    "weather_severity", "hazard_severity", "distance_to_hazard", "route_exposure",
-    "time_factor", "historical_incident_risk", "population_exposure", "data_reliability",
+    "weather_severity", "hazard_severity",            # hazard
+    "hazard_exposure", "terrain",                      # exposure
+    "activity_timing", "historical_incident_risk",     # journey context
+    "emergency_access", "remoteness",                  # response capacity
 ]
 FACTOR_ORDER: list[str] = [
-    "weather_severity", "hazard_severity", "distance_to_hazard", "route_exposure",
-    "time_factor", "historical_incident_risk", "population_exposure", "data_reliability",
+    "weather_severity", "hazard_severity", "hazard_exposure", "terrain",
+    "activity_timing", "historical_incident_risk", "emergency_access", "remoteness",
 ]
 FACTOR_LABELS: dict[str, str] = {
     "weather_severity": "Weather severity",
-    "hazard_severity": "Hazard severity",
-    "distance_to_hazard": "Distance to hazard",
-    "route_exposure": "Route exposure",
-    "time_factor": "Time factor",
-    "historical_incident_risk": "Historical incident risk",
-    "population_exposure": "Population exposure",
-    "data_reliability": "Data reliability",
+    "hazard_severity": "Active hazards",
+    "hazard_exposure": "Hazard exposure",
+    "terrain": "Terrain",
+    "activity_timing": "Activity and timing",
+    "historical_incident_risk": "Hazard history",
+    "emergency_access": "Access to emergency care",
+    "remoteness": "Remoteness",
+}
+FACTOR_DIMENSION: dict[str, str] = {
+    "weather_severity": "hazard", "hazard_severity": "hazard",
+    "hazard_exposure": "exposure", "terrain": "exposure",
+    "activity_timing": "journey_context", "historical_incident_risk": "journey_context",
+    "emergency_access": "response_capacity", "remoteness": "response_capacity",
 }
 
 # measured       — computed from provider observations

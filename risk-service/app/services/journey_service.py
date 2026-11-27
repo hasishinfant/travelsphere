@@ -13,14 +13,14 @@ from app.geospatial.geometry import sample_line, simplify_for_storage
 from app.risk_engine.aggregation.config import load_scoring
 from app.risk_engine.context import AssessmentContext, TimedWeather
 from app.risk_engine.explanations.builder import build
-from app.risk_engine.factors.route_exposure import exposure_of
-from app.risk_engine.journey_context.accessibility import assess_access, nearest, worst_served_point
+from app.risk_engine import confidence, population
+from app.risk_engine.factors.hazard_exposure import exposure_of
 from app.risk_engine.journey_context.assessor import assess_journey
 from app.schemas.api import JourneyAssessmentRequest
 from app.schemas.domain import Destination
 from app.services import data
 from app.services.alerts import journey_alerts
-from app.services.destination_service import compute_factors
+from app.services.destination_service import access_for, compute_factors
 
 ROUTE_WEATHER_SAMPLES = 3
 
@@ -80,13 +80,16 @@ async def assess_journey_request(req: JourneyAssessmentRequest, dest: Destinatio
     search = cfg["hazard_search_radius_m"]
     fac_radius = jcfg["facility_search_radius_m"]
     access_centre = location if not route else route.geometry.interpolate(0.5, normalized=True)
-    (snaps, w_err), hz, hist, (place, p_err), (facilities, f_err) = await asyncio.gather(
+    # Terrain and remoteness at up to 5 points along the route (or the stay location)
+    shape_pts = [(p.y, p.x) for p in sample_line(route.geometry, 5)] if route else [(location.y, location.x)]
+    (snaps, w_err), hz, hist, (place, p_err), (facilities, f_err), (samples, t_err) = await asyncio.gather(
         data.weather_for(pts, now),
         data.active_hazards(location.y, location.x, search, now),
         data.history_for(dest.latitude, dest.longitude, cfg, now),
         data.place_info(dest),
         data.facilities_near(access_centre.y, access_centre.x,
                              fac_radius + (int(route.distance_m / 2) if route else 0)),
+        data.terrain_for(shape_pts),
     )
     hazards, ok, failed, checks = hz
     ctx = AssessmentContext(
@@ -96,30 +99,25 @@ async def assess_journey_request(req: JourneyAssessmentRequest, dest: Destinatio
         hazards=hazards, hazard_sources_ok=ok, hazard_sources_failed=failed, agreement_checks=checks,
         route=route, alternatives=alternatives, activity=req.activity, travellers=req.travellers,
         place_info=place, place_error=p_err, history=hist, facilities=facilities, facility_error=f_err,
-        facility_search_radius_m=fac_radius)
+        facility_search_radius_m=fac_radius, terrain=samples, terrain_error=t_err,
+        remoteness=data.remoteness_for(shape_pts))
+    # Response accessibility (routed drive time from the least-served point when OSRM is reachable)
+    ctx.access = access = await access_for(ctx.subject, facilities, f_err, cfg)
 
     re_minutes = exposure_of(route, hazards, start, end)["exposed_minutes"] if route and hazards is not None else None
-    factors = compute_factors(ctx, re_minutes)
-
-    # Response accessibility (routed drive time from the least-served point when OSRM is reachable)
-    drive = None
-    if facilities:
-        hospitals = [f for f in facilities if f.kind in ("hospital", "clinic")]
-        if hospitals:
-            point, _ = worst_served_point(ctx.subject, hospitals)
-            drive = await data.drive_minutes((point.y, point.x), [(f.latitude, f.longitude) for f, _ in nearest(point, hospitals)])
-    access = assess_access(ctx.subject, facilities, drive, jcfg["access_bands_minutes"], fac_radius, f_err)
+    factors = compute_factors(ctx)
+    conf = confidence.compute(ctx, factors, cfg["confidence"]["levels"])
 
     result = assess_journey(ctx, factors, access, cfg)
     safer = safer_route(route, alternatives, hazards, start, end, jcfg["safer_route_min_reduction"]) if route else \
         {"available": False, "reason": "No route"}
     explanation = build(ctx, factors, result["category"], result["status"], result["rationale"], access, safer)
-    reliability = next(f.value for f in factors if f.key == "data_reliability")
 
     out = {
         "id": None, "journey_id": str(req.journey_id) if req.journey_id else None, "user_id": str(req.user_id),
         "destination_id": dest.id, "risk_category": result["category"], "assessment_status": result["status"],
-        "composite_index": result["composite_index"], "data_coverage": result["coverage"], "data_reliability": reliability,
+        "composite_index": result["composite_index"], "data_coverage": result["coverage"], "data_reliability": conf["value"],
+        "confidence": conf, "population": population.context(ctx, re_minutes),
         "missing_indicators": result["missing"], "critical_override": result["critical_override"],
         "override_event": result["override_event"], "dimensions": result["dimensions"],
         "route": None if not route else {"source": route.source, "profile": route.profile, "distance_m": round(route.distance_m),

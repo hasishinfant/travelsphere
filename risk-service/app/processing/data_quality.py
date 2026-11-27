@@ -26,9 +26,11 @@ SOURCES: dict[str, SourceInfo] = {s.id: s for s in [
     SourceInfo("overpass", "community", 43_200),
     SourceInfo("travelsphere-incidents", "community", 525_600),
     SourceInfo("travelsphere-config", "configured", 525_600),
+    SourceInfo("copernicus-dem", "scientific", 5_256_000),    # Copernicus DEM GLO-90 via the Open-Meteo elevation API
+    SourceInfo("geonames", "community", 525_600),             # GeoNames cities1000 (CC BY 4.0)
 ]}
 
-# Ordinal credibility of each tier (documented convention used only inside the reliability factor):
+# Ordinal credibility of each tier (documented convention used only by the confidence measure):
 # official agency alert > peer-reviewed numerical model > open community data > editorial configuration.
 TIER_SCORE = {"official": 1.0, "scientific": 0.85, "community": 0.65, "configured": 0.4}
 

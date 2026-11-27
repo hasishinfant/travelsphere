@@ -161,7 +161,7 @@ def test_history_factor_says_when_a_place_is_outside_the_cyclone_area():
 
 
 def test_time_factor_quotes_the_local_weekly_probability_in_season():
-    from app.risk_engine.factors import time_factor
+    from app.risk_engine.factors import activity_timing as time_factor
     h = history()
     h.cyclone_climatology = flat_climatology(0.05)
     f = time_factor.compute(ctx(history=h))           # Kyoto, 22 Nov: inside the W N Pacific season

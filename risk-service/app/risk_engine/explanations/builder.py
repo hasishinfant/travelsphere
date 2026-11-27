@@ -8,7 +8,7 @@ from app.risk_engine.context import AssessmentContext, affecting_hazards
 from app.schemas.factors import FACTOR_LABELS, SEVERITY_ORDER, FactorResult
 
 NOT_PROBABILITY = ("The risk category and composite index are rule-based summaries of current conditions. They are not "
-                   "the probability of an accident or injury.")
+                   "the probability of an accident or injury. Confidence describes the quality of the data, not safety.")
 
 ACTIONS = {
     "cyclone": "Follow official cyclone warnings, avoid coasts and exposed areas, and confirm shelter before travelling.",
@@ -25,6 +25,8 @@ ACTIONS = {
     "visibility": "Visibility is low: avoid driving unfamiliar or remote roads and keep to marked paths.",
     "darkness": "Avoid remote outdoor areas after dark and share your plans with someone.",
     "access": "Emergency care is far from parts of this route: carry a first-aid kit and a way to call for help.",
+    "terrain": "Steep ground: keep to marked paths, stay back from edges and turn back early if conditions worsen.",
+    "remote": "This area is far from towns: carry water, a charged phone and offline maps, and tell someone your plan.",
 }
 
 
@@ -53,7 +55,7 @@ def build(ctx: AssessmentContext, factors: list[FactorResult], category: str | N
 
     contributing = [{"factor": f.key, "label": f.label, "value": f.value, "class": f.severity_class, "explanation": f.explanation}
                     for f in sorted(factors, key=lambda f: f.value or 0, reverse=True)
-                    if f.available and f.key != "data_reliability" and (f.value or 0) > 0]
+                    if f.available and (f.value or 0) > 0]
 
     if hits:
         h, dist, _ = hits[0]
@@ -63,8 +65,8 @@ def build(ctx: AssessmentContext, factors: list[FactorResult], category: str | N
         location = f"{ctx.destination.name} ({ctx.location.y:.3f}, {ctx.location.x:.3f})"
 
     if ctx.mode == "journey":
-        re_ = by.get("route_exposure")
-        effect = [re_.explanation] if re_ and re_.available else []
+        re_ = by.get("hazard_exposure")
+        effect = [re_.explanation] if re_ and re_.available and ctx.route is not None else []
         if access and access.get("explanation"):
             effect.append(access["explanation"])
         if safer_route and safer_route.get("available"):
@@ -89,11 +91,20 @@ def build(ctx: AssessmentContext, factors: list[FactorResult], category: str | N
                      or (k == "visibility" and "fog" in d["description"].lower())), "code")
         if d["class"] in ("moderate", "severe", "extreme") and ACTIONS[kind] not in actions:
             actions.append(ACTIONS[kind])
-    t = by.get("time_factor")
+    t = by.get("activity_timing")
     if ctx.mode == "journey" and t and t.severity_class == "moderate":
         actions.append(ACTIONS["darkness"])
+    hazard_now = any(c in ("moderate", "severe", "extreme") for c in
+                     [by[k].severity_class for k in ("weather_severity", "hazard_severity") if k in by and by[k].available])
+    tr = by.get("terrain")
+    if tr and tr.available and tr.severity_class in ("moderate", "severe", "extreme") and ctx.activity in ("trekking", "water", "sightseeing") \
+            and (hazard_now or ctx.mode == "journey"):
+        actions.append(ACTIONS["terrain"])
     if access and access.get("class") == "poor":
         actions.append(ACTIONS["access"])
+    rm = by.get("remoteness")
+    if rm and rm.available and rm.severity_class in ("moderate", "severe") and ctx.activity in ("trekking", "water", "sightseeing"):
+        actions.append(ACTIONS["remote"])
     if safer_route and safer_route.get("available"):
         actions.insert(0, safer_route["summary"])
     if category is None:

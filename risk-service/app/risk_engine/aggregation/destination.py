@@ -1,26 +1,21 @@
-"""Destination-level aggregation.
+"""Aggregation shared by destination and journey assessments (scoring-v2).
 
-Category (scoring-v1 "primary_hazard_max"): the worst class among the primary current-hazard factors (weather severity,
-active hazard severity) mapped none/minor → LOW, moderate → MODERATE, severe/extreme → HIGH. Averaging would let a
-violent storm be diluted by calm factors, so the composite index is reported separately and only used for ranking.
-CRITICAL is reserved for the critical-event override (verified red alert affecting the location).
-
-Missing data: a category is only given when at least one primary factor is available. If one primary factor is
-missing the status is PARTIAL and the explanation says the missing factor could raise the category; missing data is
-never scored as zero.
+  category        explicit rules in aggregation/category.py (hazard base, one-step amplifiers, context floor,
+                  critical override) — never an average
+  composite index weighted mean of the available factor values: a ranking/trend index only, not a probability
+  coverage        available weight / applicable weight
+  status          COMPLETE (all applicable factors have current data), PARTIAL, or INCOMPLETE (no category)
+Missing data is never scored as zero: an unavailable factor is listed in `missing` and lowers the confidence.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from app.risk_engine.aggregation.category import CATEGORY_ORDER, decide
 from app.risk_engine.context import AssessmentContext, affecting_hazards
-from app.schemas.factors import SEVERITY_ORDER, FactorResult, max_class
+from app.schemas.factors import FactorResult
 
-CATEGORY_ORDER = ["LOW", "MODERATE", "HIGH", "CRITICAL"]
-
-
-def raise_category(cat: str, steps: int = 1) -> str:
-    return CATEGORY_ORDER[min(len(CATEGORY_ORDER) - 2, CATEGORY_ORDER.index(cat) + steps)]  # never reaches CRITICAL
+__all__ = ["CATEGORY_ORDER", "Aggregate", "aggregate", "composite", "critical_override"]
 
 
 @dataclass
@@ -29,15 +24,15 @@ class Aggregate:
     composite_index: float | None
     status: str                       # COMPLETE | PARTIAL | INCOMPLETE
     coverage: float
-    reliability: float | None
     missing: list[str]
     critical_override: bool
     override_event: dict | None
-    drivers: list[str] = field(default_factory=list)
+    rationale: list[str] = field(default_factory=list)
+    decision: dict = field(default_factory=dict)
 
 
 def composite(factors: list[FactorResult], cfg: dict) -> tuple[float | None, float]:
-    """Weighted mean over AVAILABLE hazard-side factors; coverage = available weight / applicable weight."""
+    """Weighted mean over AVAILABLE factors; coverage = available weight / applicable weight."""
     weights = cfg["composite_index"]["weights"]
     applicable = [f for f in factors if f.key in weights and f.status != "not_applicable"]
     avail = [f for f in applicable if f.available and f.value is not None]
@@ -60,28 +55,19 @@ def critical_override(ctx: AssessmentContext, cfg: dict) -> dict | None:
     return None
 
 
-def aggregate_destination(ctx: AssessmentContext, factors: list[FactorResult], cfg: dict) -> Aggregate:
-    by = {f.key: f for f in factors}
-    dcfg = cfg["destination"]
-    primary = [by[k] for k in dcfg["primary_factors"]]
-    avail_primary = [f for f in primary if f.available and f.severity_class]
-    applicable = [f for f in factors if f.key != "data_reliability" and f.status != "not_applicable"]
+def aggregate(ctx: AssessmentContext, factors: list[FactorResult], cfg: dict) -> Aggregate:
+    applicable = [f for f in factors if f.status != "not_applicable"]
     missing = [f.key for f in applicable if not f.available]
     idx, coverage = composite(factors, cfg)
-    reliability = by["data_reliability"].value if "data_reliability" in by else None
     stale = any(f.data_quality.is_stale for f in applicable if f.available)
-
+    d = decide(ctx, factors, cfg["category"])
     override = critical_override(ctx, cfg)
-    if not avail_primary:
-        return Aggregate(None, idx, "INCOMPLETE", coverage, reliability, missing, bool(override), override,
-                         ["No current weather or hazard data — a risk category cannot be given"])
-
-    top = max_class(*(f.severity_class for f in avail_primary))
-    category = dcfg["class_to_category"][top]
-    drivers = [f"{f.label}: {f.severity_class}" for f in sorted(avail_primary, key=lambda f: SEVERITY_ORDER.index(f.severity_class), reverse=True)
-               if f.severity_class not in ("none",)]
+    rationale = list(d["rationale"])
+    category = d["category"]
+    if category is None:
+        return Aggregate(None, idx, "INCOMPLETE", coverage, missing, bool(override), override, rationale, d)
     if override:
         category = "CRITICAL"
-        drivers.insert(0, f"Critical override: verified {override['alert_level']} alert — {override['title']}")
+        rationale.insert(0, f"Critical override: verified {override['alert_level']} alert — {override['title']}")
     status = "COMPLETE" if not missing and not stale else "PARTIAL"
-    return Aggregate(category, idx, status, coverage, reliability, missing, bool(override), override, drivers)
+    return Aggregate(category, idx, status, coverage, missing, bool(override), override, rationale, d)

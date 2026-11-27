@@ -10,7 +10,8 @@ from app.core.config import get_settings
 from app.database import repository as repo
 from app.ml import hazard_climatology
 from app.geospatial.geometry import geodesic_m
-from app.ingestion import gdacs, open_meteo, osrm, overpass, usgs
+from app.ingestion import elevation, gdacs, open_meteo, osrm, overpass, usgs
+from app.geospatial import settlements
 from app.ingestion.http import ProviderError
 from app.processing.data_quality import SOURCES, merge_duplicate_hazards
 from app.risk_engine.context import HistoricalRecord
@@ -31,7 +32,7 @@ def _safe_repo(fn, *a, default=None, **kw):
 
 # Hard wall-clock budget per provider call (retries included) so one slow provider cannot stall an assessment
 DEADLINE_S = {"overpass": 45, "osrm": 30, "open-meteo-forecast": 30, "open-meteo-geocoding": 20,
-              "usgs-earthquakes": 30, "gdacs": 120}
+              "usgs-earthquakes": 30, "gdacs": 120, "copernicus-dem": 20}
 
 
 async def _source(source_id: str, coro):
@@ -208,3 +209,24 @@ async def routes_for(waypoints: list[tuple[float, float]], profile: str) -> tupl
 async def drive_minutes(origin: tuple[float, float], targets: list[tuple[float, float]]) -> list[float | None] | None:
     res, _ = await _source("osrm", osrm.driving_minutes(origin, targets))
     return res
+
+
+async def terrain_for(points: list[tuple[float, float]]) -> tuple[list[dict] | None, str | None]:
+    """DEM samples (centre + 300 m and 1 km rings) for each point; (None, error) when the elevation API fails."""
+    return await _source("copernicus-dem", elevation.terrain_samples(points))
+
+
+def remoteness_for(points: list[tuple[float, float]]) -> dict:
+    """Nearest town (≥ 5 000 people) and settlement (≥ 1 000) from the point farthest from a town."""
+    if not settlements.available():
+        return {"error": "GeoNames settlement file not installed (risk-service/data/geonames/cities1000.zip)"}
+    worst = None
+    for lat, lon in points:
+        town = settlements.nearest(lat, lon, 5_000)
+        if town and (worst is None or town["distance_m"] > worst[1]["distance_m"]):
+            worst = ((lat, lon), town)
+    if worst is None:
+        return {"error": "No town found in GeoNames"}
+    (lat, lon), town = worst
+    return {"town": town, "settlement": settlements.nearest(lat, lon, 1_000),
+            "point": {"lat": round(lat, 4), "lon": round(lon, 4)}}

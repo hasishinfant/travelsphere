@@ -122,7 +122,9 @@ Tests: `supabase/tests/rls_test.sql` (existing) and `supabase/tests/rls_risk_tes
 | POST | `/api/v1/hotels/bookings/:id/cancel` | own bookings; records fee and refund |
 | GET | `/api/places/conditions`, `/api/places/:id/assessment` | existing UI endpoints, now fed by the engine (shape unchanged) |
 
-## 6. Eight-factor methodology
+## 6. Eight-factor methodology (scoring-v2)
+
+Full rationale, rules, confidence and destination score: [RISK_MODEL.md](RISK_MODEL.md).
 
 Shared ordinal scale for hazard-side factors: none / minor / moderate / severe / extreme → 0 / .25 / .5 / .75 / 1
 (ordinal encoding, not a ratio claim). Every factor returns: status (`measured`, `derived`, `configured`,
@@ -133,18 +135,25 @@ timestamps and data quality (sources, age, staleness, cache, missing fields, pre
 |---|---|---|---|
 | 1 | Weather severity | Open-Meteo hourly + current: rain rate, gusts, apparent temp, WMO code, visibility | AMS/Met Office rain (2.5/7.6/16/50 mm/h), Beaufort gusts (10.8/17.2/24.5/32.7 m/s), NWS heat index (27/32/39/51 °C), Env. Canada wind chill (−10/−28/−40/−48 °C), WMO thunderstorm/freezing/snow codes, WMO/NWS fog (1000/400 m); worst driver over the period; journeys use each route point at its ETA |
 | 2 | Hazard severity | GDACS events + footprints, USGS (merged duplicates), configured zones | official class: GDACS Green/Orange/Red → minor/severe/extreme; USGS PAGER or magnitude class; cyclone wind buffers 60/90/120 km/h → moderate/severe/extreme locally. Affects = footprint intersects subject, or point hazard within assessment radius, active in window. Active only (history is factor 6) |
-| 3 | Distance to hazard | subject geometry vs hazard geometries | min geodesic/AEQD distance (0 inside); proximity = 1 − min(d,R)/R, R = assessment radius (scope parameter) |
-| 4 | Route exposure | OSRM route vs footprints | GeoPandas overlay in local AEQD CRS; exposed m, fraction, minutes; overlaps counted once; destination ⇒ not applicable |
-| 5 | Time factor | window, timezone, NOAA solar elevation, basin seasons, hazard validity, lead time | darkness share; NHC/JMA/IMD/Météo-France/BoM/Fiji cyclone seasons; ≥50 % dark during outdoor activity ⇒ moderate, any darkness or in season ⇒ minor |
+| 3 | Hazard exposure | subject geometry (point or OSRM route) vs active hazard geometries | max(proximity, exposed route share); proximity = 1 − min(d,R)/R (0 inside a footprint); route ∩ footprints by GeoPandas overlay in local AEQD CRS, overlaps counted once; exposed m, share and minutes reported. No class (a modifier, not a hazard) |
+| 4 | Terrain | Copernicus DEM GLO-90 (Open-Meteo elevation API): point + 8 neighbours at 300 m and 1 km; configured terrain features | max slope over 300 m → FAO 2006 classes (<10 / 15 / 30 / 60 %); relief within 1 km reported; configured cliffs, glacial rivers etc. ⇒ at least minor. 90 m DEM under-estimates cliff edges |
+| 5 | Activity and timing | planned activity, window, timezone, NOAA solar elevation, basin seasons, hazard validity, lead time | activity exposure (editorial ordinal); darkness share; NHC/JMA/IMD/Météo-France/BoM/Fiji cyclone seasons; ≥50 % dark during an open-air activity ⇒ moderate, any darkness or in season ⇒ minor |
 | 6 | Historical incident risk | GDACS Orange/Red archive (10 y), USGS M ≥ 6, verified TravelSphere incidents, 150 km | Pandas clean/dedupe/classify; λ events/yr; P(≥1) = 1−e^(−λt) per year and per trip; class by return period (≤1/5/20/100 y). Frequency, not accident probability; incidents not normalised (no visitor denominators). Also reports climatological probabilities for the period: cyclone (IBTrACS, ≥ 34 kt within 100 km) and large flood (Dartmouth Flood Observatory, affected area within 100 km; non-commercial data); not used for the class |
-| 7 | Population exposure | GeoNames locality population (Open-Meteo geocoding), affecting hazards, party size | exposed residents (locality inside an affecting hazard ≥ moderate) banded at 1k/100k/1M (GDACS exposure tiers); density unavailable (reported, not guessed); travellers exposed and traveller-hours reported separately |
-| 8 | Data reliability | all of the above | mean of credibility (tier), freshness (per-source max age), completeness, precision (grid distance, footprint share, routed vs straight line), agreement (USGS vs GDACS magnitude ±0.3; weather code vs precipitation). Evidence quality; never part of the hazard score |
+| 7 | Access to emergency care | OSM hospitals/clinics (Overpass), OSRM drive time from the worst-served point | ≤ 60 min none (golden hour), ≤ 120 min minor (Lancet 2-hour benchmark), else moderate (capped: a modifier); straight line × 1.3 at 40 km/h when routing fails, labelled |
+| 8 | Remoteness | GeoNames cities1000, from the worst point | distance to the nearest town ≥ 5 000 people: ≤ 10 km none, ≤ 25 minor, ≤ 50 moderate, else severe (bands not calibrated); value = min(d, 100 km)/100 km |
 
-**Destination aggregation (`config/scoring-v1.json`).** Category = worst class of the primary current-hazard factors
-(weather, active hazard) → LOW/LOW/MODERATE/HIGH/HIGH. A weighted mean would let a violent storm be diluted by calm
-factors, so the composite index (equal weights, explicitly unvalidated) is reported separately for ranking/trends.
-**Critical override:** a verified red alert (GDACS red / USGS PAGER red) affecting the location ⇒ CRITICAL. Status:
-COMPLETE / PARTIAL (missing or stale inputs) / INCOMPLETE (no weather and no hazard data ⇒ no category, never LOW).
+Not factors in scoring-v2: **population exposure** (reported as context — resident counts size a disaster, not the danger to a traveller) and **data reliability** (now the separate *confidence*: 100 × mean of credibility, freshness, completeness, precision, agreement; high ≥ 80, medium ≥ 60; capped at low without a primary hazard factor, at medium when stale).
+
+**Category (`config/scoring-v2.json`, same rules for destinations and journeys).** Base = worst of weather and
+active-hazard class → LOW/LOW/MODERATE/HIGH/HIGH. Amplifiers raise it by **one step in total**: exposed activity
+(trekking/water, weather ≥ moderate), hazardous terrain (terrain ≥ moderate, hazard ≥ minor, open-air activity), weak
+response capacity (hazard ≥ moderate with care > 2 h away or a remote place). Context floor: mostly dark during an
+open-air activity on remote or steep ground ⇒ at least MODERATE. History never escalates. A weighted mean would let a
+violent storm be diluted by calm factors, so the composite index (equal weights, explicitly unvalidated) is reported
+separately for ranking/trends. **Critical override:** a verified red alert (GDACS red / USGS PAGER red) affecting the
+location ⇒ CRITICAL. Status: COMPLETE / PARTIAL (missing or stale inputs) / INCOMPLETE (no weather and no hazard data
+⇒ no category, never LOW). Each destination assessment also carries the **Tourist Confidence Score** (four safety
+factors of the report's Table 6.4; provisional until travel advisories are integrated).
 
 ## 7. Geospatial methodology
 
@@ -158,20 +167,18 @@ geometries are not supported (documented).
 
 ## 8. Journey-context methodology
 
-Four dimensions organise the eight inputs: **Hazard** (weather at route start/middle/end at their ETAs and at the
-destination; hazards touching the route), **Exposure** (route exposure, distance, activity, party), **Journey context**
-(time factor, trip-window historical probability), **Response accessibility** (time to nearest hospital/clinic from
-the least-served route point: OSRM table time, else straight line × 1.3 circuity at 40 km/h, labelled; ≤ 60 min
-adequate — trauma golden-hour convention; ≤ 120 min limited — Lancet Commission 2-hour benchmark; else poor).
-Rules: outdoor activity (trekking, water) with weather ≥ moderate ⇒ +1 class; darkness/season capped at MODERATE;
-poor access with hazard ≥ moderate ⇒ +1 category; critical override. **Safer route:** OSRM alternatives are
+Four dimensions organise the eight factors: **Hazard** (weather at route start/middle/end at their ETAs and at the
+destination; hazards touching the route), **Exposure** (hazard exposure along the route, terrain at up to 5 route
+points), **Journey context** (activity and timing, trip-window historical probability), **Response capacity** (time to
+nearest hospital/clinic from the least-served route point; remoteness from the route point farthest from a town).
+The category rules are the scoring-v2 rules above, applied to the traveller's route, times and activity. **Safer route:** OSRM alternatives are
 intersected with the same footprints; recommended if exposure falls ≥ 25 %, with the extra minutes.
 Verified live: same destination (Kyoto) → LOW for a daytime 4 km drive, MODERATE for a 13 km night walk (§11).
 
 ## 9. Explanations
 
 Built only from computed results and the rules that fired: hazard detected, contributing inputs (sorted), location,
-journey effect (route exposure, access, safer route), information age, recommended action (+ additional), rules applied,
+journey effect (hazard exposure, access, safer route), information age, recommended action (+ additional), rules applied,
 missing information, status, and the disclaimer that the category/index is not a probability of an accident.
 
 ## 10. Machine learning and datasets

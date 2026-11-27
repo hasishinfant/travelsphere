@@ -1,6 +1,7 @@
-"""Factor 5 — Time factor.
+"""Factor 5 — Activity and timing (dimension: journey context). Formerly "time factor"; it now also reports how exposed
+the planned activity is.
 
-Inputs: assessed period (planned journey start/end, or now → +1 h for a destination), destination timezone,
+Inputs: planned activity, assessed period (planned journey start/end, or now → +1 h for a destination), destination timezone,
 solar elevation (NOAA equations), hazard validity periods, weather-forecast lead time, tropical-cyclone seasons.
 
 Components:
@@ -12,6 +13,9 @@ Components:
                  S Pacific Nov 1–Apr 30 (Fiji Met Service RSMC Nadi). Basin boxes are approximate.
   hazard timing  whether active hazards' validity periods overlap the period (open-ended = ongoing)
   lead time      hours until the period starts; beyond 16 days no weather forecast exists
+  activity       exposure of the planned activity (ACTIVITY_EXPOSURE, an editorial ordinal from rules-v1: open-air and
+                 water activities are more exposed than indoor ones, after Camatti et al. 2024 — exposure depends on
+                 where tourists are and what they do). Reported; the category rules use the outdoor/indoor split.
 
 Class (baseline rules, not calibrated):
   moderate — ≥ 50 % of the period in darkness during an outdoor activity (trekking, water, sightseeing)
@@ -28,10 +32,12 @@ from app.risk_engine.context import AssessmentContext, affecting_hazards
 from app.risk_engine.factors.historical_incident_risk import _pct, cyclone_outlook
 from app.schemas.factors import FACTOR_LABELS, SEVERITY_VALUE, DataQuality, FactorResult, max_class
 
-KEY = "time_factor"
-METHOD = ("Darkness share of the period (NOAA solar elevation), tropical-cyclone season of the basin, overlap with "
+KEY = "activity_timing"
+METHOD = ("Planned activity exposure, darkness share of the period (NOAA solar elevation), tropical-cyclone season of the basin, overlap with "
           "hazard validity periods and forecast lead time; rule-based class.")
 OUTDOOR = {"trekking", "water", "sightseeing", "transit"}
+ACTIVITY_EXPOSURE = {"trekking": 0.8, "water": 0.7, "sightseeing": 0.5, "transit": 0.4, "other": 0.4,
+                     "shopping": 0.3, "dining": 0.25, "indoor": 0.15}
 FORECAST_HORIZON_H = 16 * 24
 
 # (name, lat_min, lat_max, lon_min, lon_max, [(start_month, start_day, end_month, end_day)], authority)
@@ -102,7 +108,10 @@ def compute(ctx: AssessmentContext) -> FactorResult:
         reasons.append(f"Starts in {lead_h / 24:.0f} days — beyond the weather forecast horizon; reassess closer to travel")
 
     period = f"{local(start)} – {local(end)}"
-    text = f"{period}: " + ("; ".join(reasons) if reasons else "daylight, outside cyclone season, no time-specific concerns")
+    if not reasons:
+        reasons.append("daylight, outside cyclone season, no time-specific concerns")
+    reasons.insert(0, f"{ctx.activity} ({'outdoor' if outdoor else 'indoor'} activity)")
+    text = f"{period}: " + "; ".join(reasons)
     return FactorResult(
         key=KEY, label=FACTOR_LABELS[KEY], status="derived" if ctx.mode == "journey" else "measured",
         value=SEVERITY_VALUE[cls], severity_class=cls, raw_value=round(dark, 3), unit="darkness share",
@@ -111,6 +120,7 @@ def compute(ctx: AssessmentContext) -> FactorResult:
                 "season_authority": season[1] if season else None,
                 "cyclone_p_week": None if cyclone is None else round(cyclone["p_week"], 5), "lead_time_hours": round(lead_h, 1),
                 "beyond_forecast_horizon": lead_h > FORECAST_HORIZON_H, "activity": ctx.activity,
+                "activity_exposure": ACTIVITY_EXPOSURE.get(ctx.activity), "outdoor": outdoor,
                 "ongoing_hazards": len(ongoing)},
         methodology=METHOD, explanation=text, computed_at=now,
         data_quality=DataQuality(sources=["noaa-solar-equations"],

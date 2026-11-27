@@ -1,0 +1,132 @@
+{
+  "version": "scoring-v2",
+  "status": "baseline — thresholds from published definitions where they exist (each factor module names its source); amplifier rules and aggregation weights are NOT validated against incident outcomes",
+  "factors": [
+    "weather_severity",
+    "hazard_severity",
+    "hazard_exposure",
+    "terrain",
+    "activity_timing",
+    "historical_incident_risk",
+    "emergency_access",
+    "remoteness"
+  ],
+  "dimensions": {
+    "hazard": [
+      "weather_severity",
+      "hazard_severity"
+    ],
+    "exposure": [
+      "hazard_exposure",
+      "terrain"
+    ],
+    "journey_context": [
+      "activity_timing",
+      "historical_incident_risk"
+    ],
+    "response_capacity": [
+      "emergency_access",
+      "remoteness"
+    ]
+  },
+  "composite_index": {
+    "method": "weighted_mean_over_available",
+    "description": "Ranking/trend index only. Not a probability. Confidence is excluded by design.",
+    "weights": {
+      "weather_severity": 1,
+      "hazard_severity": 1,
+      "hazard_exposure": 1,
+      "terrain": 1,
+      "activity_timing": 1,
+      "historical_incident_risk": 1,
+      "emergency_access": 1,
+      "remoteness": 1
+    }
+  },
+  "category": {
+    "primary_factors": [
+      "weather_severity",
+      "hazard_severity"
+    ],
+    "class_to_category": {
+      "none": "LOW",
+      "minor": "LOW",
+      "moderate": "MODERATE",
+      "severe": "HIGH",
+      "extreme": "HIGH"
+    },
+    "amplifiers": {
+      "exposed_activities": [
+        "trekking",
+        "water"
+      ],
+      "exposed_activity_min_weather": "moderate",
+      "open_air_activities": [
+        "trekking",
+        "water",
+        "sightseeing"
+      ],
+      "terrain_min_class": "moderate",
+      "response_min_hazard": "moderate"
+    },
+    "max_amplification_steps": 1
+  },
+  "confidence": {
+    "levels": {
+      "high": 0.8,
+      "medium": 0.6
+    }
+  },
+  "destination": {
+    "category_method": "primary_hazard_max",
+    "primary_factors": [
+      "weather_severity",
+      "hazard_severity"
+    ],
+    "class_to_category": {
+      "none": "LOW",
+      "minor": "LOW",
+      "moderate": "MODERATE",
+      "severe": "HIGH",
+      "extreme": "HIGH"
+    },
+    "required_for_category": "at least one primary factor available"
+  },
+  "journey": {
+    "access_bands_minutes": {
+      "adequate": 60,
+      "limited": 120
+    },
+    "access_bands_note": "60 min: trauma 'golden hour' convention; 120 min: Lancet Commission on Global Surgery 2-hour access benchmark",
+    "facility_search_radius_m": 25000,
+    "safer_route_min_reduction": 0.25
+  },
+  "critical_override": {
+    "sources": [
+      "gdacs",
+      "usgs-earthquakes"
+    ],
+    "alert_levels": [
+      "red"
+    ],
+    "require_verified": true,
+    "require_affecting": true,
+    "description": "A verified red alert (GDACS red / USGS PAGER red) affecting the location or route forces CRITICAL regardless of other factors."
+  },
+  "history": {
+    "window_years": 10,
+    "radius_m": 150000,
+    "usgs_min_magnitude": 6.0,
+    "usgs_min_magnitude_note": "USGS 'strong' magnitude class (>= 6): damaging shaking possible at tens of km"
+  },
+  "hazard_search_radius_m": 500000,
+  "alerts": {
+    "min_level": "HIGH",
+    "destination_ttl_hours": 12
+  },
+  "ml_gate": {
+    "min_pr_auc_lift_unseen": 3.0,
+    "min_recall_unseen": 0.5,
+    "note": "Acceptance policy: an ML signal is shown only if, on the held-out-location 2024 test set, PR-AUC is at least 3x the prevalence and recall at the validation-chosen threshold is at least 0.5. It never sets the risk category."
+  }
+}

@@ -99,7 +99,7 @@ database role with the caller's id, so Row Level Security applies in addition to
 
 ### Risk intelligence (`/api/v1`)
 
-The versioned API and the eight-factor engine (`scoring-v1`) are documented in
+The versioned API and the eight-factor engine (`scoring-v2`) are documented in
 [BACKEND.md](BACKEND.md). `/api/places/*` keeps its response shape but is now computed by
 that engine; the section below describes the earlier rule baseline, which remains as the fallback.
 

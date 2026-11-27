@@ -22,6 +22,7 @@ class Settings(BaseModel):
     open_meteo_url: str = "https://api.open-meteo.com/v1/forecast"
     open_meteo_archive_url: str = "https://archive-api.open-meteo.com/v1/archive"
     geocoding_url: str = "https://geocoding-api.open-meteo.com/v1/search"
+    elevation_url: str = "https://api.open-meteo.com/v1/elevation"
     gdacs_url: str = "https://www.gdacs.org/gdacsapi/api"
     usgs_feed_url: str = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary"
     usgs_fdsn_url: str = "https://earthquake.usgs.gov/fdsnws/event/1/query"
@@ -37,7 +38,7 @@ class Settings(BaseModel):
     http_timeout_s: float = 20.0
     http_retries: int = 3
     scheduler_enabled: bool = False
-    scoring_config: str = "scoring-v1"
+    scoring_config: str = "scoring-v2"
     model_dir: Path = SERVICE_ROOT / "models"
 
     @field_validator("database_url")

@@ -69,7 +69,7 @@ unseen locations), so daily weather does carry some information about significan
 usable thresholds they miss most event days (recall 6–22 %) with low precision. **This is not good enough to inform
 safety decisions.**
 
-## Evaluation gate (`config/scoring-v1.json → ml_gate`)
+## Evaluation gate (`config/scoring-v2.json → ml_gate`)
 
 An ML signal is shown to users only if the unseen-location test PR-AUC is ≥ 3× prevalence **and** recall at the
 validation threshold is ≥ 0.5. The current model (2.0×, 0.056) fails, so `ml_signal` reports

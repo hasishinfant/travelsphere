@@ -273,11 +273,14 @@ def save_destination_assessment(a: dict, factors: list[FactorResult]) -> str:
         aid = c.execute(text("""insert into public.destination_assessments
             (destination_id, risk_category, composite_index, assessment_status, data_coverage, data_reliability,
              missing_indicators, active_warnings, critical_override, explanation, scoring_version, engine_version,
-             ml_signal, inputs_hash, assessed_at)
+             ml_signal, inputs_hash, assessed_at, confidence, destination_score, population)
             values (:destination_id, :risk_category, :composite_index, :assessment_status, :data_coverage, :data_reliability,
              :missing, cast(:warnings as jsonb), :critical_override, cast(:explanation as jsonb), :scoring_version,
-             :engine_version, cast(:ml as jsonb), :inputs_hash, :assessed_at) returning id"""),
+             :engine_version, cast(:ml as jsonb), :inputs_hash, :assessed_at, cast(:conf as jsonb), cast(:score as jsonb),
+             cast(:pop as jsonb)) returning id"""),
             {**a, "missing": a["missing_indicators"], "warnings": json.dumps(a["active_warnings"], default=str),
+             "conf": json.dumps(a.get("confidence"), default=str), "score": json.dumps(a.get("destination_score"), default=str),
+             "pop": json.dumps(a.get("population"), default=str),
              "explanation": json.dumps(a["explanation"], default=str),
              "ml": json.dumps(a.get("ml_signal"), default=str) if a.get("ml_signal") else None}).scalar()
         for f in factors:
@@ -299,13 +302,15 @@ def save_journey_assessment(a: dict, factors: list[FactorResult]) -> str:
         aid = c.execute(text("""insert into public.journey_assessments
             (journey_id, user_id, destination_id, destination_assessment_id, risk_category, assessment_status,
              data_reliability, dimensions, route, safer_route, activity, travel_start, travel_end, travellers,
-             missing_indicators, critical_override, explanation, scoring_version, engine_version, assessed_at)
+             missing_indicators, critical_override, explanation, scoring_version, engine_version, assessed_at,
+             confidence, population)
             values (:journey_id, :user_id, :destination_id, :destination_assessment_id, :risk_category, :assessment_status,
              :data_reliability, cast(:dimensions as jsonb), cast(:route as jsonb), cast(:safer as jsonb), :activity,
              :travel_start, :travel_end, :travellers, :missing, :critical_override, cast(:explanation as jsonb),
-             :scoring_version, :engine_version, :assessed_at) returning id"""),
+             :scoring_version, :engine_version, :assessed_at, cast(:conf as jsonb), cast(:pop as jsonb)) returning id"""),
             {**a, "dimensions": json.dumps(a["dimensions"], default=str), "route": json.dumps(a.get("route"), default=str),
              "safer": json.dumps(a.get("safer_route"), default=str), "missing": a["missing_indicators"],
+             "conf": json.dumps(a.get("confidence"), default=str), "pop": json.dumps(a.get("population"), default=str),
              "explanation": json.dumps(a["explanation"], default=str)}).scalar()
         for f in factors:
             c.execute(FACTOR_INSERT, {"da": None, "ja": aid, **_factor_params(f)})

@@ -74,10 +74,31 @@ def place(pop=1_463_723) -> PlaceInfo:
                      timezone="Asia/Tokyo", distance_m=3_700, retrieved_at=NOW)
 
 
+def terrain(rise_m: float = 3.0, lat: float = KYOTO.latitude, lon: float = KYOTO.longitude) -> list[dict]:
+    """DEM samples for one point: centre 50 m, every 300 m neighbour `rise_m` higher (slope = rise/300)."""
+    return [{"lat": lat, "lon": lon, "centre_m": 50.0, "ring300_m": [50.0 + rise_m] * 8, "ring1000_m": [50.0] * 8}]
+
+
+def remote(town_km: float = 1.5, settlement_km: float | None = None, population: int = 50_000) -> dict:
+    """Default: a 50 000-person town 1.5 km away (not a built-up area for the terrain factor)."""
+    town = {"name": "Town", "country": "JP", "population": population, "distance_m": town_km * 1000,
+            "latitude": 35.02, "longitude": 135.75}
+    s = town if settlement_km is None else {**town, "name": "Village", "population": 1_200, "distance_m": settlement_km * 1000}
+    return {"town": town, "settlement": s, "point": {"lat": KYOTO.latitude, "lon": KYOTO.longitude}}
+
+
+def access(minutes: float | None = 12.0, fac=_EMPTY) -> dict:
+    from app.risk_engine.journey_context.accessibility import assess_access
+    f = facilities() if fac is _EMPTY else fac
+    return assess_access(Point(KYOTO.longitude, KYOTO.latitude), f, None if minutes is None else [minutes],
+                         {"adequate": 60, "limited": 120}, 25_000)
+
+
 def ctx(mode="destination", **kw) -> AssessmentContext:
     base = dict(now=NOW, mode=mode, destination=KYOTO, location=Point(KYOTO.longitude, KYOTO.latitude),
                 window_start=NOW, window_end=NOW + timedelta(hours=24), weather=weather(), hazards=[],
-                hazard_sources_ok=["gdacs", "usgs-earthquakes"], history=history(), place_info=place())
+                hazard_sources_ok=["gdacs", "usgs-earthquakes"], history=history(), place_info=place(),
+                terrain=terrain(), remoteness=remote(), access=access())
     base.update(kw)
     return AssessmentContext(**base)
 
@@ -94,7 +115,7 @@ def facilities(n_km: float = 2.0) -> list[Facility]:
             Facility(osm_id="n2", kind="police", name="Police", latitude=KYOTO.latitude, longitude=KYOTO.longitude + 0.01)]
 
 
-__all__ = ["NOW", "KYOTO", "ctx", "weather", "hazard", "history", "place", "route", "facilities", "fixture", "TimedWeather"]
+__all__ = ["NOW", "KYOTO", "ctx", "terrain", "remote", "access", "weather", "hazard", "history", "place", "route", "facilities", "fixture", "TimedWeather"]
 
 
 # ------------------------------------------------------------------ database

@@ -59,6 +59,10 @@ class AssessmentContext:
     facilities: list[Facility] | None = None
     facility_error: str | None = None
     facility_search_radius_m: int = 25_000
+    access: dict | None = None                        # journey_context/accessibility.assess_access result
+    terrain: list[dict] | None = None                 # ingestion/elevation.terrain_samples result
+    terrain_error: str | None = None
+    remoteness: dict | None = None                    # {"town", "settlement", "point"} or {"error"}
 
     @property
     def subject(self) -> BaseGeometry:

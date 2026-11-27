@@ -3,9 +3,12 @@ from datetime import timedelta
 
 import pytest
 
-from app.risk_engine.factors import (data_reliability, distance_to_hazard, hazard_severity, historical_incident_risk,
-                                     population_exposure, route_exposure, time_factor, weather_severity as ws)
-from tests.conftest import NOW, ctx, hazard, history, place, route, weather
+from app.risk_engine import confidence, population
+from app.risk_engine.factors import (activity_timing as time_factor, emergency_access, hazard_exposure, hazard_severity,
+                                     historical_incident_risk, remoteness, terrain, weather_severity as ws)
+from app.services.destination_service import compute_factors
+from tests.conftest import NOW, access, ctx, hazard, history, place, remote, route, weather
+from tests.conftest import terrain as dem
 
 KYOTO_LAT_ = 34.9986
 
@@ -113,25 +116,25 @@ def test_one_feed_down_is_reported():
     assert f.status == "measured" and "source:usgs-earthquakes" in f.data_quality.missing_fields
 
 
-# ------------------------------------------------------------------ 3 distance to hazard
+# ------------------------------------------------------------------ 3 hazard exposure (proximity + route share)
 def test_distance_inside_is_zero_and_proximity_one():
-    f = distance_to_hazard.compute(ctx(hazards=[hazard(footprint_m=10_000)]))
+    f = hazard_exposure.compute(ctx(hazards=[hazard(footprint_m=10_000)]))
     assert f.raw_value == 0 and f.value == 1
 
 
 def test_distance_linear_proximity():
-    f = distance_to_hazard.compute(ctx(hazards=[hazard(lat=KYOTO_LAT + 25_000 / 111_000)]))  # ~25 km, R = 50 km
+    f = hazard_exposure.compute(ctx(hazards=[hazard(lat=KYOTO_LAT + 25_000 / 111_000)]))  # ~25 km, R = 50 km
     assert 24_000 < f.raw_value < 26_000 and f.value == pytest.approx(0.5, abs=0.03)
 
 
 def test_distance_no_hazards():
-    f = distance_to_hazard.compute(ctx())
+    f = hazard_exposure.compute(ctx())
     assert f.value == 0 and f.raw_value is None
 
 
-# ------------------------------------------------------------------ 4 route exposure
-def test_route_exposure_not_applicable_for_destination():
-    assert route_exposure.compute(ctx()).status == "not_applicable"
+def test_exposure_for_destination_has_no_route_part():
+    f = hazard_exposure.compute(ctx())
+    assert f.status == "measured" and "exposed_fraction" not in f.inputs
 
 
 # The test route runs along lat 34.99, ~955 m south of the circle centre (34.9986): chord = 2·sqrt(R² − d²)
@@ -141,24 +144,25 @@ CHORD_M = 2 * (3_000 ** 2 - OFFSET_M ** 2) ** 0.5
 
 def test_route_exposure_fraction_through_circle():
     r = route()  # ~14.6 km east-west line through Kyoto
-    f = route_exposure.compute(ctx(mode="journey", route=r, hazards=[hazard(footprint_m=3_000)]))
-    assert f.raw_value == pytest.approx(CHORD_M, rel=0.01)
-    assert f.value == pytest.approx(CHORD_M / r.distance_m, rel=0.01)
-    assert f.inputs["exposed_minutes"] == pytest.approx(30 * f.value, rel=0.01)
+    f = hazard_exposure.compute(ctx(mode="journey", route=r, hazards=[hazard(footprint_m=3_000)]))
+    assert f.inputs["exposed_m"] == pytest.approx(CHORD_M, rel=0.01)
+    assert f.inputs["exposed_fraction"] == pytest.approx(CHORD_M / r.distance_m, rel=0.01)
+    assert f.inputs["exposed_minutes"] == pytest.approx(30 * f.inputs["exposed_fraction"], rel=0.01)
+    assert f.value == 1.0 and f.raw_value == 0          # the route crosses the footprint: proximity 1
 
 
 def test_overlapping_footprints_counted_once():
     a, b = hazard(id="A", footprint_m=3_000), hazard(id="B", footprint_m=3_000)
-    f = route_exposure.compute(ctx(mode="journey", route=route(), hazards=[a, b]))
-    assert f.raw_value == pytest.approx(CHORD_M, rel=0.01)
+    f = hazard_exposure.compute(ctx(mode="journey", route=route(), hazards=[a, b]))
+    assert f.inputs["exposed_m"] == pytest.approx(CHORD_M, rel=0.01)
 
 
 def test_route_clear():
-    f = route_exposure.compute(ctx(mode="journey", route=route(), hazards=[hazard(lat=36, footprint_m=3_000)]))
-    assert f.value == 0 and "does not cross" in f.explanation
+    f = hazard_exposure.compute(ctx(mode="journey", route=route(), hazards=[hazard(lat=36, footprint_m=3_000)]))
+    assert f.inputs["exposed_fraction"] == 0 and "does not cross" in f.explanation and f.value < 0.1
 
 
-# ------------------------------------------------------------------ 5 time factor
+# ------------------------------------------------------------------ 5 activity and timing
 def test_night_trek_is_moderate():
     start = NOW + timedelta(hours=9)  # 21:00 Kyoto
     f = time_factor.compute(ctx(mode="journey", window_start=start, window_end=start + timedelta(hours=3), activity="trekking"))
@@ -227,53 +231,119 @@ def test_return_period_classes(rate, cls):
     assert historical_incident_risk.return_period_class(rate) == cls
 
 
-# ------------------------------------------------------------------ 7 population exposure
+# ------------------------------------------------------------------ 4 terrain
+@pytest.mark.parametrize("pct,cls", [(9.9, "none"), (10, "minor"), (15, "moderate"), (30, "severe"), (60, "extreme")])
+def test_fao_slope_classes(pct, cls):
+    assert terrain.slope_class(pct) == cls
+
+
+def test_terrain_slope_from_dem_rings():
+    f = terrain.compute(ctx(terrain=dem(rise_m=60)))          # 60 m over 300 m = 20 %
+    assert f.status == "measured" and f.raw_value == 20.0 and f.severity_class == "moderate"
+    assert f.inputs["max_relief_m"] == 60
+
+
+def test_configured_cliffs_raise_flat_ground_to_minor():
+    from app.schemas.domain import Destination
+    santorini = Destination(id="s", name="Santorini", latitude=36.46, longitude=25.38, terrain=["cliffs", "coastal"])
+    f = terrain.compute(ctx(destination=santorini, terrain=dem(rise_m=3)))
+    assert f.severity_class == "minor" and "cliffs" in f.explanation
+
+
+def test_terrain_unavailable_without_dem_or_configuration():
+    f = terrain.compute(ctx(terrain=None, terrain_error="copernicus-dem: HTTP 503"))
+    assert f.status == "unavailable" and "HTTP 503" in f.explanation
+
+
+# ------------------------------------------------------------------ 7 access to emergency care
+@pytest.mark.parametrize("minutes,cls", [(12, "none"), (60, "none"), (61, "minor"), (120, "minor"), (121, "moderate")])
+def test_access_classes(minutes, cls):
+    f = emergency_access.compute(ctx(access=access(minutes)))
+    assert f.severity_class == cls and f.raw_value == minutes
+
+
+def test_no_hospital_mapped_is_moderate_and_unknown_is_unavailable():
+    assert emergency_access.compute(ctx(access=access(fac=[]))).severity_class == "moderate"
+    assert emergency_access.compute(ctx(access=None)).status == "unavailable"
+
+
+# ------------------------------------------------------------------ 8 remoteness
+@pytest.mark.parametrize("km,cls", [(10, "none"), (10.1, "minor"), (25, "minor"), (50, "moderate"), (50.1, "severe")])
+def test_remoteness_bands(km, cls):
+    f = remoteness.compute(ctx(remoteness=remote(km)))
+    assert f.severity_class == cls and f.value == pytest.approx(min(km, 100) / 100, abs=1e-3)
+
+
+def test_remoteness_unavailable_without_geonames():
+    f = remoteness.compute(ctx(remoteness={"error": "GeoNames settlement file not installed"}))
+    assert f.status == "unavailable" and "GeoNames" in f.explanation
+
+
+def test_nearest_settlement_real_geonames_file():
+    from app.geospatial import settlements
+    if not settlements.available():
+        pytest.skip("GeoNames cities1000.zip not installed")
+    t = settlements.nearest(48.8584, 2.2945, 5_000)              # Eiffel Tower
+    assert t["country"] == "FR" and t["distance_m"] < 6_000
+    far = settlements.nearest(64.0, -18.0, 5_000)                 # Icelandic highlands
+    assert far["distance_m"] > 50_000
+
+
+# ------------------------------------------------------------------ population context (not a factor)
 def test_population_not_exposed_without_hazard():
-    f = population_exposure.compute(ctx())
-    assert f.value == 0 and f.inputs["locality_population"] == 1_463_723 and f.inputs["population_density_per_km2"] is None
+    p = population.context(ctx())
+    assert p["exposed_residents"] == 0 and p["locality_population"] == 1_463_723 and p["population_density_per_km2"] is None
 
 
 def test_population_exposed_inside_hazard():
-    f = population_exposure.compute(ctx(hazards=[hazard(footprint_m=20_000)]))
-    assert f.severity_class == "extreme" and f.raw_value == 1_463_723
+    p = population.context(ctx(hazards=[hazard(footprint_m=20_000)]))
+    assert p["class"] == "extreme" and p["exposed_residents"] == 1_463_723
 
 
 def test_population_unknown_while_exposed_is_unavailable():
-    f = population_exposure.compute(ctx(hazards=[hazard(footprint_m=20_000)], place_info=None))
-    assert f.status == "unavailable"
+    assert population.context(ctx(hazards=[hazard(footprint_m=20_000)], place_info=None))["available"] is False
 
 
 def test_travellers_and_traveller_hours_separate_from_residents():
     c = ctx(mode="journey", route=route(), travellers=3, hazards=[hazard(lat=36, footprint_m=3_000)])
-    f = population_exposure.compute(c, route_exposed_minutes=20)
-    assert f.inputs["travellers_exposed"] == 3 and f.inputs["traveller_hours_exposed"] == 1.0 and f.inputs["exposed_residents"] == 0
+    p = population.context(c, route_exposed_minutes=20)
+    assert p["travellers_exposed"] == 3 and p["traveller_hours_exposed"] == 1.0 and p["exposed_residents"] == 0
 
 
 @pytest.mark.parametrize("n,cls", [(0, "none"), (999, "minor"), (99_999, "moderate"), (999_999, "severe"), (1_000_000, "extreme")])
 def test_population_bands(n, cls):
-    assert population_exposure.population_class(n) == cls
+    assert population.population_class(n) == cls
 
 
-# ------------------------------------------------------------------ 8 data reliability
-def _all(c):
-    fs = [ws.compute(c), hazard_severity.compute(c), distance_to_hazard.compute(c), route_exposure.compute(c),
-          time_factor.compute(c), historical_incident_risk.compute(c), population_exposure.compute(c)]
-    return data_reliability.compute(c, fs)
+# ------------------------------------------------------------------ confidence (not a factor)
+def _conf(c):
+    return confidence.compute(c, compute_factors(c))
 
 
-def test_reliability_is_evidence_quality_not_hazard():
-    good = _all(ctx())
-    assert good.severity_class is None and good.value > 0.8
-    # A severe hazard with excellent data must not lower reliability
-    assert _all(ctx(hazards=[hazard(footprint_m=20_000)])).value >= good.value - 0.05
+def test_confidence_is_evidence_quality_not_hazard():
+    good = _conf(ctx())
+    assert good["value"] > 0.8
+    # A severe hazard with excellent data must not lower confidence
+    assert _conf(ctx(hazards=[hazard(footprint_m=20_000)]))["value"] >= good["value"] - 0.05
 
 
-def test_reliability_drops_with_missing_and_stale_data():
-    good = _all(ctx()).value
-    missing = _all(ctx(weather=None, history=history(events=None)))
-    stale = _all(ctx(weather=weather(observed_age_min=170)))
-    assert missing.value < good and "Weather severity" in missing.explanation
-    assert stale.value < good and stale.inputs["components"]["freshness"] < 0.2
+def test_confidence_drops_with_missing_and_stale_data():
+    good = _conf(ctx())["value"]
+    missing = _conf(ctx(weather=None, history=history(events=None)))
+    stale = _conf(ctx(weather=weather(observed_age_min=170)))
+    assert missing["value"] < good and "Weather severity" in missing["explanation"]
+    assert stale["value"] < good and stale["components"]["freshness"] < 0.2
 
 
 KYOTO_LAT, KYOTO_LON = 34.9986, 135.785
+
+
+def test_terrain_ignores_the_surface_model_in_built_up_areas():
+    from app.schemas.domain import Destination
+    nyc = Destination(id="new-york", name="New York", latitude=40.758, longitude=-73.9855, setting="urban")
+    f = terrain.compute(ctx(destination=nyc, terrain=dem(rise_m=115)))         # skyscrapers read as a 38 % slope
+    assert f.severity_class == "none" and f.status == "configured" and "buildings" in f.explanation
+    big_town = remote(town_km=1.0, population=1_463_723)                      # a city of 1.46 M, 1 km away
+    assert terrain.compute(ctx(terrain=dem(rise_m=115), remoteness=big_town)).severity_class == "none"
+    village = remote(town_km=40)
+    assert terrain.compute(ctx(terrain=dem(rise_m=115), remoteness=village)).severity_class == "severe"

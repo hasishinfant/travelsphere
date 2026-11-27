@@ -39,7 +39,17 @@ def forecast(gust_now: float | None = None):
     return body
 
 
+def elevation_body(request):
+    n = len(request.url.params["latitude"].split(","))
+    return httpx.Response(200, json={"elevation": [50.0] + [53.0] * (n - 1)})
+
+
 def mock_providers(router, *, weather=200, hazards=200, gust=None):
+    router.get(url__regex=r"https://api\.open-meteo\.com/v1/elevation.*").mock(side_effect=elevation_body)
+    router.post(url__regex=r"https://.*overpass.*").mock(return_value=httpx.Response(200, json={"elements": [
+        {"type": "node", "id": 1, "lat": 35.0, "lon": 135.78, "tags": {"amenity": "hospital", "name": "Kyoto Hospital"}}]}))
+    router.get(url__regex=r"https://router\.project-osrm\.org/table/.*").mock(
+        return_value=httpx.Response(200, json={"code": "Ok", "durations": [[0, 540.0]]}))
     router.get(url__regex=r"https://api\.open-meteo\.com/.*").mock(
         return_value=httpx.Response(weather, json=forecast(gust) if weather == 200 else {}))
     router.get(url__regex=r"https://geocoding-api\.open-meteo\.com/.*").mock(
@@ -80,10 +90,17 @@ async def test_destination_assessment_persisted(api, db):
     assert r.status_code == 200
     a = r.json()
     assert len(a["factors"]) == 8 and a["risk_category"] in ("LOW", "MODERATE", "HIGH")
-    assert a["scoring_version"] == "scoring-v1" and a["id"]
+    assert a["scoring_version"] == "scoring-v2" and a["id"]
+    assert a["confidence"]["level"] in ("high", "medium", "low") and 0 <= a["confidence"]["score"] <= 100
+    by = {f["key"]: f for f in a["factors"]}
+    assert by["terrain"]["status"] == "configured" and "buildings" in by["terrain"]["explanation"]  # Kyoto is urban
+    assert by["emergency_access"]["severity_class"] == "none"
+    assert a["destination_score"]["provisional"] is True
     with db.connect() as c:
         assert c.execute(text("select count(*) from factor_assessments where destination_assessment_id = :i"), {"i": a["id"]}).scalar() == 8
         assert c.execute(text("select count(*) from assessment_history where assessment_id = :i"), {"i": a["id"]}).scalar() == 1
+        assert c.execute(text("select confidence->>'level' from destination_assessments where id = :i"), {"i": a["id"]}).scalar() \
+            == a["confidence"]["level"]
         assert c.execute(text("select count(*) from safety_indicators where destination_id = 'kyoto'")).scalar() >= 5
         hist = next(f for f in a["factors"] if f["key"] == "historical_incident_risk")
         assert hist["status"] == "measured"

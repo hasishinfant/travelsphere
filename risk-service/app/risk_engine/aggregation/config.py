@@ -12,7 +12,7 @@ CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 
 
 @lru_cache
-def load_scoring(version: str = "scoring-v1") -> dict[str, Any]:
+def load_scoring(version: str = "scoring-v2") -> dict[str, Any]:
     if not version.replace("-", "").replace(".", "").isalnum():
         raise ValueError("invalid scoring version")
     cfg = json.loads((CONFIG_DIR / f"{version}.json").read_text())
