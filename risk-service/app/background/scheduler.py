@@ -5,6 +5,7 @@
   every 15 min  expired-alert check
   daily 03:15   purge journey locations past their retention date
   weekly        refresh of the GDACS Orange/Red archive (last 60 days) used for historical risk
+  on start      10-year archive backfill when the database has (almost) none of it
 Weather and hazard refresh happen as part of reassessment (HTTP cache: 10 min weather, 15 min GDACS, 5 min USGS).
 """
 from __future__ import annotations
@@ -66,6 +67,31 @@ async def refresh_history() -> None:
     await load_gdacs_history(now - timedelta(days=60), now)
 
 
+async def backfill_history() -> None:
+    """On startup: load the 10-year GDACS archive when the database has almost none of it (a fresh deployment).
+    Counts events older than a year: routine reassessments only fetch recent months. A no-op once loaded."""
+    from sqlalchemy import text
+    from app.database.session import get_engine
+    from app.services.data import load_gdacs_history
+    eng = get_engine()
+    if eng is None:
+        return
+    try:
+        with eng.connect() as c:
+            n = c.execute(text("select count(*) from public.hazard_events where source_id = 'gdacs' and not is_current"
+                                " and valid_from < now() - interval '1 year'")).scalar()
+    except Exception:  # noqa: BLE001 — schema not migrated yet; the next start retries
+        log.warning("history backfill skipped: hazard_events not readable")
+        return
+    if n >= 100:
+        log.info("history backfill: %d GDACS events older than a year already stored, nothing to do", n)
+        return
+    log.info("history backfill: %d GDACS events older than a year, loading 10 years", n)
+    now = datetime.now(timezone.utc)
+    await load_gdacs_history(now - timedelta(days=int(365.25 * 10)), now)
+    log.info("history backfill done")
+
+
 def start_scheduler() -> None:
     global _scheduler
     _scheduler = AsyncIOScheduler(timezone="UTC")
@@ -75,6 +101,7 @@ def start_scheduler() -> None:
     _scheduler.add_job(expire_alerts, "interval", minutes=15, id="expire_alerts")
     _scheduler.add_job(purge_locations, "cron", hour=3, minute=15, id="purge_locations")
     _scheduler.add_job(refresh_history, "cron", day_of_week="sun", hour=2, id="refresh_history")
+    _scheduler.add_job(backfill_history, "date", run_date=datetime.now(timezone.utc), id="backfill_history")
     _scheduler.start()
     log.info("scheduler started")
 
