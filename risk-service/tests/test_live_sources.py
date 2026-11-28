@@ -103,3 +103,21 @@ def test_destination_score_uses_the_advisory_as_safety_index():
     s = next(c for c in with_adv["components"] if c["key"] == "safety_index")
     assert s["score"] == pytest.approx(66.7, abs=0.1) and not with_adv["provisional"]
     assert without["provisional"] and next(c for c in without["components"] if c["key"] == "safety_index")["score"] is None
+
+
+async def test_recent_warnings_copy_is_served_without_waiting_for_the_feed(http):
+    """MeteoAlarm can hang; a copy fetched recently is used at once and expired warnings are dropped."""
+    from datetime import datetime, timedelta, timezone
+    from app.services import data
+    now = datetime.now(timezone.utc)
+    active = warnings.parse_meteoalarm({"warnings": [ma_warning()]}, PARIS, NOW)[0]
+    active.valid_to = now + timedelta(hours=3)
+    expired = warnings.parse_meteoalarm({"warnings": [ma_warning(code="FR101", severity="Severe", colour="orange")]}, PARIS, NOW)[0]
+    expired.valid_to = now - timedelta(minutes=1)
+    data._warn_cache["paris"] = (now - timedelta(minutes=5), [active, expired])
+    with respx.mock(assert_all_called=False) as r:
+        route = r.get(url__regex=r"https://feeds\.meteoalarm\.org/.*").mock(side_effect=httpx.ReadTimeout("hang"))
+        found, sid, err = await data.official_warnings(PARIS, now)
+    data._warn_cache.clear()
+    assert sid == "meteoalarm" and err is None and [w.alert_level for w in found] == ["yellow"]
+    assert route.call_count == 0                      # 5 minutes old: no refresh needed, nobody waited

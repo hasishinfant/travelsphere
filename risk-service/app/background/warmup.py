@@ -1,5 +1,7 @@
 """Keeps live reference data ready so interactive assessments never wait on slow public servers.
 
+  live feeds   every 10 min: official weather warnings for every destination and the GDACS/USGS hazard lists, so
+               assessments are served from fresh copies instead of waiting on slow public servers
   facilities   OpenStreetMap hospitals/clinics/police/fire around every destination (25 km), fetched with a
                generous time limit and stored in the 30-day cache that assessments read first. Public Overpass
                servers often take about a minute for a city-sized query, more than an interactive request allows.
@@ -17,7 +19,9 @@ from app.core.config import get_settings
 
 log = logging.getLogger("risk.warmup")
 INTERVAL_S = 24 * 3600
+FEEDS_INTERVAL_S = 10 * 60
 _task: asyncio.Task | None = None
+_feeds_task: asyncio.Task | None = None
 
 
 async def warm_facilities() -> dict[str, str]:
@@ -33,6 +37,28 @@ async def warm_facilities() -> dict[str, str]:
     return out
 
 
+async def refresh_feeds() -> None:
+    """Fetch warnings and hazard lists in the background (each source has its own deadline)."""
+    from datetime import datetime, timezone
+    from app.services import data
+    now = datetime.now(timezone.utc)
+    dests = repo.list_destinations() if repo.db_available() else []
+    radius = load_scoring(get_settings().scoring_config)["hazard_search_radius_m"]
+    jobs = [data._fetch_warnings_into_cache(d, sid) for d in dests if (sid := data.warnings.source_for(d))]
+    if dests:
+        jobs.append(data.active_hazards(dests[0].latitude, dests[0].longitude, radius, now))
+    await asyncio.gather(*jobs, return_exceptions=True)
+
+
+async def _feeds_loop() -> None:
+    while True:
+        try:
+            await refresh_feeds()
+        except Exception as e:  # noqa: BLE001
+            log.warning("feed refresh failed: %s", e)
+        await asyncio.sleep(FEEDS_INTERVAL_S)
+
+
 async def _loop() -> None:
     while True:
         try:
@@ -43,14 +69,18 @@ async def _loop() -> None:
 
 
 def start_warmup() -> None:
-    global _task
+    global _task, _feeds_task
+    loop = asyncio.get_running_loop()
     if _task is None or _task.done():
-        _task = asyncio.get_running_loop().create_task(_loop())
+        _task = loop.create_task(_loop())
+    if _feeds_task is None or _feeds_task.done():
+        _feeds_task = loop.create_task(_feeds_loop())
 
 
 def stop_warmup() -> None:
-    if _task is not None and not _task.done():
-        _task.cancel()
+    for t in (_task, _feeds_task):
+        if t is not None and not t.done():
+            t.cancel()
 
 
 if __name__ == "__main__":  # one-off: python -m app.background.warmup

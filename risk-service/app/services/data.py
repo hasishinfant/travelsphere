@@ -32,7 +32,7 @@ def _safe_repo(fn, *a, default=None, **kw):
 
 # Hard wall-clock budget per provider call (retries included) so one slow provider cannot stall an assessment
 DEADLINE_S = {"overpass": 45, "osrm": 30, "open-meteo-forecast": 30, "open-meteo-geocoding": 20,
-              "usgs-earthquakes": 30, "gdacs": 30, "copernicus-dem": 20, "meteoalarm": 30, "nws": 20,
+              "usgs-earthquakes": 30, "gdacs": 30, "copernicus-dem": 20, "meteoalarm": 15, "nws": 15,
               "us-state-dept-advisories": 30, "fcdo-travel-advice": 20}
 
 
@@ -93,6 +93,9 @@ def _refresh_in_background(source_id: str, fetch) -> None:
         return
 
     async def run():
+        if source_id.startswith("warnings:"):
+            await fetch()                                  # fills the warnings cache itself
+            return
         evs, _ = await _source(source_id, fetch())
         if evs is not None:
             _safe_repo(repo.upsert_hazards, evs)
@@ -111,7 +114,10 @@ async def active_hazards(lat: float, lon: float, search_radius_m: float, now: da
     # refreshed in the background, so one slow public server (GDACS can take minutes) never stalls an assessment.
     # A provider that failed in the last few minutes is not waited for again: its saved copy is used while still
     # trustworthy, otherwise it is reported unavailable at once; either way it keeps being retried in the background.
-    fresh = {sid: _recently_ok(sid, now) or (_backing_off(sid, now) and _usable_saved_copy(sid, now)) for sid in fetchers}
+    # Rule for every slow live source: a usable saved copy (last success within twice the source's freshness limit)
+    # is served at once and refreshed in the background; only without one do we wait (up to the source's deadline).
+    # A provider that failed in the last few minutes and has no usable copy is reported unavailable at once.
+    fresh = {sid: _recently_ok(sid, now) or _usable_saved_copy(sid, now) for sid in fetchers}
     down = {sid: not fresh[sid] and _backing_off(sid, now) for sid in fetchers}
     results = await asyncio.gather(*(_cached_ok() if fresh[sid] or down[sid] else _source(sid, f())
                                      for sid, f in fetchers.items()))
@@ -309,12 +315,30 @@ def remoteness_for(points: list[tuple[float, float]]) -> dict:
             "point": {"lat": round(lat, 4), "lon": round(lon, 4)}}
 
 
+_warn_cache: dict[str, tuple[datetime, list[HazardEvent]]] = {}
+WARN_REFRESH_MIN = 10
+
+
+async def _fetch_warnings_into_cache(dest: Destination, sid: str) -> tuple[list[HazardEvent] | None, str | None]:
+    found, err = await _source(sid, warnings.fetch_warnings(dest, datetime.now(timezone.utc)))
+    if found is not None:
+        _warn_cache[dest.id] = (datetime.now(timezone.utc), found)
+    return found, err
+
+
 async def official_warnings(dest: Destination, now: datetime) -> tuple[list[HazardEvent] | None, str | None, str | None]:
-    """(warnings | None on failure, source id | None when the destination has no warning source, note)."""
+    """(warnings | None on failure, source id | None when the destination has no warning source, note).
+    A copy fetched within twice the source's freshness limit is served at once (expired warnings removed) and
+    refreshed in the background after WARN_REFRESH_MIN; only without one does the assessment wait for the feed."""
     sid = warnings.source_for(dest)
     if sid is None:
         return [], None, warnings.NOT_COVERED.get(dest.id, "No official warning feed configured for this destination")
-    found, err = await _source(sid, warnings.fetch_warnings(dest, now))
+    cached = _warn_cache.get(dest.id)
+    if cached and now - cached[0] < timedelta(minutes=SOURCES[sid].max_age_minutes * 2):
+        if now - cached[0] > timedelta(minutes=WARN_REFRESH_MIN):
+            _refresh_in_background(f"warnings:{dest.id}", lambda: _fetch_warnings_into_cache(dest, sid))
+        return [w for w in cached[1] if w.valid_to is None or w.valid_to > now], sid, None
+    found, err = await _fetch_warnings_into_cache(dest, sid)
     return found, sid, err
 
 

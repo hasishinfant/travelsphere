@@ -24,6 +24,7 @@ def api(db, monkeypatch):
     set_http(None)
     data_service._gdacs_history_cache.clear()
     data_service._last_failure.clear()
+    data_service._warn_cache.clear()
     from app.main import app
     transport = httpx.ASGITransport(app=app)
     yield httpx.AsyncClient(transport=transport, base_url="http://risk")
