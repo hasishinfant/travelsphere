@@ -186,6 +186,5 @@ def main() -> None:
     except Exception as e:  # noqa: BLE001
         print("model registry not updated:", e)
 
-
 if __name__ == "__main__":
     main()
