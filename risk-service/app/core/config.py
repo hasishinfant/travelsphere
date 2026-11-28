@@ -38,6 +38,7 @@ class Settings(BaseModel):
     http_timeout_s: float = 20.0
     http_retries: int = 3
     scheduler_enabled: bool = False
+    facility_warmup: bool = True    # RISK_FACILITY_WARMUP=false to disable the background facility fetch
     scoring_config: str = "scoring-v2"
     model_dir: Path = SERVICE_ROOT / "models"
 
@@ -63,6 +64,7 @@ def get_settings() -> Settings:
         database_url=e.get("DATABASE_URL"),
         service_token=e.get("RISK_SERVICE_TOKEN") or None,
         scheduler_enabled=_bool(e.get("RISK_SCHEDULER_ENABLED")),
+        facility_warmup=e.get("RISK_FACILITY_WARMUP", "true").lower() not in ("false", "0", "no"),
         http_timeout_s=float(e.get("RISK_HTTP_TIMEOUT_S", "20")),
         **({"overpass_urls": [u.strip() for u in e["OVERPASS_URLS"].split(",") if u.strip()]}
            if e.get("OVERPASS_URLS") else {}),

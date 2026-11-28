@@ -10,7 +10,7 @@ from app.core.config import get_settings
 from app.database import repository as repo
 from app.ml import hazard_climatology
 from app.geospatial.geometry import geodesic_m
-from app.ingestion import elevation, gdacs, open_meteo, osrm, overpass, usgs
+from app.ingestion import advisories, elevation, gdacs, open_meteo, osrm, overpass, usgs, warnings
 from app.geospatial import settlements
 from app.ingestion.http import ProviderError
 from app.processing.data_quality import SOURCES, merge_duplicate_hazards
@@ -32,7 +32,8 @@ def _safe_repo(fn, *a, default=None, **kw):
 
 # Hard wall-clock budget per provider call (retries included) so one slow provider cannot stall an assessment
 DEADLINE_S = {"overpass": 45, "osrm": 30, "open-meteo-forecast": 30, "open-meteo-geocoding": 20,
-              "usgs-earthquakes": 30, "gdacs": 120, "copernicus-dem": 20}
+              "usgs-earthquakes": 30, "gdacs": 120, "copernicus-dem": 20, "meteoalarm": 30, "nws": 20,
+              "us-state-dept-advisories": 30, "fcdo-travel-advice": 20}
 
 
 async def _source(source_id: str, coro):
@@ -156,11 +157,20 @@ async def place_info(dest: Destination) -> tuple[PlaceInfo | None, str | None]:
     return info, err
 
 
-async def facilities_near(lat: float, lon: float, radius_m: int) -> tuple[list[Facility] | None, str | None]:
+async def facilities_near(lat: float, lon: float, radius_m: int, background: bool = False
+                          ) -> tuple[list[Facility] | None, str | None]:
+    """Emergency facilities from the 30-day cache, else Overpass. `background=True` (warm-up job) waits minutes
+    instead of seconds, so interactive assessments find the cache already filled."""
     cached = _safe_repo(repo.cached_facilities, lat, lon, radius_m)
     if cached is not None:
         return cached, None
-    found, err = await _source("overpass", overpass.fetch_facilities(lat, lon, radius_m))
+    if background:
+        try:
+            found, err = await asyncio.wait_for(overpass.fetch_facilities(lat, lon, radius_m, timeout_s=150), 480), None
+        except (asyncio.TimeoutError, ProviderError) as e:
+            found, err = None, f"overpass: {e or 'no response'}"
+    else:
+        found, err = await _source("overpass", overpass.fetch_facilities(lat, lon, radius_m))
     if found is not None:
         _safe_repo(repo.store_facilities, lat, lon, radius_m, found)
     return found, err
@@ -230,3 +240,37 @@ def remoteness_for(points: list[tuple[float, float]]) -> dict:
     (lat, lon), town = worst
     return {"town": town, "settlement": settlements.nearest(lat, lon, 1_000),
             "point": {"lat": round(lat, 4), "lon": round(lon, 4)}}
+
+
+async def official_warnings(dest: Destination, now: datetime) -> tuple[list[HazardEvent] | None, str | None, str | None]:
+    """(warnings | None on failure, source id | None when the destination has no warning source, note)."""
+    sid = warnings.source_for(dest)
+    if sid is None:
+        return [], None, warnings.NOT_COVERED.get(dest.id, "No official warning feed configured for this destination")
+    found, err = await _source(sid, warnings.fetch_warnings(dest, now))
+    return found, sid, err
+
+
+def merge_warnings(hz: tuple, found: list[HazardEvent] | None, sid: str | None, note: str | None) -> tuple:
+    """Add official warnings to the active-hazard tuple (events, ok, failed, checks) from active_hazards()."""
+    events, ok, failed, checks = hz
+    if sid is None:
+        return hz
+    if found is None:
+        return events, ok, failed + [sid], checks
+    return (events or []) + found, ok + [sid], failed, checks
+
+
+async def advisory_for(country: str | None) -> dict:
+    """Official travel advice for the country (US State Dept + UK FCDO), the more cautious of the two."""
+    if not country:
+        return {"available": False, "value": None, "sources": [], "explanation": "Country unknown"}
+    (s, s_err), (f, f_err) = await asyncio.gather(_source("us-state-dept-advisories", advisories.state_dept(country)),
+                                                  _source("fcdo-travel-advice", advisories.fcdo(country)))
+    out = advisories.combine([p for p in (s, f) if p])
+    errs = [e for e in (s_err, f_err) if e]
+    if errs:
+        out["errors"] = errs
+        if not out["available"]:
+            out["explanation"] = "Official travel advice unavailable (" + "; ".join(errs) + ")"
+    return out

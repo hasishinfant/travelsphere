@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import internal, public
 from app.background.scheduler import start_scheduler, stop_scheduler
+from app.background.warmup import start_warmup, stop_warmup
 from app.core.config import ENGINE_VERSION, get_settings
 from app.ingestion.http import get_http
 
@@ -30,7 +31,10 @@ async def lifespan(_: FastAPI):
         log.warning("RISK_SERVICE_TOKEN not set — internal API is unauthenticated (loopback development only)")
     if s.scheduler_enabled:
         start_scheduler()
+    if s.facility_warmup:
+        start_warmup()
     yield
+    stop_warmup()
     stop_scheduler()
     await get_http().close()
 

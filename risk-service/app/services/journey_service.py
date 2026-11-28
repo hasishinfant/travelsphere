@@ -82,7 +82,7 @@ async def assess_journey_request(req: JourneyAssessmentRequest, dest: Destinatio
     access_centre = location if not route else route.geometry.interpolate(0.5, normalized=True)
     # Terrain and remoteness at up to 5 points along the route (or the stay location)
     shape_pts = [(p.y, p.x) for p in sample_line(route.geometry, 5)] if route else [(location.y, location.x)]
-    (snaps, w_err), hz, hist, (place, p_err), (facilities, f_err), (samples, t_err) = await asyncio.gather(
+    (snaps, w_err), hz, hist, (place, p_err), (facilities, f_err), (samples, t_err), warn = await asyncio.gather(
         data.weather_for(pts, now),
         data.active_hazards(location.y, location.x, search, now),
         data.history_for(dest.latitude, dest.longitude, cfg, now),
@@ -90,8 +90,9 @@ async def assess_journey_request(req: JourneyAssessmentRequest, dest: Destinatio
         data.facilities_near(access_centre.y, access_centre.x,
                              fac_radius + (int(route.distance_m / 2) if route else 0)),
         data.terrain_for(shape_pts),
+        data.official_warnings(dest, now),
     )
-    hazards, ok, failed, checks = hz
+    hazards, ok, failed, checks = data.merge_warnings(hz, *warn)
     ctx = AssessmentContext(
         now=now, mode="journey", destination=dest, location=location, window_start=start, window_end=end,
         weather=snaps[-1], weather_error=w_err,

@@ -63,6 +63,8 @@ class AssessmentContext:
     terrain: list[dict] | None = None                 # ingestion/elevation.terrain_samples result
     terrain_error: str | None = None
     remoteness: dict | None = None                    # {"town", "settlement", "point"} or {"error"}
+    advisory: dict | None = None                      # official travel advice (data.advisory_for)
+    warning_note: str | None = None                   # why a destination has no official warning feed
 
     @property
     def subject(self) -> BaseGeometry:

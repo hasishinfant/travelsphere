@@ -5,7 +5,8 @@ its four SAFETY factors and fed with measured data. The report's other four fact
 preference) describe trip fit, not safety, and are not part of this score.
 
   factor               weight  measured by                                                   evidence
-  safety index         0.20    official travel-advisory level — NOT YET INTEGRATED           Jamal Mahdi 2024; Glorioso 2026
+  safety index         0.20    official travel advice: US State Dept level / UK FCDO status   Jamal Mahdi 2024; Glorioso 2026
+                               (ingestion/advisories.py; the more cautious of the two)
   health & emergency   0.15    access to emergency care (factor 7)                           Mawby 2024; Health is the new safety 2026
   transport access     0.15    remoteness: distance to the nearest town (factor 8)           Li et al. 2026
   weather stability    0.10    hazard history: significant events per year (factor 6)        Biardeau 2026; Camatti 2024
@@ -35,16 +36,26 @@ def band(score: float) -> str:
     return "Low" if score <= 40 else "Moderate" if score <= 65 else "High" if score <= 85 else "Excellent"
 
 
-def compute(factors: list[FactorResult]) -> dict:
+def compute(factors: list[FactorResult], advisory: dict | None = None) -> dict:
     by = {f.key: f for f in factors}
     parts, got, total, acc = [], 0.0, 0.0, 0.0
     for key, label, w, source in COMPONENTS:
         total += w
-        f = by.get(source) if source else None
+        if source is None:                                     # safety index ← official travel advice
+            if advisory and advisory.get("available") and advisory.get("value") is not None:
+                s = round(100 * (1 - advisory["value"]), 1)
+                got += w
+                acc += w * s
+                parts.append({"key": key, "label": label, "weight": w, "score": s, "from_factor": "travel_advisory",
+                              "note": advisory.get("explanation", "")})
+            else:
+                parts.append({"key": key, "label": label, "weight": w, "score": None, "from_factor": "travel_advisory",
+                              "note": (advisory or {}).get("explanation") or "Official travel advice unavailable"})
+            continue
+        f = by.get(source)
         if f is None or not f.available or f.value is None:
-            why = ("Travel-advisory data is not integrated yet" if source is None
-                   else f"{f.label if f else source} unavailable")
-            parts.append({"key": key, "label": label, "weight": w, "score": None, "from_factor": source, "note": why})
+            parts.append({"key": key, "label": label, "weight": w, "score": None, "from_factor": source,
+                          "note": f"{f.label if f else source} unavailable"})
             continue
         s = round(100 * (1 - f.value), 1)
         got += w

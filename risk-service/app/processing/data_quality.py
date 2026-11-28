@@ -28,6 +28,10 @@ SOURCES: dict[str, SourceInfo] = {s.id: s for s in [
     SourceInfo("travelsphere-config", "configured", 525_600),
     SourceInfo("copernicus-dem", "scientific", 5_256_000),    # Copernicus DEM GLO-90 via the Open-Meteo elevation API
     SourceInfo("geonames", "community", 525_600),             # GeoNames cities1000 (CC BY 4.0)
+    SourceInfo("meteoalarm", "official", 60),                 # national weather-service warnings (EUMETNET)
+    SourceInfo("nws", "official", 30),                        # US National Weather Service alerts
+    SourceInfo("us-state-dept-advisories", "official", 10_080),
+    SourceInfo("fcdo-travel-advice", "official", 10_080),
 ]}
 
 # Ordinal credibility of each tier (documented convention used only by the confidence measure):

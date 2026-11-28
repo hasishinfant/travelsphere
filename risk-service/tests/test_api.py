@@ -46,6 +46,12 @@ def elevation_body(request):
 
 def mock_providers(router, *, weather=200, hazards=200, gust=None):
     router.get(url__regex=r"https://api\.open-meteo\.com/v1/elevation.*").mock(side_effect=elevation_body)
+    router.get("https://cadataapi.state.gov/api/TravelAdvisories").mock(return_value=httpx.Response(200, json=[
+        {"Title": "Japan - Level 1: Exercise Normal Precautions", "Category": "['JA']", "Link": "https://travel.state.gov/x",
+         "Updated": "2026-10-01T00:00:00-04:00"}]))
+    router.get(url__regex=r"https://www\.gov\.uk/api/content/foreign-travel-advice/.*").mock(
+        return_value=httpx.Response(200, json={"public_updated_at": "2026-08-28T10:00:00Z",
+                                               "details": {"alert_status": []}}))
     router.post(url__regex=r"https://.*overpass.*").mock(return_value=httpx.Response(200, json={"elements": [
         {"type": "node", "id": 1, "lat": 35.0, "lon": 135.78, "tags": {"amenity": "hospital", "name": "Kyoto Hospital"}}]}))
     router.get(url__regex=r"https://router\.project-osrm\.org/table/.*").mock(
@@ -95,7 +101,9 @@ async def test_destination_assessment_persisted(api, db):
     by = {f["key"]: f for f in a["factors"]}
     assert by["terrain"]["status"] == "configured" and "buildings" in by["terrain"]["explanation"]  # Kyoto is urban
     assert by["emergency_access"]["severity_class"] == "none"
-    assert a["destination_score"]["provisional"] is True
+    assert a["travel_advisory"]["available"] and a["travel_advisory"]["value"] == 0.0
+    safety = next(c for c in a["destination_score"]["components"] if c["key"] == "safety_index")
+    assert safety["score"] == 100.0 and "Level 1" in safety["note"]
     with db.connect() as c:
         assert c.execute(text("select count(*) from factor_assessments where destination_assessment_id = :i"), {"i": a["id"]}).scalar() == 8
         assert c.execute(text("select count(*) from assessment_history where assessment_id = :i"), {"i": a["id"]}).scalar() == 1

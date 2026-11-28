@@ -62,15 +62,17 @@ def warnings_for(ctx: AssessmentContext) -> list[dict]:
 
 async def build_destination_context(dest: Destination, now: datetime, cfg: dict) -> AssessmentContext:
     point = (dest.latitude, dest.longitude)
-    (snaps, w_err), hz, hist, (place, p_err), (facilities, f_err), (samples, t_err) = await asyncio.gather(
+    (snaps, w_err), hz, hist, (place, p_err), (facilities, f_err), (samples, t_err), warn, advisory = await asyncio.gather(
         data.weather_for([point], now),
         data.active_hazards(dest.latitude, dest.longitude, cfg["hazard_search_radius_m"], now),
         data.history_for(dest.latitude, dest.longitude, cfg, now),
         data.place_info(dest),
         data.facilities_near(dest.latitude, dest.longitude, cfg["journey"]["facility_search_radius_m"]),
         data.terrain_for([point]),
+        data.official_warnings(dest, now),
+        data.advisory_for(dest.country_code),
     )
-    hazards, ok, failed, checks = hz
+    hazards, ok, failed, checks = data.merge_warnings(hz, *warn)
     location = Point(dest.longitude, dest.latitude)
     return AssessmentContext(
         now=now, mode="destination", destination=dest, location=location,
@@ -79,7 +81,8 @@ async def build_destination_context(dest: Destination, now: datetime, cfg: dict)
         activity=dest.default_activity, place_info=place, place_error=p_err, history=hist,
         facilities=facilities, facility_error=f_err, facility_search_radius_m=cfg["journey"]["facility_search_radius_m"],
         access=await access_for(location, facilities, f_err, cfg),
-        terrain=samples, terrain_error=t_err, remoteness=data.remoteness_for([point]))
+        terrain=samples, terrain_error=t_err, remoteness=data.remoteness_for([point]),
+        advisory=advisory, warning_note=warn[2] if warn[1] is None else None)
 
 
 async def assess_destination(dest: Destination, persist: bool = True, now: datetime | None = None) -> dict:
@@ -96,7 +99,9 @@ async def assess_destination(dest: Destination, persist: bool = True, now: datet
         "destination": {"id": dest.id, "name": dest.name, "latitude": dest.latitude, "longitude": dest.longitude},
         "risk_category": agg.category, "composite_index": agg.composite_index, "assessment_status": agg.status,
         "data_coverage": agg.coverage, "data_reliability": conf["value"], "confidence": conf,
-        "destination_score": destination_score.compute(factors), "missing_indicators": agg.missing,
+        "destination_score": destination_score.compute(factors, ctx.advisory),
+        "travel_advisory": ctx.advisory, "official_warnings": {"source": data.warnings.source_for(dest),
+                                                                "note": ctx.warning_note}, "missing_indicators": agg.missing,
         "active_warnings": warnings_for(ctx), "critical_override": agg.critical_override,
         "override_event": agg.override_event, "explanation": explanation, "factors": [f.model_dump(mode="json") for f in factors],
         "population": population.context(ctx), "weather": _weather_summary(ctx), "ml_signal": ml,

@@ -25,7 +25,7 @@ has a value but no class.
 | # | Dimension | Factor | Data | Class thresholds | Literature |
 |---|---|---|---|---|---|
 | 1 | Hazard | **Weather severity** | Open-Meteo forecast, hourly | Rain: AMS / Met Office. Gusts: Beaufort. Heat: NWS heat index. Cold: Environment Canada wind chill. WMO weather codes. Fog: WMO / NWS | Biardeau et al. 2026: intensity drives impact |
-| 2 | Hazard | **Active hazards** | GDACS, USGS | Each hazard's own official scale: GDACS alert level, PAGER or magnitude class, cyclone wind buffers | Glorioso & Palaoag 2026: real-time alerts were the top-ranked feature |
+| 2 | Hazard | **Active hazards** | GDACS, USGS, **official national weather warnings** (MeteoAlarm for Paris, London, Rome, Santorini and Iceland; NWS for New York) | Each hazard's own official scale: GDACS alert level, PAGER or magnitude class, cyclone wind buffers | Glorioso & Palaoag 2026: real-time alerts were the top-ranked feature |
 | 3 | Exposure | **Hazard exposure** (replaces distance-to-hazard and route exposure) | Hazard footprints, OSRM route | Value = max(proximity, share of the route exposed). No class | Camatti et al. 2024; Li et al. 2026 |
 | 4 | Exposure | **Terrain** (new) | Copernicus DEM GLO-90 via Open-Meteo, plus configured terrain features | FAO 2006 slope classes: < 10 % none, 10–15 % minor, 15–30 % moderate, 30–60 % severe, > 60 % extreme. Configured cliffs, glacial rivers and similar features count as at least minor | Li et al. 2026 (relief was the 3rd most important indicator); Alvarez et al. 2022 |
 | 5 | Journey context | **Activity and timing** (replaces time factor) | Planned activity, NOAA solar position, cyclone seasons, forecast lead time | Moderate when ≥ 50 % of an open-air activity is after dark. Minor for any darkness or inside cyclone season | Camatti et al. 2024 |
@@ -124,7 +124,7 @@ restricted to the four **safety** factors of the report's Table 6.4 and fed with
 
 | Component | Weight | Measured by | Status |
 |---|---|---|---|
-| Safety index | 0.20 | Official travel-advisory level | **Not integrated yet** |
+| Safety index | 0.20 | Official travel advice: US State Department level (1–4) and UK FCDO status, whichever is more cautious | Live (12 h cache) |
 | Health and emergency care | 0.15 | Factor 7, access to emergency care | Measured |
 | Transport access | 0.15 | Factor 8, remoteness | Measured |
 | Weather stability | 0.10 | Factor 6, hazard history | Measured |
@@ -135,8 +135,12 @@ TCS = Σ wᵢ sᵢ / Σ wᵢ              over AVAILABLE components only (weight
 ```
 
 - A score is given only when the available components carry at least 50 % of the total weight.
-- The score is marked **provisional** while any component is missing. Until advisories are integrated, every score
-  is provisional.
+- The score is marked **provisional** while any component is missing.
+- Travel advice mapping (ours; the levels are theirs): State Department L1 0 · L2 0.33 · L3 0.67 · L4 1. FCDO: no
+  advice 0 · against all but essential travel to parts 0.25 · against all travel to parts 0.5 · against all but
+  essential travel to the whole country 0.75 · against all travel to the whole country 1. Each government skips its
+  own country (the State Department has no US advisory and the FCDO no UK page), so both are used. The State
+  Department lists countries by US FIPS codes (Iceland = IC, Japan = JA), not ISO.
 - Bands, from the report: Low 0–40, Moderate 41–65, High 66–85, Excellent 86–100.
 - The report's language, budget, crowd and preference factors describe trip fit, not safety, and are excluded.
 - The weights keep the report's order (safety > health = transport > weather). The exact numbers are the team's
@@ -156,8 +160,14 @@ TCS = Σ wᵢ sᵢ / Σ wᵢ              over AVAILABLE components only (weight
     town of ≥ 100 000 people within 2 km), the DEM slope is therefore ignored and terrain comes from configured
     features only. Forest canopy is not corrected.
   - The public Overpass servers are often overloaded: a 25 km facility query for Paris took 57 s, against the 45 s
-    deadline. Access to emergency care is then reported as unavailable (never as adequate). Production should warm
-    the 30-day facility cache with a scheduled job, or run its own Overpass instance.
+    interactive deadline. A background warm-up (`app/background/warmup.py`) therefore fetches the facilities for
+    every destination at start-up and daily, allowing several minutes per query, and fills the 30-day cache that
+    assessments read first. When neither the cache nor a live query has data, access to emergency care is reported
+    as unavailable (never as adequate).
+  - Official warnings: Tokyo and Kyoto have none, because JMA replaced its warning system on 28 May 2026 and the old
+    JSON feed stopped updating. Bali has none because the BMKG feed refuses automated access, and Bengaluru none
+    because the IMD API needs registration. Warnings are matched to a destination by its warning region (code or
+    name), not by polygon.
 
 ## 8. Validation plan
 

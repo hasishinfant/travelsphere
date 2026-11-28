@@ -17,8 +17,8 @@ SOURCE = "overpass"
 KINDS = {"hospital", "clinic", "police", "fire_station"}
 
 
-def build_query(lat: float, lon: float, radius_m: int) -> str:
-    return (f'[out:json][timeout:25];'
+def build_query(lat: float, lon: float, radius_m: int, server_timeout_s: int = 25) -> str:
+    return (f'[out:json][timeout:{server_timeout_s}];'
             f'nwr(around:{radius_m},{lat:.5f},{lon:.5f})[amenity~"^(hospital|clinic|police|fire_station)$"];'
             f'out center tags 300;')
 
@@ -50,14 +50,16 @@ def parse(body: dict) -> list[Facility]:
     return out
 
 
-async def fetch_facilities(lat: float, lon: float, radius_m: int) -> list[Facility]:
-    query = build_query(lat, lon, radius_m)
+async def fetch_facilities(lat: float, lon: float, radius_m: int, timeout_s: float = 30) -> list[Facility]:
+    """`timeout_s` per mirror. Interactive requests keep the short default; the background warm-up allows minutes,
+    because a 25 km query around a large city can take about a minute on a busy public server."""
+    query = build_query(lat, lon, radius_m, server_timeout_s=max(25, int(timeout_s) - 5))
     last: Exception | None = None
     for url in get_settings().overpass_urls:
         try:
             # Public mirrors are often saturated: one retry each, bounded time, then the next mirror
             res = await get_http().get_json(SOURCE, url, method="POST", data={"data": query}, ttl_s=24 * 3600,
-                                            retries=1, timeout_s=30)
+                                            retries=1, timeout_s=timeout_s)
             return parse(res.data or {})
         except ProviderError as e:
             last = e
