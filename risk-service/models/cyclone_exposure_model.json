@@ -1,0 +1,222 @@
+{
+ "model_id": "cyclone-exposure-gradient-boosting-calibrated-20261123",
+ "algorithm": "gradient_boosting_calibrated",
+ "features": [
+  "lat",
+  "lon_sin",
+  "lon_cos",
+  "coast_km",
+  "woy_sin",
+  "woy_cos",
+  "oni_lag2",
+  "clim_local",
+  "clim_area"
+ ],
+ "trained_at": "2026-11-23T06:43:02.361890+00:00",
+ "target": "cyclone >= 34 kt (1-min) within 100 km during a 7-day window; y64: >= 64 kt",
+ "artifact_sha256": "6707306ecb3e3398087cb0bef61801032046d70af6a9e1429b48f53a9f37c124",
+ "split": {
+  "train": "1980-2012",
+  "validation": "2013-2017",
+  "test": "2018-"
+ },
+ "metrics": {
+  "validation": {
+   "n": 842400,
+   "positives": 1245,
+   "threshold": 0.0427,
+   "precision": 0.0503,
+   "recall": 0.2353,
+   "f1": 0.0829,
+   "false_positive_rate": 0.0066,
+   "confusion_matrix": {
+    "tn": 835623,
+    "fp": 5532,
+    "fn": 952,
+    "tp": 293
+   },
+   "pr_auc": 0.0347,
+   "roc_auc": 0.9582,
+   "brier": 0.00144,
+   "prevalence": 0.00148,
+   "high_risk_recall": 0.3255,
+   "high_risk_positives": 424,
+   "log_loss": 0.0078,
+   "brier_skill_vs_climatology": 0.0021,
+   "reliability": [
+    {
+     "predicted": 0.0,
+     "observed": 0.0,
+     "n": 259538
+    },
+    {
+     "predicted": 3e-05,
+     "observed": 3e-05,
+     "n": 238396
+    },
+    {
+     "predicted": 9e-05,
+     "observed": 9e-05,
+     "n": 154228
+    },
+    {
+     "predicted": 0.00093,
+     "observed": 0.00093,
+     "n": 101140
+    },
+    {
+     "predicted": 0.01269,
+     "observed": 0.01269,
+     "n": 89098
+    }
+   ],
+   "ece": 0.0
+  },
+  "test": {
+   "n": 1500120,
+   "positives": 2549,
+   "threshold": 0.0427,
+   "precision": 0.0483,
+   "recall": 0.1926,
+   "f1": 0.0772,
+   "false_positive_rate": 0.0065,
+   "confusion_matrix": {
+    "tn": 1487898,
+    "fp": 9673,
+    "fn": 2058,
+    "tp": 491
+   },
+   "pr_auc": 0.0329,
+   "roc_auc": 0.9574,
+   "brier": 0.00167,
+   "prevalence": 0.0017,
+   "high_risk_recall": 0.2612,
+   "high_risk_positives": 873,
+   "log_loss": 0.008878,
+   "brier_skill_vs_climatology": -0.0034,
+   "reliability": [
+    {
+     "predicted": 0.0,
+     "observed": 0.0,
+     "n": 478036
+    },
+    {
+     "predicted": 3e-05,
+     "observed": 2e-05,
+     "n": 419965
+    },
+    {
+     "predicted": 9e-05,
+     "observed": 0.00011,
+     "n": 270103
+    },
+    {
+     "predicted": 0.00094,
+     "observed": 0.00114,
+     "n": 176937
+    },
+    {
+     "predicted": 0.0129,
+     "observed": 0.01488,
+     "n": 155079
+    }
+   ],
+   "ece": 0.000232
+  },
+  "climatology_test": {
+   "n": 1500120,
+   "positives": 2549,
+   "threshold": 0.0471,
+   "precision": 0.0538,
+   "recall": 0.1758,
+   "f1": 0.0823,
+   "false_positive_rate": 0.0053,
+   "confusion_matrix": {
+    "tn": 1489686,
+    "fp": 7885,
+    "fn": 2101,
+    "tp": 448
+   },
+   "pr_auc": 0.035,
+   "roc_auc": 0.9346,
+   "brier": 0.00166,
+   "prevalence": 0.0017,
+   "high_risk_recall": 0.244,
+   "high_risk_positives": 873,
+   "log_loss": 0.009774,
+   "brier_skill_vs_climatology": 0.0,
+   "reliability": [
+    {
+     "predicted": 1e-05,
+     "observed": 0.00022,
+     "n": 1350070
+    },
+    {
+     "predicted": 0.01506,
+     "observed": 0.015,
+     "n": 150050
+    }
+   ],
+   "ece": 0.000199
+  }
+ },
+ "gate": {
+  "passed": false,
+  "checks": {
+   "brier_skill_vs_climatology_gt_0": false,
+   "pr_auc_above_climatology": false,
+   "ece_below_0.002": true
+  }
+ },
+ "climatology_baseline": {
+  "calibrated_on_test": true,
+  "test_ece": 0.000199,
+  "test_roc_auc": 0.9346,
+  "test_pr_auc": 0.035
+ },
+ "permutation_importance_brier": {
+  "clim_local": 9.79e-05,
+  "clim_area": 4.3e-05,
+  "lat": 1.07e-05,
+  "lon_cos": 9.6e-06,
+  "coast_km": 6.3e-06,
+  "woy_sin": 5.5e-06,
+  "woy_cos": 5.4e-06,
+  "lon_sin": 3.7e-06,
+  "oni_lag2": 1.6e-06
+ },
+ "dataset": {
+  "grid": {
+   "deg": 2.0,
+   "max_lat": 45.0,
+   "coast_km": 200,
+   "cells": 3240,
+   "land_cells": 2099
+  },
+  "windows": {
+   "origin": "1980-01-07",
+   "count": 2445,
+   "last_complete_start": "2026-11-09"
+  },
+  "tracks": {
+   "storms": 4860,
+   "fixes": 274832,
+   "last_fix": "2026-11-22 00:00:00",
+   "hourly_fixes": 842530
+  },
+  "rows": 7921800,
+  "positives": 12196,
+  "prevalence": 0.00154,
+  "sources": {
+   "tracks": "IBTrACS v04r01 since-1980 (NOAA NCEI), main tracks, hourly interpolation",
+   "land": "Natural Earth 1:50m land (public domain)",
+   "enso": "NOAA CPC ONI (public domain)"
+  }
+ },
+ "limitations": [
+  "Hazard probability, not harm: says nothing about injury, damage or travel disruption.",
+  "Defined only within 45 degrees of the equator and 200 km of land; points between grid cells are interpolated.",
+  "Recent IBTrACS tracks are provisional; wind conversions between agencies add uncertainty.",
+  "Seasonal planning tool: for a storm already forecast, official advisories (GDACS/NHC/JTWC) take precedence."
+ ]
+}

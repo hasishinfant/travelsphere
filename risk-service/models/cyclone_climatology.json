@@ -1,0 +1,227 @@
+{
+ "built_at": "2026-11-23T07:55:32.533919+00:00",
+ "hazard": "cyclone_climatology",
+ "years": [
+  1980,
+  2026
+ ],
+ "target": "cyclone >= 34 kt (1-min) within 100 km during a 7-day window; y64: >= 64 kt",
+ "activity_ratio_applied": 1.0,
+ "selection": "validation log loss over m x prior_sigma x activity (fit 1980-2012, validate 2013-2017, test 2018-2026)",
+ "validation": {
+  "m": 64,
+  "prior_sigma_km": 400,
+  "activity": false,
+  "brier": 0.0014423,
+  "log_loss": 0.007917,
+  "ece_bands": 0.000191,
+  "prevalence": 0.00148,
+  "bands": [
+   {
+    "band": "0-1e-09",
+    "windows": 543060,
+    "predicted": 0.0,
+    "observed": 3e-05
+   },
+   {
+    "band": "1e-09-0.002",
+    "windows": 198330,
+    "predicted": 0.00039,
+    "observed": 0.00046
+   },
+   {
+    "band": "0.002-0.01",
+    "windows": 62705,
+    "predicted": 0.00489,
+    "observed": 0.00413
+   },
+   {
+    "band": "0.01-0.03",
+    "windows": 30460,
+    "predicted": 0.017,
+    "observed": 0.01609
+   },
+   {
+    "band": "0.03-0.06",
+    "windows": 7175,
+    "predicted": 0.04036,
+    "observed": 0.04725
+   },
+   {
+    "band": "0.06-0.1",
+    "windows": 655,
+    "predicted": 0.06779,
+    "observed": 0.07481
+   },
+   {
+    "band": "0.1-0.2",
+    "windows": 15,
+    "predicted": 0.10341,
+    "observed": 0.0
+   }
+  ]
+ },
+ "validation_unshrunk": {
+  "m": 0,
+  "prior_sigma_km": 0,
+  "activity": false,
+  "brier": 0.0014462,
+  "log_loss": 0.008686,
+  "ece_bands": 0.000502,
+  "prevalence": 0.00148,
+  "bands": [
+   {
+    "band": "0-1e-09",
+    "windows": 722665,
+    "predicted": 0.0,
+    "observed": 0.00012
+   },
+   {
+    "band": "1e-09-0.002",
+    "windows": 45225,
+    "predicted": 0.00022,
+    "observed": 0.00274
+   },
+   {
+    "band": "0.002-0.01",
+    "windows": 34825,
+    "predicted": 0.00598,
+    "observed": 0.00503
+   },
+   {
+    "band": "0.01-0.03",
+    "windows": 27970,
+    "predicted": 0.01768,
+    "observed": 0.01376
+   },
+   {
+    "band": "0.03-0.06",
+    "windows": 9630,
+    "predicted": 0.04151,
+    "observed": 0.03499
+   },
+   {
+    "band": "0.06-0.1",
+    "windows": 1960,
+    "predicted": 0.07177,
+    "observed": 0.06582
+   },
+   {
+    "band": "0.1-0.2",
+    "windows": 125,
+    "predicted": 0.13009,
+    "observed": 0.088
+   }
+  ]
+ },
+ "test": {
+  "chosen": {
+   "brier": 0.0016583,
+   "log_loss": 0.008906,
+   "ece_bands": 0.000229,
+   "prevalence": 0.0017,
+   "bands": [
+    {
+     "band": "0-1e-09",
+     "windows": 969202,
+     "predicted": 0.0,
+     "observed": 2e-05
+    },
+    {
+     "band": "1e-09-0.002",
+     "windows": 351055,
+     "predicted": 0.00039,
+     "observed": 0.00053
+    },
+    {
+     "band": "0.002-0.01",
+     "windows": 111359,
+     "predicted": 0.0049,
+     "observed": 0.00533
+    },
+    {
+     "band": "0.01-0.03",
+     "windows": 54432,
+     "predicted": 0.01701,
+     "observed": 0.01953
+    },
+    {
+     "band": "0.03-0.06",
+     "windows": 12866,
+     "predicted": 0.04037,
+     "observed": 0.04656
+    },
+    {
+     "band": "0.06-0.1",
+     "windows": 1179,
+     "predicted": 0.06779,
+     "observed": 0.07549
+    },
+    {
+     "band": "0.1-0.2",
+     "windows": 27,
+     "predicted": 0.10341,
+     "observed": 0.03704
+    }
+   ]
+  },
+  "unshrunk": {
+   "brier": 0.0016619,
+   "log_loss": 0.009774,
+   "ece_bands": 0.000363,
+   "prevalence": 0.0017,
+   "bands": [
+    {
+     "band": "0-1e-09",
+     "windows": 1287417,
+     "predicted": 0.0,
+     "observed": 0.00011
+    },
+    {
+     "band": "1e-09-0.002",
+     "windows": 80083,
+     "predicted": 0.00022,
+     "observed": 0.0034
+    },
+    {
+     "band": "0.002-0.01",
+     "windows": 61753,
+     "predicted": 0.00598,
+     "observed": 0.00622
+    },
+    {
+     "band": "0.01-0.03",
+     "windows": 49870,
+     "predicted": 0.01769,
+     "observed": 0.01743
+    },
+    {
+     "band": "0.03-0.06",
+     "windows": 17255,
+     "predicted": 0.04151,
+     "observed": 0.03779
+    },
+    {
+     "band": "0.06-0.1",
+     "windows": 3517,
+     "predicted": 0.07179,
+     "observed": 0.05772
+    },
+    {
+     "band": "0.1-0.2",
+     "windows": 225,
+     "predicted": 0.13009,
+     "observed": 0.09778
+    }
+   ]
+  }
+ },
+ "sources": {
+  "tracks": "IBTrACS v04r01 since-1980 (NOAA NCEI), main tracks, hourly interpolation",
+  "land": "Natural Earth 1:50m land (public domain)",
+  "enso": "NOAA CPC ONI (public domain)"
+ },
+ "m": 64,
+ "prior_sigma_km": 400,
+ "local_sigma_km": 75.0
+}

@@ -51,5 +51,9 @@ __pycache__/
 .pytest_cache/
 # Downloads, datasets, models and reports are produced by the ML pipeline (docs/ML.md)
 risk-service/data/
-risk-service/models/
-risk-service/reports/
+# Trained model files are large and rebuilt by the training pipeline; their JSON model cards and the
+# evaluation reports are small and committed so the results can be read without re-running training.
+risk-service/models/*
+!risk-service/models/*.json
+risk-service/reports/*
+!risk-service/reports/*.json

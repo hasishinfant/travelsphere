@@ -1,0 +1,514 @@
+{
+ "selected": "gradient_boosting_calibrated",
+ "results": {
+  "climatology": {
+   "threshold_from_validation": 0.047138046473264694,
+   "validation": {
+    "n": 842400,
+    "positives": 1245,
+    "threshold": 0.0471,
+    "precision": 0.056,
+    "recall": 0.2088,
+    "f1": 0.0883,
+    "false_positive_rate": 0.0052,
+    "confusion_matrix": {
+     "tn": 836770,
+     "fp": 4385,
+     "fn": 985,
+     "tp": 260
+    },
+    "pr_auc": 0.0355,
+    "roc_auc": 0.9316,
+    "brier": 0.00145,
+    "prevalence": 0.00148,
+    "high_risk_recall": 0.2972,
+    "high_risk_positives": 424,
+    "log_loss": 0.008686,
+    "brier_skill_vs_climatology": 0.0,
+    "reliability": [
+     {
+      "predicted": 1e-05,
+      "observed": 0.00021,
+      "n": 758160
+     },
+     {
+      "predicted": 0.01502,
+      "observed": 0.01293,
+      "n": 84240
+     }
+    ],
+    "ece": 0.000389
+   },
+   "test": {
+    "n": 1500120,
+    "positives": 2549,
+    "threshold": 0.0471,
+    "precision": 0.0538,
+    "recall": 0.1758,
+    "f1": 0.0823,
+    "false_positive_rate": 0.0053,
+    "confusion_matrix": {
+     "tn": 1489686,
+     "fp": 7885,
+     "fn": 2101,
+     "tp": 448
+    },
+    "pr_auc": 0.035,
+    "roc_auc": 0.9346,
+    "brier": 0.00166,
+    "prevalence": 0.0017,
+    "high_risk_recall": 0.244,
+    "high_risk_positives": 873,
+    "log_loss": 0.009774,
+    "brier_skill_vs_climatology": 0.0,
+    "reliability": [
+     {
+      "predicted": 1e-05,
+      "observed": 0.00022,
+      "n": 1350070
+     },
+     {
+      "predicted": 0.01506,
+      "observed": 0.015,
+      "n": 150050
+     }
+    ],
+    "ece": 0.000199
+   }
+  },
+  "logistic_regression": {
+   "threshold_from_validation": 0.03121976058603531,
+   "validation": {
+    "n": 842400,
+    "positives": 1245,
+    "threshold": 0.0312,
+    "precision": 0.0636,
+    "recall": 0.1831,
+    "f1": 0.0944,
+    "false_positive_rate": 0.004,
+    "confusion_matrix": {
+     "tn": 837798,
+     "fp": 3357,
+     "fn": 1017,
+     "tp": 228
+    },
+    "pr_auc": 0.0336,
+    "roc_auc": 0.9191,
+    "brier": 0.00149,
+    "prevalence": 0.00148,
+    "high_risk_recall": 0.2877,
+    "high_risk_positives": 424,
+    "log_loss": 0.008848,
+    "brier_skill_vs_climatology": -0.0294,
+    "reliability": [
+     {
+      "predicted": 0.00014,
+      "observed": 0.0,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00018,
+      "observed": 0.0,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00024,
+      "observed": 2e-05,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00034,
+      "observed": 2e-05,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00044,
+      "observed": 9e-05,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00058,
+      "observed": 0.00027,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00085,
+      "observed": 0.00061,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00129,
+      "observed": 0.00125,
+      "n": 84240
+     },
+     {
+      "predicted": 0.002,
+      "observed": 0.00172,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00851,
+      "observed": 0.01079,
+      "n": 84240
+     }
+    ],
+    "ece": 0.000436
+   },
+   "test": {
+    "n": 1500120,
+    "positives": 2549,
+    "threshold": 0.0312,
+    "precision": 0.0574,
+    "recall": 0.1459,
+    "f1": 0.0824,
+    "false_positive_rate": 0.0041,
+    "confusion_matrix": {
+     "tn": 1491463,
+     "fp": 6108,
+     "fn": 2177,
+     "tp": 372
+    },
+    "pr_auc": 0.0318,
+    "roc_auc": 0.902,
+    "brier": 0.00171,
+    "prevalence": 0.0017,
+    "high_risk_recall": 0.2302,
+    "high_risk_positives": 873,
+    "log_loss": 0.010213,
+    "brier_skill_vs_climatology": -0.0284,
+    "reliability": [
+     {
+      "predicted": 0.00015,
+      "observed": 1e-05,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00018,
+      "observed": 2e-05,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00024,
+      "observed": 7e-05,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00035,
+      "observed": 0.00017,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00044,
+      "observed": 0.00021,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00059,
+      "observed": 0.00038,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00087,
+      "observed": 0.00079,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00131,
+      "observed": 0.00151,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00204,
+      "observed": 0.0019,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00862,
+      "observed": 0.01194,
+      "n": 150012
+     }
+    ],
+    "ece": 0.000483
+   }
+  },
+  "gradient_boosting": {
+   "threshold_from_validation": 0.04030137063437143,
+   "validation": {
+    "n": 842400,
+    "positives": 1245,
+    "threshold": 0.0403,
+    "precision": 0.0499,
+    "recall": 0.2281,
+    "f1": 0.0818,
+    "false_positive_rate": 0.0064,
+    "confusion_matrix": {
+     "tn": 835744,
+     "fp": 5411,
+     "fn": 961,
+     "tp": 284
+    },
+    "pr_auc": 0.0352,
+    "roc_auc": 0.9572,
+    "brier": 0.00145,
+    "prevalence": 0.00148,
+    "high_risk_recall": 0.3137,
+    "high_risk_positives": 424,
+    "log_loss": 0.007876,
+    "brier_skill_vs_climatology": 0.0005,
+    "reliability": [
+     {
+      "predicted": 0.0,
+      "observed": 0.0,
+      "n": 84239
+     },
+     {
+      "predicted": 0.0,
+      "observed": 0.0,
+      "n": 84241
+     },
+     {
+      "predicted": 0.0,
+      "observed": 0.0,
+      "n": 84238
+     },
+     {
+      "predicted": 0.0,
+      "observed": 4e-05,
+      "n": 84241
+     },
+     {
+      "predicted": 1e-05,
+      "observed": 4e-05,
+      "n": 84240
+     },
+     {
+      "predicted": 1e-05,
+      "observed": 1e-05,
+      "n": 84241
+     },
+     {
+      "predicted": 2e-05,
+      "observed": 4e-05,
+      "n": 84240
+     },
+     {
+      "predicted": 7e-05,
+      "observed": 0.00024,
+      "n": 84240
+     },
+     {
+      "predicted": 0.00076,
+      "observed": 0.00121,
+      "n": 84240
+     },
+     {
+      "predicted": 0.01372,
+      "observed": 0.01321,
+      "n": 84240
+     }
+    ],
+    "ece": 0.00012
+   },
+   "test": {
+    "n": 1500120,
+    "positives": 2549,
+    "threshold": 0.0403,
+    "precision": 0.0486,
+    "recall": 0.1895,
+    "f1": 0.0774,
+    "false_positive_rate": 0.0063,
+    "confusion_matrix": {
+     "tn": 1488121,
+     "fp": 9450,
+     "fn": 2066,
+     "tp": 483
+    },
+    "pr_auc": 0.0341,
+    "roc_auc": 0.9575,
+    "brier": 0.00166,
+    "prevalence": 0.0017,
+    "high_risk_recall": 0.2577,
+    "high_risk_positives": 873,
+    "log_loss": 0.008898,
+    "brier_skill_vs_climatology": -0.0,
+    "reliability": [
+     {
+      "predicted": 0.0,
+      "observed": 0.0,
+      "n": 150003
+     },
+     {
+      "predicted": 0.0,
+      "observed": 0.0,
+      "n": 150021
+     },
+     {
+      "predicted": 0.0,
+      "observed": 0.0,
+      "n": 150011
+     },
+     {
+      "predicted": 0.0,
+      "observed": 1e-05,
+      "n": 150012
+     },
+     {
+      "predicted": 1e-05,
+      "observed": 3e-05,
+      "n": 150012
+     },
+     {
+      "predicted": 1e-05,
+      "observed": 3e-05,
+      "n": 150013
+     },
+     {
+      "predicted": 2e-05,
+      "observed": 0.00011,
+      "n": 150012
+     },
+     {
+      "predicted": 7e-05,
+      "observed": 0.00015,
+      "n": 150012
+     },
+     {
+      "predicted": 0.00072,
+      "observed": 0.00137,
+      "n": 150012
+     },
+     {
+      "predicted": 0.01356,
+      "observed": 0.0153,
+      "n": 150012
+     }
+    ],
+    "ece": 0.00026
+   }
+  },
+  "gradient_boosting_calibrated": {
+   "threshold_from_validation": 0.04274985557481225,
+   "validation": {
+    "n": 842400,
+    "positives": 1245,
+    "threshold": 0.0427,
+    "precision": 0.0503,
+    "recall": 0.2353,
+    "f1": 0.0829,
+    "false_positive_rate": 0.0066,
+    "confusion_matrix": {
+     "tn": 835623,
+     "fp": 5532,
+     "fn": 952,
+     "tp": 293
+    },
+    "pr_auc": 0.0347,
+    "roc_auc": 0.9582,
+    "brier": 0.00144,
+    "prevalence": 0.00148,
+    "high_risk_recall": 0.3255,
+    "high_risk_positives": 424,
+    "log_loss": 0.0078,
+    "brier_skill_vs_climatology": 0.0021,
+    "reliability": [
+     {
+      "predicted": 0.0,
+      "observed": 0.0,
+      "n": 259538
+     },
+     {
+      "predicted": 3e-05,
+      "observed": 3e-05,
+      "n": 238396
+     },
+     {
+      "predicted": 9e-05,
+      "observed": 9e-05,
+      "n": 154228
+     },
+     {
+      "predicted": 0.00093,
+      "observed": 0.00093,
+      "n": 101140
+     },
+     {
+      "predicted": 0.01269,
+      "observed": 0.01269,
+      "n": 89098
+     }
+    ],
+    "ece": 0.0
+   },
+   "test": {
+    "n": 1500120,
+    "positives": 2549,
+    "threshold": 0.0427,
+    "precision": 0.0483,
+    "recall": 0.1926,
+    "f1": 0.0772,
+    "false_positive_rate": 0.0065,
+    "confusion_matrix": {
+     "tn": 1487898,
+     "fp": 9673,
+     "fn": 2058,
+     "tp": 491
+    },
+    "pr_auc": 0.0329,
+    "roc_auc": 0.9574,
+    "brier": 0.00167,
+    "prevalence": 0.0017,
+    "high_risk_recall": 0.2612,
+    "high_risk_positives": 873,
+    "log_loss": 0.008878,
+    "brier_skill_vs_climatology": -0.0034,
+    "reliability": [
+     {
+      "predicted": 0.0,
+      "observed": 0.0,
+      "n": 478036
+     },
+     {
+      "predicted": 3e-05,
+      "observed": 2e-05,
+      "n": 419965
+     },
+     {
+      "predicted": 9e-05,
+      "observed": 0.00011,
+      "n": 270103
+     },
+     {
+      "predicted": 0.00094,
+      "observed": 0.00114,
+      "n": 176937
+     },
+     {
+      "predicted": 0.0129,
+      "observed": 0.01488,
+      "n": 155079
+     }
+    ],
+    "ece": 0.000232
+   }
+  }
+ },
+ "gate": {
+  "passed": false,
+  "checks": {
+   "brier_skill_vs_climatology_gt_0": false,
+   "pr_auc_above_climatology": false,
+   "ece_below_0.002": true
+  }
+ },
+ "permutation_importance_brier": {
+  "clim_local": 9.79e-05,
+  "clim_area": 4.3e-05,
+  "lat": 1.07e-05,
+  "lon_cos": 9.6e-06,
+  "coast_km": 6.3e-06,
+  "woy_sin": 5.5e-06,
+  "woy_cos": 5.4e-06,
+  "lon_sin": 3.7e-06,
+  "oni_lag2": 1.6e-06
+ }
+}

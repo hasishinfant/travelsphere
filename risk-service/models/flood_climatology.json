@@ -1,0 +1,250 @@
+{
+ "built_at": "2026-11-23T07:59:22.882434+00:00",
+ "hazard": "flood_climatology",
+ "years": [
+  1985,
+  2021
+ ],
+ "target": "DFO large-flood affected area within 100 km during a 7-day window; y_severe: DFO severity >= 1.5",
+ "activity_ratio_applied": 1.0,
+ "selection": "validation log loss over m x prior_sigma x activity (fit 1985-2008, validate 2009-2014, test 2015-2021)",
+ "validation": {
+  "m": 32,
+  "prior_sigma_km": 1000,
+  "activity": false,
+  "brier": 0.0118521,
+  "log_loss": 0.055632,
+  "ece_bands": 0.001469,
+  "prevalence": 0.01257,
+  "bands": [
+   {
+    "band": "0-1e-09",
+    "windows": 18285,
+    "predicted": 0.0,
+    "observed": 0.0
+   },
+   {
+    "band": "1e-09-0.002",
+    "windows": 508494,
+    "predicted": 0.00062,
+    "observed": 0.00115
+   },
+   {
+    "band": "0.002-0.01",
+    "windows": 392886,
+    "predicted": 0.00507,
+    "observed": 0.00639
+   },
+   {
+    "band": "0.01-0.03",
+    "windows": 232703,
+    "predicted": 0.01765,
+    "observed": 0.01655
+   },
+   {
+    "band": "0.03-0.06",
+    "windows": 95743,
+    "predicted": 0.04163,
+    "observed": 0.03786
+   },
+   {
+    "band": "0.06-0.1",
+    "windows": 33593,
+    "predicted": 0.07583,
+    "observed": 0.08258
+   },
+   {
+    "band": "0.1-0.2",
+    "windows": 18256,
+    "predicted": 0.13525,
+    "observed": 0.12007
+   },
+   {
+    "band": "0.2-1.01",
+    "windows": 3372,
+    "predicted": 0.2467,
+    "observed": 0.24822
+   }
+  ]
+ },
+ "validation_unshrunk": {
+  "m": 0,
+  "prior_sigma_km": 0,
+  "activity": false,
+  "brier": 0.0120037,
+  "log_loss": 0.068973,
+  "ece_bands": 0.006063,
+  "prevalence": 0.01257,
+  "bands": [
+   {
+    "band": "0-1e-09",
+    "windows": 797361,
+    "predicted": 0.0,
+    "observed": 0.0023
+   },
+   {
+    "band": "1e-09-0.002",
+    "windows": 148144,
+    "predicted": 0.00047,
+    "observed": 0.00963
+   },
+   {
+    "band": "0.002-0.01",
+    "windows": 83899,
+    "predicted": 0.00534,
+    "observed": 0.01462
+   },
+   {
+    "band": "0.01-0.03",
+    "windows": 104449,
+    "predicted": 0.01936,
+    "observed": 0.01967
+   },
+   {
+    "band": "0.03-0.06",
+    "windows": 89694,
+    "predicted": 0.04266,
+    "observed": 0.03367
+   },
+   {
+    "band": "0.06-0.1",
+    "windows": 42267,
+    "predicted": 0.07652,
+    "observed": 0.05117
+   },
+   {
+    "band": "0.1-0.2",
+    "windows": 27485,
+    "predicted": 0.13711,
+    "observed": 0.10166
+   },
+   {
+    "band": "0.2-1.01",
+    "windows": 10033,
+    "predicted": 0.28989,
+    "observed": 0.18539
+   }
+  ]
+ },
+ "test": {
+  "chosen": {
+   "brier": 0.0101995,
+   "log_loss": 0.049195,
+   "ece_bands": 0.002164,
+   "prevalence": 0.01066,
+   "bands": [
+    {
+     "band": "0-1e-09",
+     "windows": 20537,
+     "predicted": 0.0,
+     "observed": 0.0001
+    },
+    {
+     "band": "1e-09-0.002",
+     "windows": 566966,
+     "predicted": 0.00063,
+     "observed": 0.00079
+    },
+    {
+     "band": "0.002-0.01",
+     "windows": 444115,
+     "predicted": 0.00508,
+     "observed": 0.00515
+    },
+    {
+     "band": "0.01-0.03",
+     "windows": 265179,
+     "predicted": 0.01766,
+     "observed": 0.01451
+    },
+    {
+     "band": "0.03-0.06",
+     "windows": 109426,
+     "predicted": 0.04166,
+     "observed": 0.03521
+    },
+    {
+     "band": "0.06-0.1",
+     "windows": 38614,
+     "predicted": 0.07583,
+     "observed": 0.06249
+    },
+    {
+     "band": "0.1-0.2",
+     "windows": 21124,
+     "predicted": 0.1353,
+     "observed": 0.09615
+    },
+    {
+     "band": "0.2-1.01",
+     "windows": 3931,
+     "predicted": 0.24674,
+     "observed": 0.20249
+    }
+   ]
+  },
+  "unshrunk": {
+   "brier": 0.0104355,
+   "log_loss": 0.059923,
+   "ece_bands": 0.006987,
+   "prevalence": 0.01066,
+   "bands": [
+    {
+     "band": "0-1e-09",
+     "windows": 895052,
+     "predicted": 0.0,
+     "observed": 0.00175
+    },
+    {
+     "band": "1e-09-0.002",
+     "windows": 167760,
+     "predicted": 0.00047,
+     "observed": 0.00903
+    },
+    {
+     "band": "0.002-0.01",
+     "windows": 95132,
+     "predicted": 0.00534,
+     "observed": 0.01224
+    },
+    {
+     "band": "0.01-0.03",
+     "windows": 118524,
+     "predicted": 0.01936,
+     "observed": 0.01606
+    },
+    {
+     "band": "0.03-0.06",
+     "windows": 101907,
+     "predicted": 0.04267,
+     "observed": 0.02812
+    },
+    {
+     "band": "0.06-0.1",
+     "windows": 48345,
+     "predicted": 0.07654,
+     "observed": 0.04882
+    },
+    {
+     "band": "0.1-0.2",
+     "windows": 31558,
+     "predicted": 0.13713,
+     "observed": 0.08156
+    },
+    {
+     "band": "0.2-1.01",
+     "windows": 11614,
+     "predicted": 0.29024,
+     "observed": 0.1487
+    }
+   ]
+  }
+ },
+ "sources": {
+  "floods": "Dartmouth Flood Observatory Global Active Archive (ArcGIS mirror; CC BY-NC-SA 4.0, non-commercial)",
+  "land": "Natural Earth 1:50m land (public domain)"
+ },
+ "m": 32,
+ "prior_sigma_km": 1000,
+ "local_sigma_km": 75.0
+}

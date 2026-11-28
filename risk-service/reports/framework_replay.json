@@ -1,0 +1,1232 @@
+{
+ "generated_at": "2026-11-28T04:32:39.895118+00:00",
+ "scoring_version": "scoring-v2",
+ "cases": 76925,
+ "places": 111,
+ "period": [
+  "2022-01-01",
+  "2024-12-31"
+ ],
+ "cyclone_days": 107,
+ "hurricane_days": 31,
+ "cyclone_places": 55,
+ "quiet_days": 75277,
+ "alert_on_cyclone_days": 0.5888,
+ "red_alert_on_cyclone_days": 0.243,
+ "weather_moderate_plus_on_cyclone_days": 0.785,
+ "remoteness_classes": {
+  "minor": 33,
+  "moderate": 25,
+  "none": 22,
+  "severe": 31
+ },
+ "coverage_kappa_equal_weights": "3 of 8 dimensions available -> kappa = 0.375 < theta = 0.5: TCI withheld for every case",
+ "scenarios": {
+  "all_inputs_sightseeing": {
+   "composite": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.2056,
+     "elevated": 0.7944,
+     "high_or_critical": 0.3271,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.125,
+      0.2925
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.129,
+     "elevated": 0.871,
+     "high_or_critical": 0.3871,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.8683,
+     "elevated": 0.1317,
+     "high_or_critical": 0.0003,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.0522,
+     0.1919
+    ]
+   },
+   "max_factor": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0654,
+     "elevated": 0.9346,
+     "high_or_critical": 0.8598,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0252,
+      0.1151
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.6569,
+     "elevated": 0.3431,
+     "high_or_critical": 0.2366,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0495,
+     0.0
+    ]
+   },
+   "tci_alone": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.1776,
+     "elevated": 0.8224,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.1018,
+      0.2636
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.8624,
+     "elevated": 0.1376,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.027,
+     0.1637
+    ]
+   },
+   "rule_no_override": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "rule_engine": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.243,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.3548
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "_mean_tci_on_cyclone_days": 45.2
+  },
+  "all_inputs_trekking": {
+   "composite": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.2056,
+     "elevated": 0.7944,
+     "high_or_critical": 0.3271,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.125,
+      0.2925
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.129,
+     "elevated": 0.871,
+     "high_or_critical": 0.3871,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.8683,
+     "elevated": 0.1317,
+     "high_or_critical": 0.0003,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.0522,
+     0.1919
+    ]
+   },
+   "max_factor": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0654,
+     "elevated": 0.9346,
+     "high_or_critical": 0.8598,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0252,
+      0.1151
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.6569,
+     "elevated": 0.3431,
+     "high_or_critical": 0.2366,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0495,
+     0.0
+    ]
+   },
+   "tci_alone": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.1776,
+     "elevated": 0.8224,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.1018,
+      0.2636
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.8624,
+     "elevated": 0.1376,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.027,
+     0.1637
+    ]
+   },
+   "rule_no_override": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.9159,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.055,
+     "critical": 0.0
+    }
+   },
+   "rule_engine": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.9159,
+     "critical": 0.243,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.3548
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.055,
+     "critical": 0.0
+    }
+   },
+   "_mean_tci_on_cyclone_days": 45.2
+  },
+  "dilution_plus_1_calm_factors": {
+   "composite": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.3832,
+     "elevated": 0.6168,
+     "high_or_critical": 0.1215,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.2752,
+      0.5
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.1935,
+     "elevated": 0.8065,
+     "high_or_critical": 0.129,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.9726,
+     "elevated": 0.0274,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.2087,
+     0.4063
+    ]
+   },
+   "max_factor": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0654,
+     "elevated": 0.9346,
+     "high_or_critical": 0.8598,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0252,
+      0.1151
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.6569,
+     "elevated": 0.3431,
+     "high_or_critical": 0.2366,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0495,
+     0.0
+    ]
+   },
+   "tci_alone": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.3271,
+     "elevated": 0.6729,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.2232,
+      0.4314
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.1935,
+     "elevated": 0.8065,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.9725,
+     "elevated": 0.0275,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.1589,
+     0.3398
+    ]
+   },
+   "rule_no_override": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "rule_engine": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.243,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.3548
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "_mean_tci_on_cyclone_days": 58.9
+  },
+  "dilution_plus_2_calm_factors": {
+   "composite": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.6729,
+     "elevated": 0.3271,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.5739,
+      0.7653
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.6129,
+     "elevated": 0.3871,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.9997,
+     "elevated": 0.0003,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.4888,
+     0.6834
+    ]
+   },
+   "max_factor": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0654,
+     "elevated": 0.9346,
+     "high_or_critical": 0.8598,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0252,
+      0.1151
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.6569,
+     "elevated": 0.3431,
+     "high_or_critical": 0.2366,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0495,
+     0.0
+    ]
+   },
+   "tci_alone": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.514,
+     "elevated": 0.486,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.4037,
+      0.6286
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.4516,
+     "elevated": 0.5484,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.9962,
+     "elevated": 0.0038,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.3297,
+     0.5385
+    ]
+   },
+   "rule_no_override": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "rule_engine": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.243,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.3548
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "_mean_tci_on_cyclone_days": 67.1
+  },
+  "dilution_plus_3_calm_factors": {
+   "composite": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.7944,
+     "elevated": 0.2056,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.7187,
+      0.8654
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.8387,
+     "elevated": 0.1613,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 1.0,
+     "elevated": 0.0,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.6321,
+     0.7864
+    ]
+   },
+   "max_factor": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0654,
+     "elevated": 0.9346,
+     "high_or_critical": 0.8598,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0252,
+      0.1151
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.6569,
+     "elevated": 0.3431,
+     "high_or_critical": 0.2366,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0495,
+     0.0
+    ]
+   },
+   "tci_alone": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.785,
+     "elevated": 0.215,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.7143,
+      0.8571
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.8065,
+     "elevated": 0.1935,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 1.0,
+     "elevated": 0.0,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.6211,
+     0.7797
+    ]
+   },
+   "rule_no_override": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "rule_engine": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.243,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.3548
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "_mean_tci_on_cyclone_days": 72.6
+  },
+  "dilution_plus_4_calm_factors": {
+   "composite": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.8785,
+     "elevated": 0.1215,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.8113,
+      0.9369
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.871,
+     "elevated": 0.129,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 1.0,
+     "elevated": 0.0,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.7158,
+     0.8644
+    ]
+   },
+   "max_factor": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0654,
+     "elevated": 0.9346,
+     "high_or_critical": 0.8598,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0252,
+      0.1151
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.6569,
+     "elevated": 0.3431,
+     "high_or_critical": 0.2366,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0495,
+     0.0
+    ]
+   },
+   "tci_alone": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.8318,
+     "elevated": 0.1682,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.7575,
+      0.9009
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.871,
+     "elevated": 0.129,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 1.0,
+     "elevated": 0.0,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.6667,
+     0.8246
+    ]
+   },
+   "rule_no_override": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "rule_engine": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.243,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.3548
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "_mean_tci_on_cyclone_days": 76.5
+  },
+  "dilution_plus_5_calm_factors": {
+   "composite": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.9626,
+     "elevated": 0.0374,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.9231,
+      0.9913
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.9677,
+     "elevated": 0.0323,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 1.0,
+     "elevated": 0.0,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.8131,
+     0.9333
+    ]
+   },
+   "max_factor": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0654,
+     "elevated": 0.9346,
+     "high_or_critical": 0.8598,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0252,
+      0.1151
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.6569,
+     "elevated": 0.3431,
+     "high_or_critical": 0.2366,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0495,
+     0.0
+    ]
+   },
+   "tci_alone": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.8785,
+     "elevated": 0.1215,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.8113,
+      0.9369
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.871,
+     "elevated": 0.129,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 1.0,
+     "elevated": 0.0,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     0.7158,
+     0.8644
+    ]
+   },
+   "rule_no_override": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "rule_engine": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.0841,
+     "elevated": 0.9159,
+     "high_or_critical": 0.8692,
+     "critical": 0.243,
+     "favourable_ci95": [
+      0.0367,
+      0.1383
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0645,
+     "elevated": 0.9355,
+     "high_or_critical": 0.9355,
+     "critical": 0.3548
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "_mean_tci_on_cyclone_days": 79.5
+  },
+  "hazard_feed_missing": {
+   "composite": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.2804,
+     "elevated": 0.7196,
+     "high_or_critical": 0.3832,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.1855,
+      0.3878
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.1613,
+     "elevated": 0.8387,
+     "high_or_critical": 0.3871,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.7384,
+     "elevated": 0.2616,
+     "high_or_critical": 0.0287,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0212,
+     0.16
+    ]
+   },
+   "max_factor": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.1308,
+     "elevated": 0.8692,
+     "high_or_critical": 0.6449,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.0673,
+      0.2043
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.0968,
+     "elevated": 0.9032,
+     "high_or_critical": 0.8387,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.6569,
+     "elevated": 0.3431,
+     "high_or_critical": 0.2366,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.1442,
+     -0.0374
+    ]
+   },
+   "tci_alone": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.2523,
+     "elevated": 0.7477,
+     "high_or_critical": 0.0,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.1597,
+      0.3619
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.1613,
+     "elevated": 0.8387,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.7294,
+     "elevated": 0.2706,
+     "high_or_critical": 0.0,
+     "critical": 0.0
+    },
+    "diff_vs_rule_engine_ci95": [
+     -0.0435,
+     0.1284
+    ]
+   },
+   "rule_no_override": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.215,
+     "elevated": 0.785,
+     "high_or_critical": 0.6542,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.1416,
+      0.3011
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.129,
+     "elevated": 0.871,
+     "high_or_critical": 0.8065,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "rule_engine": {
+    "cyclone_days": {
+     "n": 107,
+     "favourable": 0.215,
+     "elevated": 0.785,
+     "high_or_critical": 0.6542,
+     "critical": 0.0,
+     "favourable_ci95": [
+      0.1416,
+      0.3011
+     ]
+    },
+    "hurricane_days": {
+     "n": 31,
+     "favourable": 0.129,
+     "elevated": 0.871,
+     "high_or_critical": 0.8065,
+     "critical": 0.0
+    },
+    "quiet_days": {
+     "n": 75277,
+     "favourable": 0.945,
+     "elevated": 0.055,
+     "high_or_critical": 0.0403,
+     "critical": 0.0
+    }
+   },
+   "_mean_tci_on_cyclone_days": 42.9
+  }
+ },
+ "missing_feed": {
+  "naive_zero_imputation_favourable_on_cyclone_days": 0.5234,
+  "rule_engine_favourable_on_cyclone_days": 0.215,
+  "rule_engine_flagged_low_confidence": 1.0,
+  "note": "With active hazards unavailable the engine always reports it as missing and caps confidence at low."
+ }
+}
