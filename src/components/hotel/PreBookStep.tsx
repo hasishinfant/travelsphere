@@ -3,7 +3,7 @@
  * nothing changed; otherwise the traveller must accept the new price or terms.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Icon from '@/components/shared/Icon';
 import { preBookService, PreBookResult } from '../../services/preBookService';
 import { HotelBookingSession } from '../../services/hotelBookingService';
@@ -34,8 +34,12 @@ export const PreBookStep: React.FC<PreBookStepProps> = ({
   const [userConfirmed, setUserConfirmed] = useState(false);
 
   const originalPrice = session.hotel.price.offeredPrice;
+  const started = useRef(false);
 
+  // Once per visit: React's development double-mount would otherwise ask the provider for two prebooks
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     performPreBook();
   }, []);
 

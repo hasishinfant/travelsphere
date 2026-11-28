@@ -50,13 +50,14 @@ export const HotelBookingWorkflow: React.FC<HotelBookingWorkflowProps> = ({
   const [booking, setBooking] = useState(false);
   const [bookError, setBookError] = useState<string | null>(null);
 
-  // Persist progress
+  // Persist progress, and bring each new step into view
   useEffect(() => {
     try {
       hotelBookingService.updateSession({ status: currentStep });
     } catch {
       // expired session: the page will return to search
     }
+    window.scrollTo?.({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
   const stepIndex = STEPS.findIndex(s => s.key === currentStep);
@@ -65,9 +66,14 @@ export const HotelBookingWorkflow: React.FC<HotelBookingWorkflowProps> = ({
   const guests = searchCriteria.paxRooms.reduce((n, r) => n + r.adults + r.children, 0);
 
   const save = (data: Partial<HotelBookingSession>, next: WorkflowStep) => {
-    hotelBookingService.updateSession(data);
-    const updated = hotelBookingService.getCurrentSession();
-    if (updated) setSession(updated);
+    try {
+      hotelBookingService.updateSession(data);
+      const updated = hotelBookingService.getCurrentSession();
+      if (updated) setSession(updated);
+    } catch {
+      // The stored session expired; keep going with what is in memory so the step never stalls on a blank screen
+      setSession(s => ({ ...s, ...data }));
+    }
     setCurrentStep(next);
   };
 

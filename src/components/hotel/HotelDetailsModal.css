@@ -64,6 +64,7 @@
 /* Image Gallery */
 .hotel-details-modal .modal-image-gallery {
   position: relative;
+  flex-shrink: 0;            /* keep the photo's height inside the flex column */
   width: 100%;
   height: 300px;
   background-color: var(--surface-2);
@@ -134,9 +135,16 @@
   border-radius: 5px;
 }
 
-/* Modal Content */
+/* Modal Content — overrides the site-wide .modal-content dialog style (520 px wide), which squeezed this panel */
 .hotel-details-modal .modal-content {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
   overflow-y: auto;
   padding: 2rem;
 }
@@ -399,6 +407,9 @@
   background-color: var(--surface-2);
   margin: 0 -2rem -2rem;
   gap: 1rem;
+  position: sticky;          /* the price and Book Now stay visible while the rooms scroll */
+  bottom: -2rem;
+  z-index: 2;
 }
 
 .hotel-details-modal .price-section {
@@ -496,6 +507,7 @@
     align-items: stretch;
     padding: 1rem 1.5rem;
     margin: 0 -1.5rem -1.5rem;
+    bottom: -1.5rem;
   }
 
   .hotel-details-modal .btn-book-now {
@@ -531,8 +543,11 @@
 /* Desktop (1024px+) */
 @media (min-width: 1024px) {
   .hotel-details-modal .modal-image-gallery {
-    height: 350px;
+    height: 300px;
   }
+}
+@media (max-height: 760px) {
+  .hotel-details-modal .modal-image-gallery { height: 200px; }
 }
 
 /* Room choice */

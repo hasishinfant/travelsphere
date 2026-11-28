@@ -36,10 +36,15 @@ const HotelBookingPage: React.FC = () => {
   // "View details" opens the hotel with its rooms; "Book now" starts the booking with the chosen room
   const handleHotelSelect = (hotel: HotelResult) => setViewing(hotel);
 
+  // The traveller has already seen the hotel and chosen a room in the details panel, so the booking starts at
+  // price verification rather than showing the same details again.
   const handleBookNow = (hotel: HotelResult) => {
     if (!searchResults) return;
-    setSession(hotelBookingService.startBooking(hotel, searchResults.searchCriteria));
+    hotelBookingService.startBooking(hotel, searchResults.searchCriteria);
+    hotelBookingService.updateSession({ status: 'prebook' });
+    setSession(hotelBookingService.getCurrentSession());
     setViewing(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBookingComplete = (confirmationNumber: string) => {
