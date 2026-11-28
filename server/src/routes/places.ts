@@ -99,31 +99,56 @@ const legacyFull = (a: Assessment) => ({ ...full(a), engine: 'fallback',
 export function placesRouter(db: Db, weather: WeatherService, risk?: RiskService, maxAgeMin = 30) {
   const r = Router();
 
-  /** 8-factor engine result for one place in the place-card shape, or null if the engine is unreachable. */
-  const engine = async (place: PlaceProfile) => {
+  // One assessment per place at a time: concurrent requests (several cards, tabs or users) share it instead of
+  // asking the risk engine to compute the same place again.
+  const inflight = new Map<string, Promise<ReturnType<typeof toPlaceShape> | null>>();
+  const assessNow = (place: PlaceProfile) => {
+    let p = inflight.get(place.id);
+    if (!p) {
+      p = risk!.assessDestination(place.id)
+        .then(fresh => toPlaceShape(fresh as any, fresh.weather))
+        .catch(err => { console.warn(`[places] risk service unavailable for ${place.id}: ${(err as Error).message}`); return null; })
+        .finally(() => inflight.delete(place.id));
+      inflight.set(place.id, p);
+    }
+    return p;
+  };
+  const shapeStored = (stored: NonNullable<Awaited<ReturnType<typeof latestDestinationAssessment>>>) =>
+    toPlaceShape(storedToAssessment(stored) as any, weatherFromFactors(stored.factors));
+
+  /**
+   * 8-factor engine result for one place in the place-card shape, or null if the engine is unreachable.
+   * `serveUpToMin` (destination cards): a saved result up to that age is returned at once — it is still within the
+   * weather's own freshness limit — and recomputed in the background, so the cards never wait on a slow provider.
+   */
+  const engine = async (place: PlaceProfile, serveUpToMin?: number) => {
     if (!risk) return null;
     try {
-      const stored = await latestDestinationAssessment(db, place.id, maxAgeMin);
-      if (stored) {
-        const a = storedToAssessment(stored);
-        return toPlaceShape(a as any, weatherFromFactors(stored.factors));
+      const fresh = await latestDestinationAssessment(db, place.id, maxAgeMin);
+      if (fresh) return shapeStored(fresh);
+      if (serveUpToMin) {
+        const recent = await latestDestinationAssessment(db, place.id, serveUpToMin);
+        if (recent) {
+          void assessNow(place);                         // refresh for the next request; nobody waits for it
+          return shapeStored(recent);
+        }
       }
-      const fresh = await risk.assessDestination(place.id);
-      return toPlaceShape(fresh as any, fresh.weather);
+      return await assessNow(place);
     } catch (err) {
-      console.warn(`[places] risk service unavailable for ${place.id}: ${(err as Error).message}`);
+      console.warn(`[places] assessment lookup failed for ${place.id}: ${(err as Error).message}`);
       return null;
     }
   };
+  const CARD_SERVE_UP_TO_MIN = 90;                       // the weather source's maximum age
 
-  // Compact meter data for every place (cards). Up to 3 places are assessed concurrently.
+  // Compact meter data for every place (cards). Up to 5 places are assessed concurrently.
   r.get('/conditions', route(async (req, res) => {
     const results: (ReturnType<typeof toPlaceShape> | null)[] = new Array(PLACES.length).fill(null);
     let next = 0;
-    await Promise.all(Array.from({ length: 3 }, async () => {
+    await Promise.all(Array.from({ length: 5 }, async () => {
       while (next < PLACES.length) {
         const i = next++;
-        results[i] = await engine(PLACES[i]);
+        results[i] = await engine(PLACES[i], CARD_SERVE_UP_TO_MIN);
       }
     }));
     const missing = PLACES.filter((_, i) => !results[i]);

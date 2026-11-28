@@ -565,3 +565,54 @@ describe('demo SOS dispatch (demo only)', () => {
     expect(m).not.toMatch(/maps\.google/);
   });
 });
+
+
+describe('destination cards load without waiting', () => {
+  it('concurrent requests share one assessment per place', async () => {
+    const active: Record<string, number> = {};
+    const maxActive: Record<string, number> = {};
+    let release!: () => void;
+    const gate = new Promise<void>(r => { release = r; });
+    const slowRisk: RiskService = { ...fakeRisk, assessDestination: async id => {
+      active[id] = (active[id] ?? 0) + 1;
+      maxActive[id] = Math.max(maxActive[id] ?? 0, active[id]);
+      try {
+        await gate;                                 // assessments are still running when the 2nd request arrives
+        return await fakeRisk.assessDestination(id);
+      } finally { active[id]--; }
+    } };
+    await db.query(`delete from public.destination_assessments`);
+    const app2 = createApp(config, db, undefined, undefined, slowRisk);
+    const { token } = await signIn('cards@example.test');
+    const a = request(app2).get('/api/places/conditions').set(as(token)).then(r => r);
+    const b = request(app2).get('/api/places/conditions').set(as(token)).then(r => r);
+    await new Promise(r => setTimeout(r, 300));
+    release();
+    const [ra, rb] = await Promise.all([a, b]);
+    expect(ra.status).toBe(200); expect(rb.status).toBe(200);
+    expect(Math.max(...Object.values(maxActive))).toBe(1);   // never two assessments of the same place at once
+    await db.query(`delete from public.destination_assessments`);
+  });
+  it('serves a recent saved result at once and refreshes it in the background', async () => {
+    let calls = 0;
+    const countingRisk: RiskService = { ...fakeRisk, assessDestination: async id => { calls++; return fakeRisk.assessDestination(id); } };
+    await db.query(`delete from public.destination_assessments`);
+    const { rows } = await db.query(
+      `insert into public.destination_assessments (destination_id, risk_category, composite_index, assessment_status,
+         data_coverage, data_reliability, explanation, scoring_version, engine_version, inputs_hash, assessed_at)
+       select id, 'LOW', 0.1, 'COMPLETE', 1, 0.9, $1, 'scoring-v2', 'test', 'h', now() - interval '60 minutes'
+       from public.destinations returning id`, [JSON.stringify(FIXTURE.explanation)]);
+    for (const r of rows) {
+      await db.query(`insert into public.factor_assessments (destination_assessment_id, factor_key, status, value, explanation, inputs)
+                      values ($1, 'weather_severity', 'measured', 0, 'calm', '{}')`, [r.id]);
+    }
+    const app2 = createApp(config, db, undefined, undefined, countingRisk);
+    const { token } = await signIn('cards2@example.test');
+    const res = await request(app2).get('/api/places/conditions').set(as(token));
+    expect(res.status).toBe(200);
+    expect(res.body.places.every((p: any) => p.risk_level === 'LOW')).toBe(true);   // the saved results, at once
+    await new Promise(r => setTimeout(r, 200));
+    expect(calls).toBeGreaterThan(0);                                                // refreshed in the background
+    await db.query(`delete from public.destination_assessments`);                   // leave no saved results behind
+  });
+});

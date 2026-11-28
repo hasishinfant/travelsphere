@@ -104,16 +104,24 @@ export type ConditionsState =
   | { state: 'ready'; byPlace: Record<string, PlaceConditions> };
 
 const REFRESH_MS = 10 * 60_000;
-let shared: { at: number; promise: Promise<Record<string, PlaceConditions>> } | null = null;
+let shared: { at: number; user: string; settled: boolean; promise: Promise<Record<string, PlaceConditions>> } | null = null;
+const currentUser = () => getSession()?.userId ?? '';
 
-// One request serves every card on screen; refreshed at most every 10 minutes
+// One request serves every card on screen; refreshed at most every 10 minutes. A forced refresh (the timer) never
+// starts a second request while one is still running, and a new request is made at once when the user changes.
 function loadAll(force = false) {
-  if (!force && shared && Date.now() - shared.at < REFRESH_MS) return shared.promise;
-  const promise = api<{ places: PlaceConditions[] }>('/places/conditions')
-    .then(r => Object.fromEntries(r.places.map(p => [p.place_id, p])));
-  shared = { at: Date.now(), promise };
-  promise.catch(() => { shared = null; });
-  return promise;
+  const user = currentUser();
+  if (shared && shared.user === user) {
+    if (!shared.settled) return shared.promise;
+    if (!force && Date.now() - shared.at < REFRESH_MS) return shared.promise;
+  }
+  const entry = { at: Date.now(), user, settled: false, promise: null as unknown as Promise<Record<string, PlaceConditions>> };
+  entry.promise = api<{ places: PlaceConditions[] }>('/places/conditions')
+    .then(r => Object.fromEntries(r.places.map(p => [p.place_id, p])))
+    .finally(() => { entry.settled = true; });
+  shared = entry;
+  entry.promise.catch(() => { if (shared === entry) shared = null; });
+  return entry.promise;
 }
 
 export function useConditions(): ConditionsState {
@@ -129,7 +137,8 @@ export function useConditions(): ConditionsState {
     };
     run();
     const t = setInterval(() => run(true), REFRESH_MS);
-    const onAuth = () => run(true);
+    // "auth-change" also fires when the profile is merely refreshed; loadAll only refetches if the user changed
+    const onAuth = () => run(false);
     window.addEventListener('auth-change', onAuth);
     return () => { alive = false; clearInterval(t); window.removeEventListener('auth-change', onAuth); };
   }, []);
