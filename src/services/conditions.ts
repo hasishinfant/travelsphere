@@ -5,6 +5,40 @@ import { api, getSession, ensureSession } from './apiClient';
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 export type DataStatus = 'CURRENT' | 'STALE' | 'PARTIAL' | 'UNAVAILABLE';
 
+export type CertaintyLevel = 'high' | 'medium' | 'low';
+
+/** Short label for how sure the assessment is. Deliberately NOT called "confidence" on screen: travellers read
+ *  "high confidence" as "safe to go", but it only describes the data behind the rating. */
+export const CERTAINTY_LABEL: Record<CertaintyLevel, string> = {
+  high: 'Very sure', medium: 'Fairly sure', low: 'Not sure',
+};
+
+/**
+ * What the risk level and the certainty mean together, in plain words, and what the traveller should do.
+ *   high   → trust the rating as it is (whether it says safe or dangerous)
+ *   medium → the rating stands, but some data is missing or old: check again before going
+ *   low    → do not rely on the rating: check official weather and safety services
+ */
+export function certaintyMessage(level: RiskLevel | null, certainty: CertaintyLevel, missing: string[] = []):
+  { title: string; body: string } {
+  const risk = level ? LEVEL_LABEL[level].toLowerCase() : 'no rating';
+  const gaps = missing.length ? ` (missing: ${missing.join(', ')})` : '';
+  if (certainty === 'high') {
+    const body = level === 'HIGH' || level === 'CRITICAL'
+      ? `This ${risk} rating is based on complete, current data — the danger is real. Take the recommended action seriously.`
+      : level === 'MODERATE'
+        ? 'This rating is based on complete, current data. Take the precautions below.'
+        : 'This rating is based on complete, current data. Conditions can still change, so check again before you go.';
+    return { title: `We are very sure about this ${risk} rating`, body };
+  }
+  if (certainty === 'medium') {
+    return { title: `Fairly sure — this ${risk} rating could change`,
+      body: `Some information is missing or old${gaps}. Use the rating, but check again shortly before you go.` };
+  }
+  return { title: 'Not sure — do not rely on this rating',
+    body: `Too little current information${gaps}. Check official weather and civil-protection services before you travel.` };
+}
+
 export interface PlaceConditions {
   place_id: string;
   risk_level: RiskLevel | null;
@@ -12,8 +46,8 @@ export interface PlaceConditions {
   factors_available: number;
   factors_total?: number;
   /** Confidence in the data behind the assessment — never part of the risk level. Null from the fallback engine. */
-  confidence?: { score: number; level: 'high' | 'medium' | 'low'; explanation: string; weakest: string | null;
-    components: Record<string, number> } | null;
+  confidence?: { score: number; level: CertaintyLevel; explanation: string; weakest: string | null;
+    components: Record<string, number>; missing?: string[] } | null;
   /** Tourist Confidence Score (destination background score, 0–100); provisional while a factor is missing. */
   destination_score?: { score: number | null; band: string | null; provisional: boolean; explanation: string;
     components: { key: string; label: string; weight: number; score: number | null; note: string }[] } | null;

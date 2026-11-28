@@ -153,7 +153,7 @@ export function toPlaceShape(x: AnyAssessment, weather: unknown) {
     factors_available: factors.filter(f => ['live', 'derived', 'configured'].includes(f.status)).length,
     factors_total: factors.length,
     confidence: conf ? { score: conf.score, level: conf.level, explanation: conf.explanation, weakest: conf.weakest,
-      components: conf.components } : null,
+      components: conf.components, missing: (conf.missing_factors ?? []).map(labelOf) } : null,
     destination_score: x.destination_score ?? null,
     headline: x.explanation.summary,
     observed_at: observed,

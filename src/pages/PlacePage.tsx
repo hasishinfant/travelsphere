@@ -9,7 +9,8 @@ import HazardOutlook from '@/components/ui/HazardOutlook';
 import { getDestination } from '@/data/destinations';
 import { PANORAMAS } from '@/data/panoramas';
 import { ensureSession, ApiError } from '@/services/apiClient';
-import { fetchAssessment, LEVEL_LABEL, minutesAgo, type Factor, type PlaceAssessment } from '@/services/conditions';
+import { CERTAINTY_LABEL, certaintyMessage, fetchAssessment, LEVEL_LABEL, minutesAgo, type Factor, type PlaceAssessment }
+  from '@/services/conditions';
 import './PlacePage.css';
 
 // Three.js is only downloaded when the 360° view is opened
@@ -38,7 +39,6 @@ const FactorCard: React.FC<{ f: Factor }> = ({ f }) => (
   </div>
 );
 
-const CONFIDENCE_LABEL = { high: 'High confidence', medium: 'Medium confidence', low: 'Low confidence' } as const;
 const DIMENSIONS: [string, string][] = [
   ['hazard', 'Hazard'], ['exposure', 'Exposure'], ['journey_context', 'Journey context'],
   ['response_capacity', 'Response capacity'], ['other', 'Other factors'],
@@ -145,9 +145,21 @@ const PlacePage: React.FC = () => {
           <>
             <div className={`surface safety-summary tone-${tone}`}>
               <div className="safety-summary-main">
-                <p className="eyebrow">Risk level</p>
-                <p className="safety-level">{level ? LEVEL_LABEL[level] : 'Not assessed'}</p>
+                <p className="eyebrow">Risk level right now</p>
+                <p className="safety-level">
+                  {level ? LEVEL_LABEL[level] : 'Not assessed'}
+                  {assessment.confidence?.level === 'low' && level && <span className="safety-unsure">not sure</span>}
+                </p>
                 <p className="safety-headline">{assessment.reasons.join(' · ')}</p>
+                {assessment.confidence && (() => {
+                  const m = certaintyMessage(level, assessment.confidence.level, assessment.confidence.missing);
+                  return (
+                    <div className={`safety-certainty is-${assessment.confidence.level}`} role="note">
+                      <p className="safety-certainty-title">{m.title}</p>
+                      <p>{m.body}</p>
+                    </div>
+                  );
+                })()}
                 <div className="safety-action">
                   <p className="eyebrow">Recommended action</p>
                   <p>{assessment.recommended_action}</p>
@@ -158,8 +170,9 @@ const PlacePage: React.FC = () => {
                   <div className="safety-conf" title={assessment.confidence.explanation}>
                     <span className="safety-conf-num">{assessment.confidence.score}<small>/100</small></span>
                     <span className="safety-conf-label">
-                      {CONFIDENCE_LABEL[assessment.confidence.level]} · {assessment.factors_available} of {assessment.factors_total ?? 8} factors
-                      have data
+                      <strong>How sure we are: {CERTAINTY_LABEL[assessment.confidence.level].toLowerCase()}</strong>
+                      <br />Quality of the data behind the rating — not how safe the place is.
+                      {' '}{assessment.factors_available} of {assessment.factors_total ?? 8} factors have data.
                     </span>
                   </div>
                 ) : (
@@ -187,7 +200,7 @@ const PlacePage: React.FC = () => {
             {assessment.destination_score && assessment.destination_score.score !== null && (
               <div className="surface destination-score">
                 <div>
-                  <p className="eyebrow">Tourist Confidence Score</p>
+                  <p className="eyebrow">Tourist Confidence Score · how safe the place is in general</p>
                   <p className="destination-score-num">{Math.round(assessment.destination_score.score)}<small>/100</small>
                     <span> {assessment.destination_score.band}{assessment.destination_score.provisional ? ' · provisional' : ''}</span></p>
                   <p className="destination-score-note">

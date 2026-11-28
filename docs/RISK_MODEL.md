@@ -102,6 +102,21 @@ Confidence levels:
 The tier scores and the equal averaging are conventions, not validated values. Confidence is shown next to every
 result and never changes the risk level.
 
+### What the traveller sees
+
+Confidence is shown as **"How sure we are"**, never as "confidence". Travellers read "high confidence" as "safe to
+go", but this score only describes the data behind the rating. The page states what the two together mean and
+what to do:
+
+| How sure | Meaning | What the app does |
+|---|---|---|
+| **Very sure** (≥ 80) | Complete, current data: trust the rating as it is, whether it says safe or dangerous | Shows the level normally. High risk + very sure says "the danger is real". |
+| **Fairly sure** (60–79, or stale data) | Some information is missing or old | Shows the level, names the missing factors, and says to check again before going |
+| **Not sure** (< 60, or no weather / hazard data) | Too little current information | Tags the level "not sure" and tells the traveller not to rely on it but to check official services |
+
+So a place can be **High risk · very sure (92/100)**: we are confident it is dangerous. "How safe is the place in
+general" is the separate Tourist Confidence Score.
+
 ## 6. Tourist Confidence Score (destination background)
 
 `risk-service/app/risk_engine/aggregation/destination_score.py`. This is the manuscript's Tourist Confidence Index,

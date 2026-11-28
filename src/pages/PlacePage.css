@@ -30,7 +30,17 @@
 .safety-conf { display: flex; align-items: center; gap: var(--space-4); }
 .safety-conf-num { font-size: var(--fs-3xl); font-weight: var(--fw-medium); line-height: 1; color: var(--ink); }
 .safety-conf-num small { font-size: var(--fs-lg); color: var(--muted); }
-.safety-conf-label { font-size: var(--fs-sm); color: var(--muted); max-width: 180px; }
+.safety-conf-label { font-size: var(--fs-sm); color: var(--muted); max-width: 230px; }
+.safety-conf-label strong { color: var(--ink); font-weight: var(--fw-medium); }
+.safety-unsure { display: inline-block; margin-left: var(--space-3); padding: 2px 10px; border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: var(--fw-medium); vertical-align: middle; letter-spacing: 0.02em;
+  background: var(--surface-2); color: var(--muted); border: 1px dashed var(--line-strong); }
+.safety-certainty { margin-top: var(--space-4); padding: var(--space-3) var(--space-4); border-radius: var(--r-md);
+  font-size: var(--fs-sm); color: var(--ink-2, var(--ink)); background: var(--surface-2); border-left: 3px solid var(--muted-2); }
+.safety-certainty-title { font-weight: var(--fw-medium); color: var(--ink); margin-bottom: 2px; }
+.safety-certainty.is-high { border-left-color: var(--accent); }
+.safety-certainty.is-medium { border-left-color: var(--warning); }
+.safety-certainty.is-low { border-left-color: var(--danger); }
 .safety-weather { list-style: none; display: grid; gap: var(--space-2); }
 .safety-weather li { display: flex; align-items: center; gap: var(--space-2); color: var(--ink-2); font-size: var(--fs-sm); }
 .safety-weather svg { color: var(--accent); }
