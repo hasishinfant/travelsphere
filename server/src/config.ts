@@ -11,7 +11,9 @@ const Env = z.object({
   LOCAL_JWT_SECRET: z.string().min(32).optional(),
   CORS_ORIGINS: z.string().default('http://127.0.0.1:3000,http://localhost:3000'),
   /** Python risk-intelligence service (FastAPI). Internal only — never exposed to browsers. */
-  RISK_SERVICE_URL: z.string().url().default('http://127.0.0.1:8001'),
+  /** Accepts a bare host:port (Render's private-network `hostport`) and assumes http. */
+  RISK_SERVICE_URL: z.preprocess(v => (typeof v === 'string' && v && !v.includes('://') ? `http://${v}` : v),
+    z.string().url().default('http://127.0.0.1:8001')),
   RISK_SERVICE_TOKEN: z.string().min(32).optional(),
   RISK_SERVICE_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300_000).default(120_000),
   /** Destination assessments younger than this are served from the database instead of recomputed. */
