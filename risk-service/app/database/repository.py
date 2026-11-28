@@ -117,6 +117,14 @@ def _hazard_from_row(r: Any) -> HazardEvent:
     return ev
 
 
+def source_last_success(source_id: str) -> datetime | None:
+    """When a provider last answered successfully (data_sources.last_success_at), or None."""
+    if not db_available():
+        return None
+    with tx() as c:
+        return c.execute(text("select last_success_at from public.data_sources where id = :s"), {"s": source_id}).scalar()
+
+
 def cached_active_hazards(source_id: str, lat: float, lon: float, radius_m: float, max_age_min: int) -> list[HazardEvent]:
     """Fallback when a feed is down: active events from this source retrieved recently enough to still be trusted."""
     if not db_available():

@@ -23,6 +23,7 @@ def api(db, monkeypatch):
     config.get_settings.cache_clear()
     set_http(None)
     data_service._gdacs_history_cache.clear()
+    data_service._last_failure.clear()
     from app.main import app
     transport = httpx.ASGITransport(app=app)
     yield httpx.AsyncClient(transport=transport, base_url="http://risk")
@@ -114,7 +115,14 @@ async def test_destination_assessment_persisted(api, db):
         assert hist["status"] == "measured"
 
 
-async def test_hazard_feeds_down_partial_not_safe(api):
+def forget_recent_success(db):
+    """Start from 'no provider answered recently', so a feed failure is not covered by the fresh saved copy."""
+    with db.begin() as c:
+        c.execute(text("update data_sources set last_success_at = null"))
+
+
+async def test_hazard_feeds_down_partial_not_safe(api, db):
+    forget_recent_success(db)
     with respx.mock(assert_all_called=False) as router:
         mock_providers(router, hazards=503)
         r = await api.post("/internal/v1/assessments/destination", json={"destination_id": "kyoto", "persist": False}, headers=AUTH)
@@ -124,7 +132,8 @@ async def test_hazard_feeds_down_partial_not_safe(api):
     assert "hazard_severity" in a["missing_indicators"]
 
 
-async def test_all_providers_down_gives_no_category(api):
+async def test_all_providers_down_gives_no_category(api, db):
+    forget_recent_success(db)
     with respx.mock(assert_all_called=False) as router:
         mock_providers(router, weather=503, hazards=503)
         r = await api.post("/internal/v1/assessments/destination", json={"destination_id": "kyoto", "persist": False}, headers=AUTH)
@@ -166,3 +175,16 @@ async def test_journey_of_another_user_rejected(api, db, user_id):
     body["travel_start"] = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
     r = await api.post("/internal/v1/assessments/journey", json=body, headers=AUTH)
     assert r.status_code == 403
+
+
+async def test_fresh_saved_hazards_are_served_without_waiting_for_the_provider(api, db):
+    """GDACS answered recently: the next assessment uses the saved events even if GDACS now hangs."""
+    with respx.mock(assert_all_called=False) as router:
+        mock_providers(router)
+        await api.post("/internal/v1/assessments/destination", json={"destination_id": "kyoto", "persist": False}, headers=AUTH)
+    with respx.mock(assert_all_called=False) as router:
+        mock_providers(router, hazards=503)                      # provider down now
+        set_http(None)
+        r = await api.post("/internal/v1/assessments/destination", json={"destination_id": "kyoto", "persist": False}, headers=AUTH)
+    hz = next(f for f in r.json()["factors"] if f["key"] == "hazard_severity")
+    assert hz["status"] == "measured"                            # served from the fresh saved copy

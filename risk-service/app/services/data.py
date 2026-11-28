@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.core.config import get_settings
 from app.database import repository as repo
@@ -32,8 +32,11 @@ def _safe_repo(fn, *a, default=None, **kw):
 
 # Hard wall-clock budget per provider call (retries included) so one slow provider cannot stall an assessment
 DEADLINE_S = {"overpass": 45, "osrm": 30, "open-meteo-forecast": 30, "open-meteo-geocoding": 20,
-              "usgs-earthquakes": 30, "gdacs": 120, "copernicus-dem": 20, "meteoalarm": 30, "nws": 20,
+              "usgs-earthquakes": 30, "gdacs": 30, "copernicus-dem": 20, "meteoalarm": 30, "nws": 20,
               "us-state-dept-advisories": 30, "fcdo-travel-advice": 20}
+
+
+_last_failure: dict[str, datetime] = {}
 
 
 async def _source(source_id: str, coro):
@@ -44,9 +47,11 @@ async def _source(source_id: str, coro):
     except asyncio.TimeoutError:
         _safe_repo(repo.record_source, source_id, False, "deadline exceeded")
         log.warning("provider %s exceeded its %ss deadline", source_id, DEADLINE_S.get(source_id, 60))
+        _last_failure[source_id] = datetime.now(timezone.utc)
         return None, f"{source_id}: no response within {DEADLINE_S.get(source_id, 60)} s"
     except (ProviderError, ValueError, KeyError, TypeError) as e:
         _safe_repo(repo.record_source, source_id, False, str(e))
+        _last_failure[source_id] = datetime.now(timezone.utc)
         log.warning("provider %s failed: %s", source_id, e)
         return None, str(e)
 
@@ -56,14 +61,73 @@ async def weather_for(points: list[tuple[float, float]], now: datetime) -> tuple
     return (snaps or [None] * len(points)), err
 
 
+FRESH_MIN = 30          # a provider that answered this recently is served from the saved copy
+BACKOFF_MIN = 5         # after a failure, stop making travellers wait for that provider for this long
+_refreshing: dict[str, asyncio.Task] = {}
+
+
+def _recently_ok(source_id: str, now: datetime) -> bool:
+    last = _safe_repo(repo.source_last_success, source_id)
+    return bool(last) and (now - last) < timedelta(minutes=FRESH_MIN)
+
+
+def _backing_off(source_id: str, now: datetime) -> bool:
+    last = _last_failure.get(source_id)
+    return bool(last) and (now - last) < timedelta(minutes=BACKOFF_MIN)
+
+
+def _usable_saved_copy(source_id: str, now: datetime) -> bool:
+    """The saved events are still trustworthy: last success within twice the source's freshness limit."""
+    last = _safe_repo(repo.source_last_success, source_id)
+    return bool(last) and (now - last) < timedelta(minutes=SOURCES[source_id].max_age_minutes * 2)
+
+
+async def _cached_ok():
+    return None, None
+
+
+def _refresh_in_background(source_id: str, fetch) -> None:
+    """Fetch the provider again without anyone waiting; saves the events and the source's health."""
+    task = _refreshing.get(source_id)
+    if task is not None and not task.done():
+        return
+
+    async def run():
+        evs, _ = await _source(source_id, fetch())
+        if evs is not None:
+            _safe_repo(repo.upsert_hazards, evs)
+            _safe_repo(repo.retire_missing_current, source_id, [e.external_id for e in evs])
+    try:
+        _refreshing[source_id] = asyncio.get_running_loop().create_task(run())
+    except RuntimeError:
+        pass
+
+
 async def active_hazards(lat: float, lon: float, search_radius_m: float, now: datetime
                          ) -> tuple[list[HazardEvent] | None, list[str], list[str], list[dict]]:
     """Active hazards near a point from GDACS + USGS (+ configured zones). Returns (events|None, ok, failed, checks)."""
-    (g_events, g_err), (u_events, u_err) = await asyncio.gather(
-        _source("gdacs", gdacs.fetch_current(now)), _source("usgs-earthquakes", usgs.fetch_recent(now)))
+    fetchers = {"gdacs": lambda: gdacs.fetch_current(now), "usgs-earthquakes": lambda: usgs.fetch_recent(now)}
+    # Stale-while-revalidate: a provider that answered within FRESH_MIN is served from the saved events at once and
+    # refreshed in the background, so one slow public server (GDACS can take minutes) never stalls an assessment.
+    # A provider that failed in the last few minutes is not waited for again: its saved copy is used while still
+    # trustworthy, otherwise it is reported unavailable at once; either way it keeps being retried in the background.
+    fresh = {sid: _recently_ok(sid, now) or (_backing_off(sid, now) and _usable_saved_copy(sid, now)) for sid in fetchers}
+    down = {sid: not fresh[sid] and _backing_off(sid, now) for sid in fetchers}
+    results = await asyncio.gather(*(_cached_ok() if fresh[sid] or down[sid] else _source(sid, f())
+                                     for sid, f in fetchers.items()))
     ok, failed = [], []
     events: list[HazardEvent] = []
-    for sid, evs, err in (("gdacs", g_events, g_err), ("usgs-earthquakes", u_events, u_err)):
+    for (sid, (evs, err)) in zip(fetchers, results):
+        if down[sid]:
+            failed.append(sid)
+            _refresh_in_background(sid, fetchers[sid])
+            continue
+        if fresh[sid]:
+            ok.append(sid)
+            events += _safe_repo(repo.cached_active_hazards, sid, lat, lon, search_radius_m,
+                                 SOURCES[sid].max_age_minutes * 2, default=[]) or []
+            _refresh_in_background(sid, fetchers[sid])
+            continue
         if evs is not None:
             ok.append(sid)
             near = [e for e in evs if geodesic_m(lat, lon, e.latitude, e.longitude) <= search_radius_m]
@@ -85,7 +149,10 @@ async def active_hazards(lat: float, lon: float, search_radius_m: float, now: da
     # Footprints for nearby GDACS events (cyclone wind buffers, flood/fire areas), nearest first
     need = sorted([e for e in events if e.source_id == "gdacs" and not e.has_footprint],
                   key=lambda e: geodesic_m(lat, lon, e.latitude, e.longitude))[:MAX_FOOTPRINT_FETCHES]
-    await asyncio.gather(*(gdacs.fetch_footprint(e) for e in need))
+    try:  # outlines are a refinement: never let a slow GDACS hold the assessment
+        await asyncio.wait_for(asyncio.gather(*(gdacs.fetch_footprint(e) for e in need), return_exceptions=True), 15)
+    except asyncio.TimeoutError:
+        log.warning("GDACS footprints: gave up after 15 s; using event centres")
 
     events, checks = merge_duplicate_hazards(events)
     events += _safe_repo(repo.risk_zones_near, lat, lon, search_radius_m, now, default=[]) or []
