@@ -161,3 +161,24 @@ def test_freshness_and_weather_agreement():
     score, stale = freshness_score("usgs-earthquakes", NOW - timedelta(minutes=90), NOW)
     assert stale and score == pytest.approx(0.5)
     assert weather_internal_agreement(1, 12.0) is False and weather_internal_agreement(63, 3.0) is True
+
+
+async def test_http_cache_expires_by_wall_clock_not_monotonic(monkeypatch):
+    """time.monotonic() stops while a Mac sleeps; cached weather must still expire after its TTL in real time."""
+    import httpx, respx, time as _time
+    from app.ingestion.http import HttpClient
+    calls = {"n": 0}
+    def handler(_req):
+        calls["n"] += 1
+        return httpx.Response(200, json={"n": calls["n"]})
+    client = HttpClient()
+    with respx.mock(assert_all_called=False) as r:
+        r.get("https://example.test/w").mock(side_effect=handler)
+        t0 = _time.time()
+        monkeypatch.setattr(_time, "time", lambda: t0)
+        first = await client.get_json("open-meteo-forecast", "https://example.test/w", ttl_s=600)
+        monkeypatch.setattr(_time, "time", lambda: t0 + 6 * 3600)      # 6 h later on the wall clock
+        monkeypatch.setattr(_time, "monotonic", lambda: 0.0)            # …but the monotonic clock did not move
+        second = await client.get_json("open-meteo-forecast", "https://example.test/w", ttl_s=600)
+    await client.close()
+    assert first.data == {"n": 1} and second.data == {"n": 2} and not second.from_cache

@@ -91,7 +91,9 @@ class HttpClient:
                        retries: int | None = None, timeout_s: float | None = None) -> FetchResult:
         key = f"{method} {url}?{urlencode(sorted((params or {}).items()), doseq=True)}|{json.dumps(data, sort_keys=True)}"
         hit = self._cache.get(key)
-        if hit and hit.expires > time.monotonic():
+        # Wall-clock expiry: time.monotonic() stops while a Mac sleeps, so a 10-minute entry cached in the evening
+        # was still "fresh" the next morning (a 6-hour-old weather reading served as current).
+        if hit and hit.expires > time.time():
             r = hit.result
             return FetchResult(r.source, r.url, r.data, r.retrieved_at, from_cache=True, attempts=0)
 
@@ -120,7 +122,7 @@ class HttpClient:
                 raise ProviderError(source, "response is not JSON") from e
             result = FetchResult(source, str(resp.url), payload, datetime.now(timezone.utc), attempts=attempt)
             if ttl_s > 0:
-                self._cache[key] = _CacheEntry(time.monotonic() + ttl_s, result)
+                self._cache[key] = _CacheEntry(time.time() + ttl_s, result)
             return result
         raise last or ProviderError(source, "request failed")
 

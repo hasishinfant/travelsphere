@@ -100,6 +100,17 @@ describe('destinations', () => {
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('risk_service_unavailable');
   });
+  it('does not reuse a saved assessment that was built on stale data', async () => {
+    const { token } = await signIn('dest@example.test');
+    const { rows } = await db.query(
+      `insert into public.destination_assessments (destination_id, risk_category, composite_index, assessment_status,
+         data_coverage, data_reliability, explanation, scoring_version, engine_version, inputs_hash)
+       values ('london', 'LOW', 0.1, 'PARTIAL', 1, 0.6, $1, 'scoring-v2', 'old', 'h') returning id`, [JSON.stringify(FIXTURE.explanation)]);
+    await db.query(`insert into public.factor_assessments (destination_assessment_id, factor_key, status, value, explanation, data_quality)
+                    values ($1, 'weather_severity', 'measured', 0, 'old reading', '{"is_stale": true}')`, [rows[0].id]);
+    const res = await request(app).get('/api/v1/destinations/london/safety').set(as(token));
+    expect(res.body.assessment).toMatchObject({ source: 'computed' });
+  });
   it('never serves a fresh assessment stored by an older scoring version', async () => {
     const { token } = await signIn('dest@example.test');
     await db.query(

@@ -77,6 +77,8 @@ export async function latestDestinationAssessment(db: Db, destinationId: string,
     `select factor_key as key, status, value, severity_class, raw_value, unit, inputs, source_ids, explanation,
             data_quality, observed_at, computed_at
      from public.factor_assessments where destination_assessment_id = $1`, [a.id]);
+  // A saved result that was built on already-stale data is not reused: recomputing may get fresh data
+  if (factors.some(f => (f.data_quality as { is_stale?: boolean } | null)?.is_stale)) return null;
   return { a, factors: factors.map(f => ({ ...f, label: labelOf(f.key), value: f.value === null ? null : Number(f.value),
     raw_value: f.raw_value === null ? null : Number(f.raw_value) })) };
 }
