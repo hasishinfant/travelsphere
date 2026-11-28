@@ -1,4 +1,4 @@
--- LOCAL DEVELOPMENT ONLY — do not run on Supabase.
+-- For plain PostgreSQL (local development and production) — do not run on Supabase.
 -- Recreates the small part of Supabase's environment that the migrations rely on:
 -- the anon/authenticated/service_role roles, the auth schema, auth.users and auth.uid().
 -- auth.uid() reads the same request setting Supabase's API sets, so RLS behaves identically.
@@ -23,6 +23,8 @@ create table if not exists auth.users (
   raw_user_meta_data jsonb not null default '{}'::jsonb,
   created_at         timestamptz not null default now()
 );
+-- Email/password accounts issued by the API (AUTH_MODE=password); null for guest and dev accounts
+alter table auth.users add column if not exists password_hash text;
 
 create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid

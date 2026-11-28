@@ -1,4 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
 import { createRemoteJWKSet, jwtVerify, SignJWT, type JWTPayload } from 'jose';
 import type { Config } from './config.js';
 import { HttpError } from './http.js';
@@ -19,6 +21,23 @@ declare global {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LOCAL_ISSUER = 'travelsphere-local-dev';
+const ISSUER = 'travelsphere';
+const scryptAsync = promisify(scrypt) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
+
+/** scrypt with a random salt, stored as "scrypt$<salt b64>$<hash b64>". */
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16);
+  return `scrypt$${salt.toString('base64')}$${(await scryptAsync(password, salt, 64)).toString('base64')}`;
+}
+
+export async function verifyPassword(password: string, stored: string | null): Promise<boolean> {
+  const [scheme, salt, hash] = (stored ?? '').split('$');
+  const ok = scheme === 'scrypt';
+  // Hash even without a stored password, so an unknown email takes as long as a wrong password
+  const actual = await scryptAsync(password, ok ? Buffer.from(salt, 'base64') : Buffer.alloc(16), 64);
+  const expected = ok ? Buffer.from(hash, 'base64') : Buffer.alloc(64);
+  return ok && expected.length === actual.length && timingSafeEqual(expected, actual);
+}
 
 export interface TokenVerifier {
   verify(token: string): Promise<AuthUser>;
@@ -31,20 +50,21 @@ export function createVerifier(config: Config): TokenVerifier {
     return { id: p.sub, email: typeof p.email === 'string' ? p.email : undefined };
   };
 
-  if (config.AUTH_MODE === 'local') {
-    const secret = new TextEncoder().encode(config.LOCAL_JWT_SECRET);
+  if (config.AUTH_MODE === 'local' || config.AUTH_MODE === 'password') {
+    const issuer = config.AUTH_MODE === 'local' ? LOCAL_ISSUER : ISSUER;
+    const secret = new TextEncoder().encode(config.AUTH_MODE === 'local' ? config.LOCAL_JWT_SECRET : config.JWT_SECRET);
     return {
       async verify(token) {
-        const { payload } = await jwtVerify(token, secret, { issuer: LOCAL_ISSUER, algorithms: ['HS256'] });
+        const { payload } = await jwtVerify(token, secret, { issuer, algorithms: ['HS256'] });
         return toUser(payload);
       },
       async issueLocal(user) {
         return new SignJWT({ email: user.email, role: 'authenticated' })
           .setProtectedHeader({ alg: 'HS256' })
           .setSubject(user.id)
-          .setIssuer(LOCAL_ISSUER)
+          .setIssuer(issuer)
           .setIssuedAt()
-          .setExpirationTime('12h')
+          .setExpirationTime('30d')
           .sign(secret);
       },
     };

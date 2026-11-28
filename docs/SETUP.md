@@ -49,15 +49,13 @@ cd risk-service && .venv/bin/python -m pytest -q                      # risk eng
 `server` tests create and drop `travelsphere_api_test`; set `TEST_ADMIN_DATABASE_URL` if Postgres is not at
 `postgres://localhost:5432/postgres`.
 
-## 5. Moving to Supabase (when credentials exist)
+## 5. Accounts in production
 
-1. Run the migrations on the Supabase database: `DATABASE_URL=<supabase connection string> npm run db:migrate`
-   (without `--local` — Supabase already provides `auth.users`, `auth.uid()` and the roles).
-2. Server `.env`: `AUTH_MODE=supabase`, `SUPABASE_URL=…` (JWKS verification), `DATABASE_URL=<supabase>`.
-3. Frontend `.env`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`; replace the dev-session call in
-   `LoginPage` with `supabase.auth.signInWithPassword` and pass the access token to the API. *(Pending.)*
+Production uses plain PostgreSQL and `AUTH_MODE=password`: the API issues its own accounts
+(`/api/auth/register`, `/api/auth/login`, `/api/auth/guest`) signed with `JWT_SECRET`. Migrations run with `--local`
+so the auth shim provides `auth.users` and `auth.uid()`. Deployment: docs/BACKEND.md §14.
 
-`AUTH_MODE=local` is refused when `NODE_ENV=production`.
+`AUTH_MODE=local` (passwordless `/api/auth/dev-session`) is refused when `NODE_ENV=production`.
 
 ## 6. Hotel booking (LiteAPI)
 

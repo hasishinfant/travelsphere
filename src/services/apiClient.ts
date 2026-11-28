@@ -7,7 +7,7 @@ const SESSION_KEY = 'ts_session';
 export interface Session {
   token: string;
   userId: string;
-  mode: 'local-dev' | 'supabase';
+  mode: 'local-dev' | 'password';
 }
 
 export class ApiError extends Error {
@@ -67,34 +67,22 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 export const isUnavailable = (err: unknown) =>
   err instanceof ApiError && (err.status === 0 || err.status >= 502);
 
-const GUEST_KEY = 'ts_guest_email';
 let pending: Promise<boolean> | null = null;
 
 /**
- * Make sure a signed-in user also has a server session.
- * Covers sessions created before the API existed, guests, and expired tokens.
- * Guests get an anonymous account (stable per browser), similar to Supabase anonymous sign-in.
- * Returns false when the server is unreachable or doesn't offer development sign-in.
+ * Make sure the signed-in user also has a server session.
+ * Guests get an anonymous server account on first use. Signed-in users whose token expired must sign in again.
+ * Returns false when there is no session to be had or the server is unreachable.
  */
 export function ensureSession(): Promise<boolean> {
   if (getSession()) return Promise.resolve(true);
   if (pending) return pending;
 
-  let user: { email?: string; name?: string; guest?: boolean } | null = null;
+  let user: { guest?: boolean } | null = null;
   try { user = JSON.parse(localStorage.getItem('user') || 'null'); } catch { user = null; }
-  if (!user) return Promise.resolve(false);
+  if (!user?.guest) return Promise.resolve(false);
 
-  let email = (user.email || '').trim().toLowerCase();
-  if (!email || user.guest) {
-    email = localStorage.getItem(GUEST_KEY) || `guest-${crypto.randomUUID().slice(0, 12)}@guest.travelsphere.local`;
-    localStorage.setItem(GUEST_KEY, email);
-  }
-
-  pending = api<{ token: string; user: { id: string }; mode: 'local-dev' }>('/auth/dev-session', {
-    method: 'POST',
-    auth: false,
-    body: { email, full_name: user.guest ? 'Guest' : user.name || undefined },
-  })
+  pending = api<{ token: string; user: { id: string }; mode: Session['mode'] }>('/auth/guest', { method: 'POST', auth: false })
     .then(s => {
       setSession({ token: s.token, userId: s.user.id, mode: s.mode });
       const cur = JSON.parse(localStorage.getItem('user') || '{}');

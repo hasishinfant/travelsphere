@@ -1,7 +1,5 @@
-// authService.ts — All authentication operations via Supabase Auth.
-// Never import the raw supabase client outside of this file and supabaseClient.ts.
-import { supabase, requireSupabase } from './supabaseClient';
-import type { Session, User } from '@supabase/supabase-js';
+// authService.ts — sign-in, sign-up and sign-out against the TravelSphere API (server/).
+import { api, setSession, type Session } from './apiClient';
 
 export interface AuthProfile {
   id: string;
@@ -13,61 +11,22 @@ export interface AuthProfile {
   role: 'user' | 'admin';
 }
 
-// ─── Sign In ────────────────────────────────────────────────────────────────
-
-export async function signIn(email: string, password: string): Promise<{ user: User; session: Session }> {
-  const { data, error } = await requireSupabase().auth.signInWithPassword({ email, password });
-  if (error) throw new Error(error.message);
-  if (!data.user || !data.session) throw new Error('Sign-in failed — no session returned.');
-  return { user: data.user, session: data.session };
+interface AuthResponse {
+  token: string;
+  user: { id: string; email: string; full_name: string | null };
+  mode: Session['mode'];
 }
 
-// ─── Sign Up ─────────────────────────────────────────────────────────────────
-
-export async function signUp(email: string, password: string, fullName: string): Promise<{ user: User; session: Session | null }> {
-  const { data, error } = await requireSupabase().auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName } },
-  });
-  if (error) throw new Error(error.message);
-  if (!data.user) throw new Error('Sign-up failed.');
-  return { user: data.user, session: data.session };
+async function startSession(path: string, body: Record<string, string>): Promise<AuthProfile> {
+  const { token, user, mode } = await api<AuthResponse>(path, { method: 'POST', auth: false, body });
+  setSession({ token, userId: user.id, mode });
+  return { id: user.id, email: user.email, full_name: user.full_name || user.email.split('@')[0], role: 'user' };
 }
 
-// ─── Sign Out ────────────────────────────────────────────────────────────────
+export const signIn = (email: string, password: string) => startSession('/auth/login', { email, password });
 
-export async function signOut(): Promise<void> {
-  if (supabase) {
-    const { error } = await supabase.auth.signOut().catch((e: Error) => ({ error: e }));
-    if (error) console.warn('[authService] signOut error:', error.message);
-  }
-  localStorage.removeItem('user');
-  window.dispatchEvent(new Event('auth-change'));
-}
-
-// ─── Get current session ─────────────────────────────────────────────────────
-
-export async function getAuthSession(): Promise<Session | null> {
-  if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session;
-}
-
-// ─── Build local profile object from Supabase user ───────────────────────────
-
-export function buildLocalProfile(user: User): AuthProfile {
-  const meta = user.user_metadata || {};
-  return {
-    id: user.id,
-    email: user.email || '',
-    full_name: (meta.full_name as string) || (meta.name as string) || user.email?.split('@')[0] || 'Traveler',
-    avatar_url: (meta.avatar_url as string) || null,
-    home_airport: (meta.home_airport as string) || null,
-    home_city: (meta.home_city as string) || null,
-    role: (meta.role as 'user' | 'admin') || 'user',
-  };
-}
+export const signUp = (email: string, password: string, fullName: string) =>
+  startSession('/auth/register', { email, password, full_name: fullName });
 
 // ─── Persist profile to localStorage (keeps offline mode working) ─────────────
 
@@ -81,19 +40,10 @@ export function persistLocalUser(profile: AuthProfile) {
   window.dispatchEvent(new Event('auth-change'));
 }
 
-// ─── Reset password email ─────────────────────────────────────────────────────
-
-export async function sendPasswordReset(email: string): Promise<void> {
-  const { error } = await requireSupabase().auth.resetPasswordForEmail(email, {
-    // Respect the deploy base path (e.g. /travelsphere/ on GitHub Pages)
-    redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}`,
-  });
-  if (error) throw new Error(error.message);
-}
-
-// ─── Guest mode (no account; data stays in this browser) ─────────────────────
+// ─── Guest mode (anonymous server account created on first use; see ensureSession) ───
 
 export function continueAsGuest() {
+  setSession(null);
   localStorage.setItem('user', JSON.stringify({
     id: 'guest',
     email: '',

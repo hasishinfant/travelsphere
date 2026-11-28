@@ -99,6 +99,51 @@ describe('authentication', () => {
   });
 });
 
+describe('password accounts (production)', () => {
+  const prod = loadConfig({ NODE_ENV: 'production', DATABASE_URL: DB_URL, AUTH_MODE: 'password', JWT_SECRET: SECRET,
+    RISK_SERVICE_TOKEN: SECRET });
+  let papp: ReturnType<typeof createApp>;
+  beforeAll(() => { papp = createApp(prod, db, undefined, undefined, stubRisk); });
+
+  it('requires JWT_SECRET', () => {
+    expect(() => loadConfig({ DATABASE_URL: DB_URL, AUTH_MODE: 'password' })).toThrow(/JWT_SECRET/);
+  });
+  it('registers, signs in and uses the token; no dev sign-in', async () => {
+    const email = `pw-${Date.now()}@test.local`;
+    const reg = await request(papp).post('/api/auth/register').send({ email, password: 'correct horse', full_name: 'Pat' });
+    expect(reg.status).toBe(201);
+    expect(reg.body).toMatchObject({ user: { email, full_name: 'Pat' }, mode: 'password' });
+
+    expect((await request(papp).post('/api/auth/register').send({ email, password: 'another one' })).status).toBe(409);
+    expect((await request(papp).post('/api/auth/login').send({ email, password: 'wrong pass' })).status).toBe(401);
+    expect((await request(papp).post('/api/auth/login').send({ email: 'nobody@test.local', password: 'x' })).status).toBe(401);
+
+    const login = await request(papp).post('/api/auth/login').send({ email, password: 'correct horse' });
+    expect(login.status).toBe(200);
+    expect(login.body.user.id).toBe(reg.body.user.id);
+    const profile = await request(papp).get('/api/profile').set(as(login.body.token));
+    expect(profile.status).toBe(200);
+    expect(profile.body.profile.full_name).toBe('Pat');
+
+    expect((await request(papp).post('/api/auth/dev-session').send({ email })).status).toBe(404);
+  });
+  it('rejects short passwords', async () => {
+    const res = await request(papp).post('/api/auth/register').send({ email: 'short@test.local', password: 'short' });
+    expect(res.status).toBe(400);
+  });
+  it('creates a separate guest account each time', async () => {
+    const a = await request(papp).post('/api/auth/guest');
+    const b = await request(papp).post('/api/auth/guest');
+    expect(a.status).toBe(201);
+    expect(a.body.user.id).not.toBe(b.body.user.id);
+    expect((await request(papp).get('/api/journeys').set(as(a.body.token))).status).toBe(200);
+  });
+  it('does not let a guest sign in with a password', async () => {
+    const g = await request(papp).post('/api/auth/guest');
+    expect((await request(papp).post('/api/auth/login').send({ email: g.body.user.email, password: 'anything' })).status).toBe(401);
+  });
+});
+
 describe('profile', () => {
   it('creates a profile on sign-in and returns it', async () => {
     const { token } = await signIn('noora@test.local', 'Noora Lindqvist');

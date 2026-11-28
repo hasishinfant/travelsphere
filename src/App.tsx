@@ -4,8 +4,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-ro
 import { Compass } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppProvider } from './context/AppContext';
-import { supabase } from './services/supabaseClient';
-import { buildLocalProfile, persistLocalUser } from './services/authService';
 
 // Lazy load pages for code splitting
 const HomePage = React.lazy(() => import('./pages/HomePage'));
@@ -58,60 +56,16 @@ const NotFound: React.FC = () => (
 const App: React.FC = () => {
   // Start with whatever is in localStorage so there is no flash on refresh.
   const [isAuthenticated, setIsAuthenticated] = React.useState(() => !!localStorage.getItem('user'));
-  const [authReady, setAuthReady] = React.useState(false);
 
   // Use basename only in production
   const basename = import.meta.env.PROD ? '/travelsphere' : '/';
 
-  React.useEffect(() => {
-    // Guest / offline mode: no auth backend configured.
-    if (!supabase) {
-      setAuthReady(true);
-      return;
-    }
-
-    // Hydrate current session once on mount. Never block the UI if auth is unreachable.
-    supabase.auth.getSession()
-      .then(({ data }) => {
-        if (data.session?.user) {
-          persistLocalUser(buildLocalProfile(data.session.user));
-          setIsAuthenticated(true);
-        } else if (!localStorage.getItem('user')) {
-          setIsAuthenticated(false);
-        }
-      })
-      .catch((err) => console.warn('[auth] session hydrate failed:', err))
-      .finally(() => setAuthReady(true));
-
-    // Subscribe to future auth changes (sign-in, sign-out, token refresh, cross-tab)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        persistLocalUser(buildLocalProfile(session.user));
-        setIsAuthenticated(true);
-      } else {
-        // Keep guest sessions; only clear real (Supabase-backed) users on sign-out.
-        try {
-          const u = JSON.parse(localStorage.getItem('user') || 'null');
-          if (u?.guest) return;
-        } catch { /* corrupt entry — clear it */ }
-        localStorage.removeItem('user');
-        setIsAuthenticated(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Also keep legacy event listener for guest / offline mode
+  // Sign-in, sign-out and guest mode all announce themselves with an auth-change event
   React.useEffect(() => {
     const checkAuth = () => setIsAuthenticated(!!localStorage.getItem('user'));
     window.addEventListener('auth-change', checkAuth);
     return () => window.removeEventListener('auth-change', checkAuth);
   }, []);
-
-  if (!authReady) {
-    return <div className="page-loading"><LoadingSpinner size="lg" message="Loading…" /></div>;
-  }
 
   return (
 

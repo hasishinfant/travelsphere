@@ -6,8 +6,7 @@ import {
 } from 'lucide-react';
 import Photo from '@/components/ui/Photo';
 import { getDestination } from '@/data/destinations';
-import { signIn, signUp, sendPasswordReset, buildLocalProfile, persistLocalUser, continueAsGuest } from '@/services/authService';
-import { isSupabaseConfigured } from '@/services/supabaseClient';
+import { signIn, signUp, persistLocalUser, continueAsGuest, type AuthProfile } from '@/services/authService';
 import { refreshJourneys } from '@/services/journeySync';
 import './LoginPage.css';
 
@@ -35,8 +34,7 @@ const LoginPage: React.FC = () => {
   const [info, setInfo]                 = useState('');
   const [submitting, setSubmitting]     = useState(false);
 
-  const finish = async (user: import('@supabase/supabase-js').User) => {
-    const profile = buildLocalProfile(user);
+  const finish = async (profile: AuthProfile) => {
     persistLocalUser(profile);
     await refreshJourneys().catch(() => undefined);
     navigate('/');
@@ -53,19 +51,10 @@ const LoginPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      if (isLogin) {
-        const { user } = await signIn(email, formData.password);
-        await finish(user);
-      } else {
-        const { user, session } = await signUp(email, formData.password, formData.name.trim());
-        if (!session) {
-          setInfo('Account created! Check your email to confirm your address, then sign in.');
-          setIsLogin(true);
-          setFormData(f => ({ ...f, password: '', name: '' }));
-        } else {
-          await finish(user);
-        }
-      }
+      if (!isLogin && formData.password.length < 8) { setError('Use at least 8 characters for your password'); return; }
+      await finish(isLogin
+        ? await signIn(email, formData.password)
+        : await signUp(email, formData.password, formData.name.trim()));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
     } finally {
@@ -75,21 +64,6 @@ const LoginPage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleForgotPassword = async () => {
-    const email = formData.email.trim().toLowerCase();
-    if (!email) { setError('Enter your email above first, then click Forgot password.'); return; }
-    setSubmitting(true);
-    try {
-      await sendPasswordReset(email);
-      setInfo(`Password reset email sent to ${email}. Check your inbox.`);
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send reset email.');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const fillTestAccount = (acc: { name: string; email: string; password: string }) => {
@@ -116,12 +90,6 @@ const LoginPage: React.FC = () => {
             <p>{isLogin ? 'Sign in to see your trips and itineraries.' : 'Plan, book and keep every trip in one place.'}</p>
           </div>
 
-          {!isSupabaseConfigured && (
-            <div className="notice login-info" role="status">
-              Account sign-in isn’t configured for this deployment. Continue as a guest — your trips are saved in this browser.
-            </div>
-          )}
-
           {/* Error / Info banners */}
           {error && (
             <div className="notice notice-danger login-error" role="alert">
@@ -135,7 +103,7 @@ const LoginPage: React.FC = () => {
           )}
 
           {/* Test accounts panel */}
-          {isLogin && SHOW_TEST_ACCOUNTS && isSupabaseConfigured && (
+          {isLogin && SHOW_TEST_ACCOUNTS && (
             <div className="test-accounts-section">
               <button
                 type="button"
@@ -248,16 +216,6 @@ const LoginPage: React.FC = () => {
                   <input type="checkbox" id="remember" />
                   <span>Remember me</span>
                 </label>
-              )}
-              {isLogin && (
-                <button
-                  type="button"
-                  className="forgot-link"
-                  onClick={handleForgotPassword}
-                  disabled={submitting}
-                >
-                  Forgot password?
-                </button>
               )}
             </div>
 

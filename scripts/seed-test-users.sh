@@ -1,44 +1,31 @@
 #!/usr/bin/env bash
-# seed-test-users.sh
-# Creates 5 test accounts in Supabase Auth using the Admin API.
+# seed-test-users.sh — creates the 5 test accounts shown on the login page (development builds) through the API.
 #
-# Usage:
-#   SUPABASE_URL=https://xxx.supabase.co \
-#   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key \
-#   bash scripts/seed-test-users.sh
-#
-# Service Role Key: Supabase Dashboard → Project Settings → API → service_role (Secret)
-# Never commit the key. Run once from your terminal.
+# Usage:  bash scripts/seed-test-users.sh                     (API on http://127.0.0.1:4000)
+#         API_URL=https://… bash scripts/seed-test-users.sh   (another deployment)
+# Accounts that already exist are reported and left alone.
 
-URL="${SUPABASE_URL:?SUPABASE_URL not set}"
-KEY="${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY not set}"
+API="${API_URL:-http://127.0.0.1:4000}"
 
 create_user() {
-  local EMAIL="$1" PASS="$2" NAME="$3" CITY="$4" ROLE="$5"
-  RESP=$(curl -s -w "\n%{http_code}" -X POST \
-    -H "apikey: $KEY" \
-    -H "Authorization: Bearer $KEY" \
-    -H "Content-Type: application/json" \
-    -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"email_confirm\":true,\"user_metadata\":{\"full_name\":\"$NAME\",\"home_city\":\"$CITY\",\"role\":\"$ROLE\"}}" \
-    "$URL/auth/v1/admin/users")
-  HTTP=$(echo "$RESP" | tail -1)
-  BODY=$(echo "$RESP" | head -1)
-  if [[ "$HTTP" == "200" || "$HTTP" == "201" ]]; then
-    echo "  ✅  Created: $NAME <$EMAIL>"
-  else
-    MSG=$(python3 -c "import sys,json; d=json.loads('$BODY'); print(d.get('msg','') or d.get('message',''))" 2>/dev/null || echo "$BODY")
-    echo "  ⚠️   $EMAIL — HTTP $HTTP — $MSG"
-  fi
+  local EMAIL="$1" PASS="$2" NAME="$3"
+  HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" \
+    -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"full_name\":\"$NAME\"}" "$API/api/auth/register")
+  case "$HTTP" in
+    201) echo "  ✅  Created: $NAME <$EMAIL>" ;;
+    409) echo "  ·   Exists:  $NAME <$EMAIL>" ;;
+    *)   echo "  ⚠️   $EMAIL — HTTP $HTTP" ;;
+  esac
 }
 
 echo ""
-echo "🌱  Seeding 5 test users into Supabase…"
+echo "🌱  Seeding 5 test users into $API…"
 echo ""
-create_user "arjun.sharma@travelsphere.test"  "TravelSphere@2024" "Arjun Sharma"  "Mumbai"    "user"
-create_user "priya.nair@travelsphere.test"    "TravelSphere@2024" "Priya Nair"    "Bangalore" "user"
-create_user "rahul.verma@travelsphere.test"   "TravelSphere@2024" "Rahul Verma"   "Delhi"     "user"
-create_user "ananya.iyer@travelsphere.test"   "TravelSphere@2024" "Ananya Iyer"   "Chennai"   "user"
-create_user "kiran.mehta@travelsphere.test"   "TravelSphere@2024" "Kiran Mehta"   "Pune"      "admin"
+create_user "arjun.sharma@travelsphere.test"  "TravelSphere@2024" "Arjun Sharma"
+create_user "priya.nair@travelsphere.test"    "TravelSphere@2024" "Priya Nair"
+create_user "rahul.verma@travelsphere.test"   "TravelSphere@2024" "Rahul Verma"
+create_user "ananya.iyer@travelsphere.test"   "TravelSphere@2024" "Ananya Iyer"
+create_user "kiran.mehta@travelsphere.test"   "TravelSphere@2024" "Kiran Mehta"
 echo ""
 echo "✨  Done. All accounts use password: TravelSphere@2024"
 echo ""

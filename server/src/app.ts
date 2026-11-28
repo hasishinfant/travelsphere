@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Config } from './config.js';
 import type { Db } from './db.js';
 import { dbHealthy } from './db.js';
-import { createVerifier, requireAuth, type TokenVerifier } from './auth.js';
+import { createVerifier, hashPassword, requireAuth, verifyPassword, type TokenVerifier } from './auth.js';
 import { errorHandler, HttpError, parse, route } from './http.js';
 import { profileRouter } from './routes/profile.js';
 import { journeysRouter } from './routes/journeys.js';
@@ -27,6 +27,11 @@ export const API_VERSION = '0.1.0';
 const DevSession = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
   full_name: z.string().trim().min(1).max(120).optional(),
+}).strict();
+const Register = DevSession.extend({ password: z.string().min(8).max(200) }).strict();
+const Login = z.object({
+  email: z.string().trim().toLowerCase().email().max(254),
+  password: z.string().min(1).max(200),
 }).strict();
 
 export function createApp(
@@ -88,6 +93,49 @@ export function createApp(
       const user = rows[0];
       const token = await verifier.issueLocal!({ id: user.id, email: user.email });
       res.status(201).json({ token, user: { id: user.id, email: user.email }, mode: 'local-dev' });
+    }));
+  }
+
+  // Accounts issued by this server (AUTH_MODE=password in production; also available in local development)
+  if (verifier.issueLocal) {
+    const mode = config.AUTH_MODE === 'local' ? 'local-dev' : 'password';
+    const session = async (res: express.Response, status: number, u: { id: string; email: string; full_name: string | null }) =>
+      res.status(status).json({ token: await verifier.issueLocal!({ id: u.id, email: u.email }), user: u, mode });
+
+    app.post('/api/auth/register', authLimiter, route(async (req, res) => {
+      const body = parse(Register, req.body);
+      const { rows } = await db.query(
+        `insert into auth.users (email, raw_user_meta_data, password_hash)
+         values ($1, jsonb_build_object('full_name', $2::text), $3)
+         on conflict (email) do nothing
+         returning id, email, raw_user_meta_data ->> 'full_name' as full_name`,
+        [body.email, body.full_name ?? body.email.split('@')[0], await hashPassword(body.password)],
+      );
+      if (!rows[0]) throw new HttpError(409, 'email_taken', 'An account with this email already exists');
+      await session(res, 201, rows[0]);
+    }));
+
+    app.post('/api/auth/login', authLimiter, route(async (req, res) => {
+      const body = parse(Login, req.body);
+      const { rows } = await db.query(
+        `select id, email, password_hash, raw_user_meta_data ->> 'full_name' as full_name from auth.users where email = $1`,
+        [body.email],
+      );
+      if (!(await verifyPassword(body.password, rows[0]?.password_hash ?? null))) {
+        throw new HttpError(401, 'invalid_credentials', 'Email or password is incorrect');
+      }
+      const { id, email, full_name } = rows[0];
+      await session(res, 200, { id, email, full_name });
+    }));
+
+    // Anonymous account for "continue as guest" (like Supabase anonymous sign-in); cannot claim an existing account
+    app.post('/api/auth/guest', authLimiter, route(async (_req, res) => {
+      const { rows } = await db.query(
+        `insert into auth.users (email, raw_user_meta_data)
+         values ('guest-' || gen_random_uuid() || '@guest.travelsphere.local', '{"full_name":"Guest"}')
+         returning id, email, raw_user_meta_data ->> 'full_name' as full_name`,
+      );
+      await session(res, 201, rows[0]);
     }));
   }
 

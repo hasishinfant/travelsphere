@@ -225,26 +225,32 @@ Overpass) receive coordinates — self-host for production.
 
 ## 13. Environment
 
-`server/.env` — `DATABASE_URL`, `AUTH_MODE`, `LOCAL_JWT_SECRET` | `SUPABASE_URL`, `CORS_ORIGINS`, `RISK_SERVICE_URL`,
+`server/.env` — `DATABASE_URL`, `AUTH_MODE`, `LOCAL_JWT_SECRET` (local) | `JWT_SECRET` (password), `CORS_ORIGINS`, `RISK_SERVICE_URL`,
 `RISK_SERVICE_TOKEN`, `RISK_SERVICE_TIMEOUT_MS`, `ASSESSMENT_MAX_AGE_MIN`, `FCM_PROJECT_ID`, `FCM_SERVICE_ACCOUNT_JSON`,
 `LITEAPI_API_KEY`, `LITEAPI_ENV`, `LITEAPI_ALLOW_LIVE_BOOKINGS`, `LITEAPI_TIMEOUT_MS`.
 `risk-service/.env` — `DATABASE_URL`, `RISK_SERVICE_TOKEN` (same value), `RISK_HOST`, `RISK_PORT`,
 `RISK_SCHEDULER_ENABLED`, `RISK_HTTP_TIMEOUT_S`, optional `OSRM_DRIVING_URL`, `OSRM_FOOT_URL`, `OVERPASS_URLS`.
 The risk data sources are keyless. Hotel booking needs a LiteAPI key (free sandbox key; see SETUP.md §6).
 
-## 14. Deployment
+## 14. Deployment (Railway)
 
-1. Database: `cd server && DATABASE_URL=<supabase> npm run db:migrate` (no `--local`). PostGIS columns appear
-   automatically on Supabase.
-2. Risk service: Python 3.12 container/VM on a private subnet; `pip install -r requirements.txt`;
-   `uvicorn app.main:app --host 0.0.0.0 --port 8001` behind a security group that only admits the API; set
-   `RISK_ENV=production`, `RISK_SERVICE_TOKEN`; exactly one instance with `RISK_SCHEDULER_ENABLED=true`; run
+Project `travelsphere`, defined in `.railway/railway.ts` (`railway config plan` / `railway config apply`; variables are
+managed on Railway, not in the file). Three services, all on the private network:
+
+1. **Postgres** — plain PostgreSQL. The auth shim (`supabase/local/00_auth_shim.sql`) supplies `auth.users`,
+   `auth.uid()` and the roles the migrations and RLS rely on.
+2. **travelsphere-api** — built from the repo root with `server/Dockerfile`; `node dist/migrate.js --local` runs before
+   every deploy. Deploy: `railway up --service travelsphere-api`. Variables: `NODE_ENV=production`,
+   `AUTH_MODE=password`, `JWT_SECRET`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`,
+   `RISK_SERVICE_URL=http://${{travelsphere-risk.RAILWAY_PRIVATE_DOMAIN}}:8001`,
+   `RISK_SERVICE_TOKEN=${{travelsphere-risk.RISK_SERVICE_TOKEN}}`, `CORS_ORIGINS`, `LITEAPI_*`.
+3. **travelsphere-risk** — Railpack (Python 3.12). Deploy: `railway up risk-service --path-as-root --service
+   travelsphere-risk`. Variables: `RISK_ENV=production`, `RISK_HOST=::`, `PORT=8001`, `RISK_SERVICE_TOKEN`,
+   `RISK_SCHEDULER_ENABLED=true` (keep one replica), `DATABASE_URL=${{Postgres.DATABASE_URL}}`. Run
    `python -m app.ingestion.load_history 10` once.
-3. API: `npm ci && npm run build && npm start` with `NODE_ENV=production`, `AUTH_MODE=supabase`,
-   `RISK_SERVICE_URL=http://<private-host>:8001`, same token.
-4. Optional: self-hosted OSRM and Overpass; FCM credentials.
-The repository has no AWS infrastructure definitions (only a GitHub Pages workflow for the frontend), so no AWS
-resources were created; the steps above map directly onto ECS/Fargate or EC2 + RDS/Supabase.
+
+Accounts: `POST /api/auth/register`, `/api/auth/login` (email + password, scrypt hashes in `auth.users.password_hash`)
+and `/api/auth/guest` issue 30-day HS256 tokens. There is no password reset yet (no email provider).
 
 ## 15. Status, blockers and future work
 
